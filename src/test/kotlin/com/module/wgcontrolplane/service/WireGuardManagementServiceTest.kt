@@ -1,5 +1,6 @@
 package com.module.wgcontrolplane.service
 
+import com.module.wgcontrolplane.dto.*
 import com.module.wgcontrolplane.model.*
 import com.module.wgcontrolplane.repository.WireGuardServerRepository
 import com.module.wgcontrolplane.repository.WireGuardClientRepository
@@ -40,10 +41,12 @@ class WireGuardManagementServiceTest {
     fun `test createServer`() {
         // Execute test
         val server = managementService.createServer(
-            name = "Test VPN Server",
-            networkAddress = "10.0.0.1/24",
-            listenPort = 51820,
-            endpoint = "test-vpn.example.com:51820"
+            CreateServerRequest(
+                name = "Test VPN Server",
+                networkAddress = "10.0.0.1/24",
+                listenPort = 51820,
+                endpoint = "test-vpn.example.com:51820"
+            )
         )
 
         // Verify result
@@ -61,17 +64,21 @@ class WireGuardManagementServiceTest {
     fun `test createServer with duplicate name should fail`() {
         // Create first server
         managementService.createServer(
-            name = "Duplicate Server",
-            networkAddress = "10.0.0.1/24",
-            endpoint = "test1.example.com:51820"
+            CreateServerRequest(
+                name = "Duplicate Server",
+                networkAddress = "10.0.0.1/24",
+                endpoint = "test1.example.com:51820"
+            )
         )
 
         // Try to create server with same name
         assertFailsWith<IllegalArgumentException> {
             managementService.createServer(
-                name = "Duplicate Server",
-                networkAddress = "10.1.0.1/24",
-                endpoint = "test2.example.com:51820"
+                CreateServerRequest(
+                    name = "Duplicate Server",
+                    networkAddress = "10.1.0.1/24",
+                    endpoint = "test2.example.com:51820"
+                )
             )
         }
     }
@@ -80,19 +87,23 @@ class WireGuardManagementServiceTest {
     fun `test createServer with duplicate port should fail`() {
         // Create first server
         managementService.createServer(
-            name = "Server 1",
-            networkAddress = "10.0.0.1/24",
-            listenPort = 51820,
-            endpoint = "test1.example.com:51820"
+            CreateServerRequest(
+                name = "Server 1",
+                networkAddress = "10.0.0.1/24",
+                listenPort = 51820,
+                endpoint = "test1.example.com:51820"
+            )
         )
 
         // Try to create server with same port
         assertFailsWith<IllegalArgumentException> {
             managementService.createServer(
-                name = "Server 2",
-                networkAddress = "10.1.0.1/24",
-                listenPort = 51820,
-                endpoint = "test2.example.com:51820"
+                CreateServerRequest(
+                    name = "Server 2",
+                    networkAddress = "10.1.0.1/24",
+                    listenPort = 51820,
+                    endpoint = "test2.example.com:51820"
+                )
             )
         }
     }
@@ -101,22 +112,24 @@ class WireGuardManagementServiceTest {
     fun `test createClientForServer`() {
         // Create server first
         val server = managementService.createServer(
-            name = "Client Test Server",
-            networkAddress = "192.168.100.1/24",
-            endpoint = "server.example.com:51820"
+            CreateServerRequest(
+                name = "Client Test Server",
+                networkAddress = "192.168.100.1/24",
+                endpoint = "server.example.com:51820"
+            )
         )
 
         // Execute test
         val (client, privateKey) = managementService.createClientForServer(
             serverId = server.id,
-            clientName = "Test Client"
+            request = CreateClientRequest(name = "Test Client")
         )
 
         // Verify result
         assertNotNull(client.id)
         assertEquals("Test Client", client.name)
         assertTrue(client.publicKey.isNotEmpty())
-        assertTrue(privateKey.isNotEmpty())
+        assertTrue(privateKey!!.isNotEmpty())
         assertEquals(1, client.allowedIPs.size)
         assertTrue(client.allowedIPs.first().address.startsWith("192.168.100."))
         assertEquals(server.id, client.server?.id)
@@ -126,9 +139,11 @@ class WireGuardManagementServiceTest {
     fun `test addClientToServer with existing public key should fail`() {
         // Create server
         val server = managementService.createServer(
-            name = "Duplicate Client Server",
-            networkAddress = "10.5.0.1/24",
-            endpoint = "dup.example.com:51820"
+            CreateServerRequest(
+                name = "Duplicate Client Server",
+                networkAddress = "10.5.0.1/24",
+                endpoint = "dup.example.com:51820"
+            )
         )
 
         val existingPublicKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -136,16 +151,20 @@ class WireGuardManagementServiceTest {
         // Add first client
         managementService.addClientToServer(
             serverId = server.id,
-            clientName = "First Client",
-            clientPublicKey = existingPublicKey
+            request = AddClientRequest(
+                clientName = "First Client",
+                clientPublicKey = existingPublicKey
+            )
         )
 
         // Try to add client with same public key
         assertFailsWith<IllegalArgumentException> {
             managementService.addClientToServer(
                 serverId = server.id,
-                clientName = "Second Client",
-                clientPublicKey = existingPublicKey
+                request = AddClientRequest(
+                    clientName = "Second Client",
+                    clientPublicKey = existingPublicKey
+                )
             )
         }
     }
@@ -154,14 +173,16 @@ class WireGuardManagementServiceTest {
     fun `test removeClientFromServer`() {
         // Create server and client
         val server = managementService.createServer(
-            name = "Remove Test Server",
-            networkAddress = "10.10.0.1/24",
-            endpoint = "remove.example.com:51820"
+            CreateServerRequest(
+                name = "Remove Test Server",
+                networkAddress = "10.10.0.1/24",
+                endpoint = "remove.example.com:51820"
+            )
         )
 
         val (client, _) = managementService.createClientForServer(
             serverId = server.id,
-            clientName = "Client to Remove"
+            request = CreateClientRequest(name = "Client to Remove")
         )
 
         // Verify client exists
@@ -180,14 +201,16 @@ class WireGuardManagementServiceTest {
     fun `test updateClientStatus`() {
         // Create server and client
         val server = managementService.createServer(
-            name = "Status Test Server",
-            networkAddress = "10.20.0.1/24",
-            endpoint = "status.example.com:51820"
+            CreateServerRequest(
+                name = "Status Test Server",
+                networkAddress = "10.20.0.1/24",
+                endpoint = "status.example.com:51820"
+            )
         )
 
         val (client, _) = managementService.createClientForServer(
             serverId = server.id,
-            clientName = "Status Test Client"
+            request = CreateClientRequest(name = "Status Test Client")
         )
 
         // Verify client is enabled by default
@@ -206,13 +229,15 @@ class WireGuardManagementServiceTest {
     fun `test getServerStatistics`() {
         // Create server with clients
         val server = managementService.createServer(
-            name = "Stats Test Server",
-            networkAddress = "10.30.0.1/24",
-            endpoint = "stats.example.com:51820"
+            CreateServerRequest(
+                name = "Stats Test Server",
+                networkAddress = "10.30.0.1/24",
+                endpoint = "stats.example.com:51820"
+            )
         )
 
-        val (client1, _) = managementService.createClientForServer(server.id, "Client 1")
-        val (client2, _) = managementService.createClientForServer(server.id, "Client 2")
+        val (client1, _) = managementService.createClientForServer(server.id, CreateClientRequest("Client 1"))
+        val (client2, _) = managementService.createClientForServer(server.id, CreateClientRequest("Client 2"))
 
         // Update client statistics
         managementService.updateClientStats(
@@ -247,20 +272,22 @@ class WireGuardManagementServiceTest {
     fun `test automatic IP allocation`() {
         // Create server
         val server = managementService.createServer(
-            name = "IP Allocation Server",
-            networkAddress = "172.16.0.1/24",
-            endpoint = "ip-test.example.com:51820"
+            CreateServerRequest(
+                name = "IP Allocation Server",
+                networkAddress = "172.16.0.1/24",
+                endpoint = "ip-test.example.com:51820"
+            )
         )
 
         // Create multiple clients and verify IP allocation
-        val (client1, _) = managementService.createClientForServer(server.id, "Client 1")
-        val (client2, _) = managementService.createClientForServer(server.id, "Client 2")
-        val (client3, _) = managementService.createClientForServer(server.id, "Client 3")
+        val (client1, _) = managementService.createClientForServer(server.id, CreateClientRequest("Client 1"))
+        val (client2, _) = managementService.createClientForServer(server.id, CreateClientRequest("Client 2"))
+        val (client3, _) = managementService.createClientForServer(server.id, CreateClientRequest("Client 3"))
 
         // Verify each client gets a unique IP
-        val ip1 = client1.primaryAllowedIP?.IP
-        val ip2 = client2.primaryAllowedIP?.IP
-        val ip3 = client3.primaryAllowedIP?.IP
+        val ip1 = client1.allowedIPs.firstOrNull()?.address
+        val ip2 = client2.allowedIPs.firstOrNull()?.address
+        val ip3 = client3.allowedIPs.firstOrNull()?.address
 
         assertNotNull(ip1)
         assertNotNull(ip2)
