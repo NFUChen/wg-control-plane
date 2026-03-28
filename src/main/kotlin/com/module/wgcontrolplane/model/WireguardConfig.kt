@@ -1,124 +1,72 @@
 package com.module.wgcontrolplane.model
 
+import com.module.wgcontrolplane.utils.WireGuardUtils
+import jakarta.persistence.*
+import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.UpdateTimestamp
 import java.net.InetAddress
 import java.net.UnknownHostException
+import java.time.LocalDateTime
 import java.util.UUID
 
 const val GOOGLE_DNS = "8.8.8.8"
 
 /**
- * WireGuard 工具类，封装命令行操作
+ * IP address value object, as an embedded entity
  */
-object WireGuardUtils {
+@Embeddable
+class IPAddress(
+    @Column(nullable = false)
+    val address: String = ""  // e.g., "10.0.0.1/24"
+) {
+    val IP: String
+        get() = if (address.contains("/")) address.split("/")[0] else address
 
-    /**
-     * 执行 WireGuard 命令
-     */
-    private fun executeWgCommand(vararg command: String, input: String? = null): String {
-        return try {
-            val process = ProcessBuilder(*command)
-                .redirectErrorStream(true)
-                .start()
+    val prefixLength: Int
+        get() = if (address.contains("/")) address.split("/")[1].toInt() else 32
 
-            // 如果需要输入数据，写入 stdin
-            input?.let { inputData ->
-                process.outputStream.use { outputStream ->
-                    outputStream.write(inputData.toByteArray())
-                    outputStream.flush()
-                }
-            }
-
-            // 等待进程完成并读取结果
-            val exitCode = process.waitFor()
-            val result = process.inputStream.bufferedReader().use { it.readText().trim() }
-
-            if (exitCode == 0 && result.isNotEmpty()) {
-                result
-            } else {
-                throw RuntimeException("Command failed: ${command.joinToString(" ")}, exit code $exitCode, output: $result")
-            }
-        } catch (e: Exception) {
-            throw RuntimeException("Error executing WireGuard command: ${command.joinToString(" ")}", e)
+    init {
+        if (address.isNotEmpty()) {
+            validateAddress()
         }
     }
 
-    /**
-     * 生成新的 private key
-     */
-    fun generatePrivateKey(): String = executeWgCommand("wg", "genkey")
-
-    /**
-     * 从 private key 生成对应的 public key
-     */
-    fun generatePublicKey(privateKey: String): String = executeWgCommand("wg", "pubkey", input = privateKey)
-
-    /**
-     * 生成预共享密钥
-     */
-    fun generatePresharedKey(): String = executeWgCommand("wg", "genpsk")
-
-    /**
-     * 生成密钥对 (private key 和 public key)
-     */
-    fun generateKeyPair(): Pair<String, String> {
-        val privateKey = generatePrivateKey()
-        val publicKey = generatePublicKey(privateKey)
-        return privateKey to publicKey
-    }
-}
-
-data class IPAddress(
-    val address: String  // e.g., "10.0.0.1/24"
-) {
-    val IP: String
-    val prefixLength: Int
-
-    init {
+    private fun validateAddress() {
         val parts = address.split("/")
         require(parts.size == 2) { "Invalid CIDR format: $address" }
-        IP = parts[0]
-        prefixLength = parts[1].toIntOrNull()
+
+        val ip = parts[0]
+        val prefix = parts[1].toIntOrNull()
             ?: throw IllegalArgumentException("Invalid prefix: $address")
 
-        if (!isValid()) throw IllegalArgumentException("Invalid IP: $address")
+        require(isValidIP(ip)) { "Invalid IP address: $ip" }
     }
 
-    private fun isValid(): Boolean {
+    private fun isValidIP(ip: String): Boolean {
         return try {
-            InetAddress.getByName(IP)
+            InetAddress.getByName(ip)
             true
         } catch (e: UnknownHostException) {
             false
         }
     }
 
-    // 取得網段的起始 byte array（mask 後的結果）
-    private fun networkBytes(): ByteArray {
-        val inetAddr = InetAddress.getByName(IP)
-        val addr = inetAddr.address
-        val mask = prefixLength
-        val result = addr.copyOf()
-
-        for (idx in addr.indices) {
-            val bitsLeft = (mask - idx * 8).coerceIn(0, 8)
-            val maskByte = if (bitsLeft >= 8) 0xFF else (0xFF shl (8 - bitsLeft))
-            result[idx] = (result[idx].toInt() and maskByte).toByte()
-        }
-        return result
-    }
-
-    // 這個網段是否涵蓋 other 網段
+    /**
+     * Check if this network segment contains another network segment
+     */
     fun contains(other: IPAddress): Boolean {
+        if (address.isEmpty() || other.address.isEmpty()) return false
+
         val thisNet = InetAddress.getByName(IP)
         val otherNet = InetAddress.getByName(other.IP)
 
-        // IPv4 vs IPv6 不能比
+        // Cannot compare IPv4 vs IPv6
         if (thisNet.javaClass != otherNet.javaClass) return false
 
-        // other 的 prefix 必須 >= this（更小或等於的範圍）
+        // Other's prefix must be >= this (smaller or equal range)
         if (other.prefixLength < this.prefixLength) return false
 
-        // 用 this 的 mask 去遮 other 的 IP，看網段是否相同
+        // Use this mask to check if the network segment is the same
         val thisAddr = thisNet.address
         val otherAddr = otherNet.address
 
@@ -133,60 +81,156 @@ data class IPAddress(
     }
 }
 
-// 整個 WireGuard 配置
-data class WireGuardConfig(
-    val endpoint: String? = null, // e.g., "vpn.example.com:51820" # 服務端地址和端口, # null 表示一般peer, 不是wg server
-    val interfaceConfig: WgInterface,
-    val peers: MutableList<WgPeer> = mutableListOf()
+/**
+ * WireGuard configuration main entity
+ */
+@Entity
+@Table(name = "wireguard_configs")
+class WireGuardConfig(
+    @Id
+    @GeneratedValue
+    val id: UUID = UUID.randomUUID(),
+
+    @Column(name = "endpoint")
+    val endpoint: String? = null, // Server address, null indicates this is a regular peer, not a wg server
+
+    @Column(name = "name", nullable = false)
+    val name: String = "Default Config",
+
+    @OneToOne(mappedBy = "config", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    var interfaceConfig: WgInterface? = null,
+
+    @OneToMany(mappedBy = "config", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    val peers: MutableList<WgPeer> = mutableListOf(),
+
+    @CreationTimestamp
+    @Column(name = "created_at")
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    var updatedAt: LocalDateTime = LocalDateTime.now()
 ) {
 
     fun addPeer(peer: WgPeer) {
-        peer.allowedIPs.forEach { it ->
-            if (!interfaceConfig.address.any { it.contains(it) }) {
-                throw IllegalArgumentException("Peer allowed IP ${it.address} is not within the interface's address range")
+        interfaceConfig?.let { interfaceConfig ->
+            peer.allowedIPs.forEach { allowedIP ->
+                if (!interfaceConfig.addresses.any { interfaceAddress ->
+                    interfaceAddress.contains(allowedIP)
+                }) {
+                    throw IllegalArgumentException("Peer allowed IP ${allowedIP.address} is not within the interface's address range")
+                }
             }
         }
+        peer.config = this
         peers.add(peer)
     }
 
     fun removePeer(peerId: UUID) {
         peers.removeIf { it.id == peerId }
     }
+
+    fun setInterface(wgInterface: WgInterface) {
+        this.interfaceConfig = wgInterface
+        wgInterface.config = this
+    }
 }
 
+/**
+ * WireGuard interface configuration entity
+ */
+@Entity
+@Table(name = "wg_interfaces")
+class WgInterface(
+    @Id
+    @GeneratedValue
+    val id: UUID = UUID.randomUUID(),
 
-data class WgInterface(
-    val privateKey: String,
-    val address: List<IPAddress>, // e.g., ["10.0.0.1/24", "fd86:ea04:1115::1/64"]
+    @Column(name = "private_key", nullable = false, length = 44)
+    val privateKey: String = "",
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "wg_interface_addresses", joinColumns = [JoinColumn(name = "interface_id")])
+    @AttributeOverride(name = "address", column = Column(name = "ip_address"))
+    val addresses: MutableList<IPAddress> = mutableListOf(), // e.g., ["10.0.0.1/24", "fd86:ea04:1115::1/64"]
+
+    @Column(name = "listen_port", nullable = false)
     val listenPort: Int = 51820,
-    val dns: List<String> = mutableListOf(GOOGLE_DNS),
-    val mtu: Int? = null
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "wg_interface_dns", joinColumns = [JoinColumn(name = "interface_id")])
+    @Column(name = "dns_server")
+    val dnsServer: MutableList<String> = mutableListOf(GOOGLE_DNS),
+
+    @Column(name = "mtu")
+    val mtu: Int? = null,
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "config_id", nullable = false)
+    var config: WireGuardConfig? = null,
+
+    @CreationTimestamp
+    @Column(name = "created_at")
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    var updatedAt: LocalDateTime = LocalDateTime.now()
 ) {
 
     /**
-     * 获取对应的 public key
+     * Get corresponding public key
      */
     val publicKey: String
-        get() = WireGuardUtils.generatePublicKey(privateKey)
+        get() = if (privateKey.isNotEmpty()) WireGuardUtils.generatePublicKey(privateKey) else ""
 }
 
-// Peer 部分
-data class WgPeer(
-    val id: UUID,
-    val publicKey: String,
+/**
+ * WireGuard Peer entity
+ */
+@Entity
+@Table(name = "wg_peers")
+class WgPeer(
+    @Id
+    val id: UUID = UUID.randomUUID(),
+
+    @Column(name = "public_key", nullable = false, length = 44)
+    val publicKey: String = "",
+
+    @Column(name = "preshared_key", length = 44)
     val presharedKey: String? = null,
-    val allowedIPs: List<IPAddress>, // e.g., ["10.0.0.2/32"]
-    val endpoint: String, // e.g., "vpn.example.com:51820"
-    val persistentKeepalive: Int = 25
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "wg_peer_allowed_ips", joinColumns = [JoinColumn(name = "peer_id")])
+    @AttributeOverride(name = "address", column = Column(name = "ip_address"))
+    val allowedIPs: MutableList<IPAddress> = mutableListOf(), // e.g., ["10.0.0.2/32"]
+
+    @Column(name = "endpoint", nullable = false)
+    val endpoint: String = "", // e.g., "vpn.example.com:51820"
+
+    @Column(name = "persistent_keepalive")
+    val persistentKeepalive: Int = 25,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "config_id", nullable = false)
+    var config: WireGuardConfig? = null,
+
+    @CreationTimestamp
+    @Column(name = "created_at")
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    var updatedAt: LocalDateTime = LocalDateTime.now()
 ) {
     /**
-     * 获取第一个允许的 IP 地址（通常是主 IP）
+     * Get the first allowed IP address (usually the primary IP)
      */
-    val primaryAllowedIP: IPAddress
-        get() = allowedIPs.first()
+    val primaryAllowedIP: IPAddress?
+        get() = allowedIPs.firstOrNull()
 
     /**
-     * 检查是否允许路由所有流量
+     * Check if routing all traffic is allowed
      */
     val isAllTrafficAllowed: Boolean
         get() = allowedIPs.any { it.address == "0.0.0.0/0" || it.address == "::/0" }

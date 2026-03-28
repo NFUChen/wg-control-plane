@@ -10,12 +10,12 @@ import java.io.StringWriter
 class TemplateService(@Qualifier("templateConfiguration") private val freemarkerConfig: Configuration) {
 
     /**
-     * 生成服务端配置 - 直接接收 WgInterface 和 peers
+     * Generate server configuration - directly accepts WgInterface and peers
      */
     fun generateServerConfig(serverInterface: WgInterface, peers: List<WgPeer>): String {
         val dataModel: Map<String, Any> = mapOf(
             "privateKey" to serverInterface.privateKey,
-            "address" to serverInterface.address.joinToString(", ") { it.address },
+            "address" to serverInterface.addresses.joinToString(", ") { it.address },
             "listenPort" to serverInterface.listenPort,
             "peers" to peers.map { it.toTemplateMap() }
         )
@@ -24,7 +24,7 @@ class TemplateService(@Qualifier("templateConfiguration") private val freemarker
     }
 
     /**
-     * 生成客户端配置 - 客户端连接到服务端
+     * Generate client configuration - client connects to server
      */
     fun generateClientConfig(
         clientInterface: WgInterface,
@@ -34,22 +34,22 @@ class TemplateService(@Qualifier("templateConfiguration") private val freemarker
     ): String {
         val dataModel = mutableMapOf<String, Any>(
             "privateKey" to clientInterface.privateKey,
-            "address" to clientInterface.address.joinToString(", ") { it.address },
+            "address" to clientInterface.addresses.joinToString(", ") { it.address },
             "serverPublicKey" to serverPublicKey,
             "serverEndpoint" to serverEndpoint,
             "allowedIPs" to allowedIPs.joinToString(", ") { it.address }
         )
 
-        // 只有在需要监听端口时才添加
+        // Only add listen port when needed
         if (clientInterface.listenPort > 0) {
-            dataModel["listenPort"] = clientInterface.listenPort
+            dataModel["listenPort"] = clientInterface.listenPort.toString()
         }
 
         return renderTemplate("client-config.ftl", dataModel)
     }
 
     /**
-     * 生成客户端配置 - 使用服务端 interface 自动获取 public key
+     * Generate client configuration - automatically get public key from server interface
      */
     fun generateClientConfig(
         clientInterface: WgInterface,
@@ -66,7 +66,7 @@ class TemplateService(@Qualifier("templateConfiguration") private val freemarker
     }
 
     /**
-     * 渲染指定模板
+     * Render specified template
      */
     private fun renderTemplate(templateName: String, dataModel: Map<String, Any>): String {
         val template = freemarkerConfig.getTemplate(templateName)
@@ -76,7 +76,7 @@ class TemplateService(@Qualifier("templateConfiguration") private val freemarker
     }
 
     /**
-     * 验证生成的配置格式
+     * Validate generated configuration format
      */
     fun validateConfigFormat(configContent: String): List<String> {
         val errors = mutableListOf<String>()
@@ -105,13 +105,13 @@ class TemplateService(@Qualifier("templateConfiguration") private val freemarker
     }
 
     /**
-     * 生成配置 Hash (用于配置比较和缓存)
+     * Generate configuration hash (for configuration comparison and caching)
      */
     fun generateConfigHash(configContent: String): String = configContent.hashCode().toString()
 }
 
 /**
- * 扩展函数：WgPeer 转为模板数据
+ * Extension function: Convert WgPeer to template data
  */
 private fun WgPeer.toTemplateMap(): Map<String, Any> = mapOf(
     "publicKey" to publicKey,

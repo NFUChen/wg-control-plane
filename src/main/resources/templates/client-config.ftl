@@ -5,6 +5,6 @@ Address = ${address}
 
 [Peer]
 PublicKey = ${serverPublicKey}
-AllowedIPs = ${allowedIPs}   <#-- 例如 0.0.0.0/0 或 server 網段>
+AllowedIPs = ${allowedIPs}   <#-- e.g., 0.0.0.0/0 or server network range>
 Endpoint = ${serverEndpoint}  <#-- server:port>
-PersistentKeepalive = 25     <#-- client 常用保持連線心跳>
+PersistentKeepalive = 25     <#-- common client keepalive heartbeat>
