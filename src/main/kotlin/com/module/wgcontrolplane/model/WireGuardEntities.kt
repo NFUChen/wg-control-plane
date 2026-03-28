@@ -82,92 +82,51 @@ class IPAddress(
 }
 
 /**
- * WireGuard configuration main entity
+ * WireGuard Server entity - represents a WireGuard server instance
  */
 @Entity
-@Table(name = "wireguard_configs")
-class WireGuardConfig(
+@Table(name = "wg_servers")
+class WireGuardServer(
     @Id
     @GeneratedValue
     val id: UUID = UUID.randomUUID(),
 
-    @Column(name = "endpoint")
-    val endpoint: String? = null, // Server address, null indicates this is a regular peer, not a wg server
-
-    @Column(name = "name", nullable = false)
-    val name: String = "Default Config",
-
-    @OneToOne(mappedBy = "config", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
-    var interfaceConfig: WgInterface? = null,
-
-    @OneToMany(mappedBy = "config", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
-    val peers: MutableList<WgPeer> = mutableListOf(),
-
-    @CreationTimestamp
-    @Column(name = "created_at")
-    val createdAt: LocalDateTime = LocalDateTime.now(),
-
-    @UpdateTimestamp
-    @Column(name = "updated_at")
-    var updatedAt: LocalDateTime = LocalDateTime.now()
-) {
-
-    fun addPeer(peer: WgPeer) {
-        interfaceConfig?.let { interfaceConfig ->
-            peer.allowedIPs.forEach { allowedIP ->
-                if (!interfaceConfig.addresses.any { interfaceAddress ->
-                    interfaceAddress.contains(allowedIP)
-                }) {
-                    throw IllegalArgumentException("Peer allowed IP ${allowedIP.address} is not within the interface's address range")
-                }
-            }
-        }
-        peer.config = this
-        peers.add(peer)
-    }
-
-    fun removePeer(peerId: UUID) {
-        peers.removeIf { it.id == peerId }
-    }
-
-    fun setInterface(wgInterface: WgInterface) {
-        this.interfaceConfig = wgInterface
-        wgInterface.config = this
-    }
-}
-
-/**
- * WireGuard interface configuration entity
- */
-@Entity
-@Table(name = "wg_interfaces")
-class WgInterface(
-    @Id
-    @GeneratedValue
-    val id: UUID = UUID.randomUUID(),
+    @Column(name = "name", nullable = false, unique = true)
+    val name: String = "",
 
     @Column(name = "private_key", nullable = false, length = 44)
     val privateKey: String = "",
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "wg_interface_addresses", joinColumns = [JoinColumn(name = "interface_id")])
+    @CollectionTable(name = "wg_server_addresses", joinColumns = [JoinColumn(name = "server_id")])
     @AttributeOverride(name = "address", column = Column(name = "ip_address"))
-    val addresses: MutableList<IPAddress> = mutableListOf(), // e.g., ["10.0.0.1/24", "fd86:ea04:1115::1/64"]
+    val addresses: MutableList<IPAddress> = mutableListOf(), // e.g., ["10.0.0.1/24"]
 
     @Column(name = "listen_port", nullable = false)
     val listenPort: Int = 51820,
 
+    @Column(name = "endpoint", nullable = false)
+    val endpoint: String = "", // e.g., "vpn.example.com:51820"
+
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "wg_interface_dns", joinColumns = [JoinColumn(name = "interface_id")])
+    @CollectionTable(name = "wg_server_dns", joinColumns = [JoinColumn(name = "server_id")])
     @Column(name = "dns_server")
-    val dnsServer: MutableList<String> = mutableListOf(GOOGLE_DNS),
+    val dnsServers: MutableList<String> = mutableListOf(GOOGLE_DNS),
 
     @Column(name = "mtu")
     val mtu: Int? = null,
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "config_id", nullable = false)
-    var config: WireGuardConfig? = null,
+    @Column(name = "post_up")
+    val postUp: String? = null, // iptables rules for NAT, etc.
+
+    @Column(name = "post_down")
+    val postDown: String? = null,
+
+    @Column(name = "enabled", nullable = false)
+    val enabled: Boolean = true,
+
+    @OneToMany(mappedBy = "server", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    val clients: MutableList<WireGuardClient> = mutableListOf(),
 
     @CreationTimestamp
     @Column(name = "created_at")
@@ -177,22 +136,79 @@ class WgInterface(
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime = LocalDateTime.now()
 ) {
-
     /**
      * Get corresponding public key
      */
     val publicKey: String
         get() = if (privateKey.isNotEmpty()) WireGuardUtils.generatePublicKey(privateKey) else ""
+
+    /**
+     * Get the primary server address (first address)
+     */
+    val primaryAddress: IPAddress?
+        get() = addresses.firstOrNull()
+
+    /**
+     * Add a client to this server
+     */
+    fun addClient(client: WireGuardClient) {
+        // Validate that client's allowed IPs are within server's network range
+        primaryAddress?.let { serverAddr ->
+            client.allowedIPs.forEach { clientIP ->
+                if (!serverAddr.contains(clientIP)) {
+                    throw IllegalArgumentException(
+                        "Client allowed IP ${clientIP.address} is not within server's network range ${serverAddr.address}"
+                    )
+                }
+            }
+        }
+
+        client.server = this
+        clients.add(client)
+    }
+
+    /**
+     * Remove a client from this server
+     */
+    fun removeClient(clientId: UUID) {
+        clients.removeIf { it.id == clientId }
+    }
+
+    /**
+     * Get next available IP address for a new client
+     */
+    fun getNextAvailableClientIP(): IPAddress? {
+        val serverAddr = primaryAddress ?: return null
+        val usedIPs = clients.mapNotNull { it.primaryAllowedIP?.IP }.toSet()
+
+        // Simple IP allocation - increment from server IP
+        val serverIP = serverAddr.IP
+        val parts = serverIP.split(".")
+        if (parts.size != 4) return null
+
+        val base = "${parts[0]}.${parts[1]}.${parts[2]}"
+        for (i in 2..254) { // Start from .2, avoid .1 (server) and .255 (broadcast)
+            val candidateIP = "$base.$i"
+            if (!usedIPs.contains(candidateIP)) {
+                return IPAddress("$candidateIP/32")
+            }
+        }
+        return null
+    }
 }
 
 /**
- * WireGuard Peer entity
+ * WireGuard Client entity - represents a client connected to a server
  */
 @Entity
-@Table(name = "wg_peers")
-class WgPeer(
+@Table(name = "wg_clients")
+class WireGuardClient(
     @Id
+    @GeneratedValue
     val id: UUID = UUID.randomUUID(),
+
+    @Column(name = "name", nullable = false)
+    val name: String = "",
 
     @Column(name = "public_key", nullable = false, length = 44)
     val publicKey: String = "",
@@ -201,19 +217,28 @@ class WgPeer(
     val presharedKey: String? = null,
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "wg_peer_allowed_ips", joinColumns = [JoinColumn(name = "peer_id")])
+    @CollectionTable(name = "wg_client_allowed_ips", joinColumns = [JoinColumn(name = "client_id")])
     @AttributeOverride(name = "address", column = Column(name = "ip_address"))
     val allowedIPs: MutableList<IPAddress> = mutableListOf(), // e.g., ["10.0.0.2/32"]
-
-    @Column(name = "endpoint", nullable = false)
-    val endpoint: String = "", // e.g., "vpn.example.com:51820"
 
     @Column(name = "persistent_keepalive")
     val persistentKeepalive: Int = 25,
 
+    @Column(name = "enabled", nullable = false)
+    val enabled: Boolean = true,
+
+    @Column(name = "last_handshake")
+    var lastHandshake: LocalDateTime? = null,
+
+    @Column(name = "data_received")
+    var dataReceived: Long = 0,
+
+    @Column(name = "data_sent")
+    var dataSent: Long = 0,
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "config_id", nullable = false)
-    var config: WireGuardConfig? = null,
+    @JoinColumn(name = "server_id", nullable = false)
+    var server: WireGuardServer? = null,
 
     @CreationTimestamp
     @Column(name = "created_at")
@@ -234,4 +259,11 @@ class WgPeer(
      */
     val isAllTrafficAllowed: Boolean
         get() = allowedIPs.any { it.address == "0.0.0.0/0" || it.address == "::/0" }
+
+    /**
+     * Check if client is currently online (based on recent handshake)
+     */
+    val isOnline: Boolean
+        get() = lastHandshake?.isAfter(LocalDateTime.now().minusMinutes(3)) == true
 }
+
