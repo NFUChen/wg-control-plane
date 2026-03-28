@@ -9,22 +9,104 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.*
 
-@Service
-@Transactional
-class WireGuardManagementService(
-    private val serverRepository: WireGuardServerRepository,
-    private val clientRepository: WireGuardClientRepository
-) {
+interface WireGuardManagementService {
 
     /**
      * Create a new WireGuard server
      */
     fun createServer(
         name: String,
-        networkAddress: String, // e.g., "10.0.0.1/24"
+        networkAddress: String,
         listenPort: Int = 51820,
-        endpoint: String, // e.g., "vpn.example.com:51820"
+        endpoint: String,
         dnsServers: List<String> = listOf(GOOGLE_DNS)
+    ): WireGuardServer
+
+    /**
+     * Add a client to a server
+     */
+    fun addClientToServer(
+        serverId: UUID,
+        clientName: String,
+        clientPublicKey: String,
+        presharedKey: String? = null
+    ): WireGuardClient
+
+    /**
+     * Create a client with auto-generated keys
+     */
+    fun createClientForServer(
+        serverId: UUID,
+        clientName: String
+    ): Pair<WireGuardClient, String>
+
+    /**
+     * Remove a client from server
+     */
+    fun removeClientFromServer(serverId: UUID, clientId: UUID)
+
+    /**
+     * Update client status (enable/disable)
+     */
+    fun updateClientStatus(clientId: UUID, enabled: Boolean): WireGuardClient
+
+    /**
+     * Get server with all its clients
+     */
+    fun getServerWithClients(serverId: UUID): WireGuardServer?
+
+    /**
+     * List all servers
+     */
+    fun getAllServers(): List<WireGuardServer>
+
+    /**
+     * List active servers
+     */
+    fun getActiveServers(): List<WireGuardServer>
+
+    /**
+     * Get clients for a specific server
+     */
+    fun getServerClients(serverId: UUID): List<WireGuardClient>
+
+    /**
+     * Get active clients for a specific server
+     */
+    fun getActiveServerClients(serverId: UUID): List<WireGuardClient>
+
+    /**
+     * Update client connection statistics
+     */
+    fun updateClientStats(
+        clientId: UUID,
+        lastHandshake: LocalDateTime,
+        dataReceived: Long,
+        dataSent: Long
+    ): WireGuardClient
+
+    /**
+     * Get server statistics
+     */
+    fun getServerStatistics(serverId: UUID): Map<String, Any>?
+}
+
+@Service
+@Transactional
+class DefaultWireGuardManagementService(
+    private val serverRepository: WireGuardServerRepository,
+    private val clientRepository: WireGuardClientRepository
+) : WireGuardManagementService {
+
+    /**
+     * Create a new WireGuard server
+     */
+    override fun createServer(
+        name: String,
+        networkAddress: String, // e.g., "10.0.0.1/24"
+        listenPort: Int,
+        endpoint: String, // e.g., "vpn.example.com:51820"
+        dnsServers: List<String>
     ): WireGuardServer {
         require(!serverRepository.existsByName(name)) { "Server with name '$name' already exists" }
         require(!serverRepository.existsByListenPort(listenPort)) { "Port $listenPort is already in use" }
@@ -46,11 +128,11 @@ class WireGuardManagementService(
     /**
      * Add a client to a server
      */
-    fun addClientToServer(
+    override fun addClientToServer(
         serverId: UUID,
         clientName: String,
         clientPublicKey: String,
-        presharedKey: String? = null
+        presharedKey: String?
     ): WireGuardClient {
         val server = serverRepository.findById(serverId)
             .orElseThrow { IllegalArgumentException("Server not found: $serverId") }
@@ -79,7 +161,7 @@ class WireGuardManagementService(
     /**
      * Create a client with auto-generated keys
      */
-    fun createClientForServer(
+    override fun createClientForServer(
         serverId: UUID,
         clientName: String
     ): Pair<WireGuardClient, String> {
@@ -91,7 +173,7 @@ class WireGuardManagementService(
     /**
      * Remove a client from server
      */
-    fun removeClientFromServer(serverId: UUID, clientId: UUID) {
+    override fun removeClientFromServer(serverId: UUID, clientId: UUID) {
         val server = serverRepository.findById(serverId)
             .orElseThrow { IllegalArgumentException("Server not found: $serverId") }
 
@@ -103,7 +185,7 @@ class WireGuardManagementService(
     /**
      * Update client status (enable/disable)
      */
-    fun updateClientStatus(clientId: UUID, enabled: Boolean): WireGuardClient {
+    override fun updateClientStatus(clientId: UUID, enabled: Boolean): WireGuardClient {
         val client = clientRepository.findById(clientId)
             .orElseThrow { IllegalArgumentException("Client not found: $clientId") }
 
@@ -129,35 +211,35 @@ class WireGuardManagementService(
     /**
      * Get server with all its clients
      */
-    fun getServerWithClients(serverId: UUID): WireGuardServer? {
+    override fun getServerWithClients(serverId: UUID): WireGuardServer? {
         return serverRepository.findByIdWithClients(serverId)
     }
 
     /**
      * List all servers
      */
-    fun getAllServers(): List<WireGuardServer> {
+    override fun getAllServers(): List<WireGuardServer> {
         return serverRepository.findAll()
     }
 
     /**
      * List active servers
      */
-    fun getActiveServers(): List<WireGuardServer> {
+    override fun getActiveServers(): List<WireGuardServer> {
         return serverRepository.findByEnabledTrue()
     }
 
     /**
      * Get clients for a specific server
      */
-    fun getServerClients(serverId: UUID): List<WireGuardClient> {
+    override fun getServerClients(serverId: UUID): List<WireGuardClient> {
         return clientRepository.findByServerId(serverId)
     }
 
     /**
      * Get active clients for a specific server
      */
-    fun getActiveServerClients(serverId: UUID): List<WireGuardClient> {
+    override fun getActiveServerClients(serverId: UUID): List<WireGuardClient> {
         return clientRepository.findActiveClientsByServerId(serverId)
     }
 
@@ -165,7 +247,7 @@ class WireGuardManagementService(
     /**
      * Update client connection statistics
      */
-    fun updateClientStats(
+    override fun updateClientStats(
         clientId: UUID,
         lastHandshake: LocalDateTime,
         dataReceived: Long,
@@ -196,7 +278,7 @@ class WireGuardManagementService(
     /**
      * Get server statistics
      */
-    fun getServerStatistics(serverId: UUID): Map<String, Any>? {
+    override fun getServerStatistics(serverId: UUID): Map<String, Any>? {
         val server = serverRepository.findByIdWithClients(serverId) ?: return null
 
         val activeClients = server.clients.filter { it.enabled }

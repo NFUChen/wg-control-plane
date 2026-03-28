@@ -90,19 +90,6 @@ class WireGuardTemplateService(@Qualifier("templateConfiguration") private val f
         return renderTemplate("client-config.ftl", dataModel)
     }
 
-
-    /**
-     * Generate QR code data for client configuration (for mobile apps)
-     */
-    fun generateClientQRCodeData(
-        clientPrivateKey: String,
-        client: WireGuardClient,
-        server: WireGuardServer,
-        allowAllTraffic: Boolean = true
-    ): String {
-        return generateClientConfigWithPrivateKey(clientPrivateKey, client, server, allowAllTraffic)
-    }
-
     /**
      * Render specified template
      */
