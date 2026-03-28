@@ -6,6 +6,7 @@ import com.module.wgcontrolplane.repository.WireGuardClientRepository
 import com.module.wgcontrolplane.utils.WireGuardUtils
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDateTime
 import java.util.*
 
 @Service
@@ -166,7 +167,7 @@ class WireGuardManagementService(
      */
     fun updateClientStats(
         clientId: UUID,
-        lastHandshake: java.time.LocalDateTime,
+        lastHandshake: LocalDateTime,
         dataReceived: Long,
         dataSent: Long
     ): WireGuardClient {

@@ -52,7 +52,7 @@ class WireGuardTemplateService(@Qualifier("templateConfiguration") private val f
         )
 
         if (server.mtu != null) {
-            dataModel["mtu"] = server.mtu
+            dataModel["mtu"] = server.mtu!!
         }
 
         return renderTemplate("client-config.ftl", dataModel)
@@ -84,7 +84,7 @@ class WireGuardTemplateService(@Qualifier("templateConfiguration") private val f
         )
 
         if (server.mtu != null) {
-            dataModel["mtu"] = server.mtu
+            dataModel["mtu"] = server.mtu!!
         }
 
         return renderTemplate("client-config.ftl", dataModel)
@@ -146,25 +146,6 @@ class WireGuardTemplateService(@Qualifier("templateConfiguration") private val f
      * Generate configuration hash (for configuration comparison and caching)
      */
     fun generateConfigHash(configContent: String): String = configContent.hashCode().toString()
-
-    /**
-     * Generate server statistics summary
-     */
-    fun generateServerStatsSummary(server: WireGuardServer): Map<String, Any> {
-        val activeClients = server.clients.filter { it.enabled }
-        val onlineClients = activeClients.filter { it.isOnline }
-
-        return mapOf(
-            "serverName" to server.name,
-            "totalClients" to activeClients.size,
-            "onlineClients" to onlineClients.size,
-            "offlineClients" to (activeClients.size - onlineClients.size),
-            "totalDataReceived" to activeClients.sumOf { it.dataReceived },
-            "totalDataSent" to activeClients.sumOf { it.dataSent },
-            "serverAddress" to server.primaryAddress?.address,
-            "serverEndpoint" to server.endpoint
-        )
-    }
 }
 
 /**
