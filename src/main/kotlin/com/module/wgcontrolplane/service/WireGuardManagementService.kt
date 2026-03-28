@@ -1,5 +1,6 @@
 package com.module.wgcontrolplane.service
 
+import com.module.wgcontrolplane.dto.*
 import com.module.wgcontrolplane.model.*
 import com.module.wgcontrolplane.repository.WireGuardServerRepository
 import com.module.wgcontrolplane.repository.WireGuardClientRepository
@@ -14,31 +15,17 @@ interface WireGuardManagementService {
     /**
      * Create a new WireGuard server
      */
-    fun createServer(
-        name: String,
-        networkAddress: String,
-        listenPort: Int = 51820,
-        endpoint: String,
-        dnsServers: List<String> = listOf(GOOGLE_DNS)
-    ): WireGuardServer
+    fun createServer(request: CreateServerRequest): WireGuardServer
 
     /**
      * Add a client to a server
      */
-    fun addClientToServer(
-        serverId: UUID,
-        clientName: String,
-        clientPublicKey: String,
-        presharedKey: String? = null
-    ): WireGuardClient
+    fun addClientToServer(serverId: UUID, request: AddClientRequest): WireGuardClient
 
     /**
      * Create a client with auto-generated keys
      */
-    fun createClientForServer(
-        serverId: UUID,
-        clientName: String
-    ): Pair<WireGuardClient, String>
+    fun createClientForServer(serverId: UUID, request: CreateClientRequest): Pair<WireGuardClient, String?>
 
     /**
      * Remove a client from server
@@ -101,25 +88,19 @@ class DefaultWireGuardManagementService(
     /**
      * Create a new WireGuard server
      */
-    override fun createServer(
-        name: String,
-        networkAddress: String, // e.g., "10.0.0.1/24"
-        listenPort: Int,
-        endpoint: String, // e.g., "vpn.example.com:51820"
-        dnsServers: List<String>
-    ): WireGuardServer {
-        require(!serverRepository.existsByName(name)) { "Server with name '$name' already exists" }
-        require(!serverRepository.existsByListenPort(listenPort)) { "Port $listenPort is already in use" }
+    override fun createServer(request: CreateServerRequest): WireGuardServer {
+        require(!serverRepository.existsByName(request.name)) { "Server with name '${request.name}' already exists" }
+        require(!serverRepository.existsByListenPort(request.listenPort)) { "Port ${request.listenPort} is already in use" }
 
         val (privateKey, _) = WireGuardUtils.generateKeyPair()
 
         val server = WireGuardServer(
-            name = name,
+            name = request.name,
             privateKey = privateKey,
-            addresses = mutableListOf(IPAddress(networkAddress)),
-            listenPort = listenPort,
-            endpoint = endpoint,
-            dnsServers = dnsServers.toMutableList()
+            addresses = mutableListOf(IPAddress(request.networkAddress)),
+            listenPort = request.listenPort,
+            endpoint = request.endpoint,
+            dnsServers = request.dnsServers.toMutableList()
         )
 
         return serverRepository.save(server)
@@ -128,16 +109,11 @@ class DefaultWireGuardManagementService(
     /**
      * Add a client to a server
      */
-    override fun addClientToServer(
-        serverId: UUID,
-        clientName: String,
-        clientPublicKey: String,
-        presharedKey: String?
-    ): WireGuardClient {
+    override fun addClientToServer(serverId: UUID, request: AddClientRequest): WireGuardClient {
         val server = serverRepository.findById(serverId)
             .orElseThrow { IllegalArgumentException("Server not found: $serverId") }
 
-        require(!clientRepository.existsByPublicKey(clientPublicKey)) {
+        require(!clientRepository.existsByPublicKey(request.clientPublicKey)) {
             "Client with public key already exists"
         }
 
@@ -146,10 +122,10 @@ class DefaultWireGuardManagementService(
             ?: throw IllegalStateException("No available IP addresses in server network")
 
         val client = WireGuardClient(
-            name = clientName,
-            publicKey = clientPublicKey,
+            name = request.clientName,
+            publicKey = request.clientPublicKey,
             allowedIPs = mutableListOf(clientIP),
-            presharedKey = presharedKey
+            presharedKey = request.presharedKey
         )
 
         server.addClient(client)
@@ -161,13 +137,27 @@ class DefaultWireGuardManagementService(
     /**
      * Create a client with auto-generated keys
      */
-    override fun createClientForServer(
-        serverId: UUID,
-        clientName: String
-    ): Pair<WireGuardClient, String> {
-        val (privateKey, publicKey) = WireGuardUtils.generateKeyPair()
-        val client = addClientToServer(serverId, clientName, publicKey)
-        return Pair(client, privateKey)
+    override fun createClientForServer(serverId: UUID, request: CreateClientRequest): Pair<WireGuardClient, String?> {
+        return if (request.publicKey.isNullOrBlank()) {
+            // Auto-generate keys
+            val (privateKey, publicKey) = WireGuardUtils.generateKeyPair()
+            val addRequest = AddClientRequest(
+                clientName = request.name,
+                clientPublicKey = publicKey,
+                presharedKey = request.presharedKey
+            )
+            val client = addClientToServer(serverId, addRequest)
+            Pair(client, privateKey)
+        } else {
+            // Use provided key
+            val addRequest = AddClientRequest(
+                clientName = request.name,
+                clientPublicKey = request.publicKey,
+                presharedKey = request.presharedKey
+            )
+            val client = addClientToServer(serverId, addRequest)
+            Pair(client, null) // No private key to return since it was provided
+        }
     }
 
     /**
