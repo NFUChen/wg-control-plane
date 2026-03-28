@@ -1,7 +1,7 @@
 [Interface]
 PrivateKey = ${privateKey}
 Address = ${address}
-ListenPort = ${listenPort}   <#-- 可選，client 一般不需要指定 port>
+<#if listenPort??>ListenPort = ${listenPort}</#if>
 
 [Peer]
 PublicKey = ${serverPublicKey}
