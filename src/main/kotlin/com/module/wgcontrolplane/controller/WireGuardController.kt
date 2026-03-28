@@ -10,7 +10,6 @@ import java.util.*
 
 @RestController
 @RequestMapping("/api/wireguard")
-@CrossOrigin(origins = ["*"])
 class WireGuardController(
     private val wireGuardService: WireGuardManagementService
 ) {
@@ -48,9 +47,8 @@ class WireGuardController(
      * Get server details with clients
      */
     @GetMapping("/servers/{serverId}")
-    fun getServerWithClients(@PathVariable serverId: String): ResponseEntity<ServerDetailResponse> {
-        val serverUuid = UUID.fromString(serverId)
-        val server = wireGuardService.getServerWithClients(serverUuid)
+    fun getServerWithClients(@PathVariable serverId: UUID): ResponseEntity<ServerDetailResponse> {
+        val server = wireGuardService.getServerWithClients(serverId)
             ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(ServerDetailResponse.from(server))
     }
@@ -59,9 +57,8 @@ class WireGuardController(
      * Get server statistics
      */
     @GetMapping("/servers/{serverId}/stats")
-    fun getServerStats(@PathVariable serverId: String): ResponseEntity<Map<String, Any>> {
-        val serverUuid = UUID.fromString(serverId)
-        val stats = wireGuardService.getServerStatistics(serverUuid)
+    fun getServerStats(@PathVariable serverId: UUID): ResponseEntity<Map<String, Any>> {
+        val stats = wireGuardService.getServerStatistics(serverId)
             ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(stats)
     }
@@ -71,11 +68,10 @@ class WireGuardController(
      */
     @PostMapping("/servers/{serverId}/clients")
     fun createClientForServer(
-        @PathVariable serverId: String,
+        @PathVariable serverId: UUID,
         @Valid @RequestBody request: CreateClientRequest
     ): ResponseEntity<ClientCreationResponse> {
-        val serverUuid = UUID.fromString(serverId)
-        val (client, privateKey) = wireGuardService.createClientForServer(serverUuid, request)
+        val (client, privateKey) = wireGuardService.createClientForServer(serverId, request)
         val response = ClientCreationResponse(
             client = ClientResponse.from(client),
             privateKey = privateKey ?: ""
@@ -88,11 +84,10 @@ class WireGuardController(
      */
     @PostMapping("/servers/{serverId}/clients/add")
     fun addClientToServer(
-        @PathVariable serverId: String,
+        @PathVariable serverId: UUID,
         @Valid @RequestBody request: AddClientRequest
     ): ResponseEntity<ClientResponse> {
-        val serverUuid = UUID.fromString(serverId)
-        val client = wireGuardService.addClientToServer(serverUuid, request)
+        val client = wireGuardService.addClientToServer(serverId, request)
         return ResponseEntity.status(HttpStatus.CREATED).body(ClientResponse.from(client))
     }
 
@@ -100,9 +95,8 @@ class WireGuardController(
      * Get clients for a server
      */
     @GetMapping("/servers/{serverId}/clients")
-    fun getServerClients(@PathVariable serverId: String): ResponseEntity<List<ClientResponse>> {
-        val serverUuid = UUID.fromString(serverId)
-        val clients = wireGuardService.getServerClients(serverUuid)
+    fun getServerClients(@PathVariable serverId: UUID): ResponseEntity<List<ClientResponse>> {
+        val clients = wireGuardService.getServerClients(serverId)
         val clientResponses = clients.map { ClientResponse.from(it) }
         return ResponseEntity.ok(clientResponses)
     }
@@ -111,9 +105,8 @@ class WireGuardController(
      * Get active clients for a server
      */
     @GetMapping("/servers/{serverId}/clients/active")
-    fun getActiveServerClients(@PathVariable serverId: String): ResponseEntity<List<ClientResponse>> {
-        val serverUuid = UUID.fromString(serverId)
-        val clients = wireGuardService.getActiveServerClients(serverUuid)
+    fun getActiveServerClients(@PathVariable serverId: UUID): ResponseEntity<List<ClientResponse>> {
+        val clients = wireGuardService.getActiveServerClients(serverId)
         val clientResponses = clients.map { ClientResponse.from(it) }
         return ResponseEntity.ok(clientResponses)
     }
@@ -123,11 +116,10 @@ class WireGuardController(
      */
     @PutMapping("/clients/{clientId}/status")
     fun updateClientStatus(
-        @PathVariable clientId: String,
+        @PathVariable clientId: UUID,
         @Valid @RequestBody request: UpdateClientStatusRequest
     ): ResponseEntity<ClientResponse> {
-        val clientUuid = UUID.fromString(clientId)
-        val client = wireGuardService.updateClientStatus(clientUuid, request.enabled)
+        val client = wireGuardService.updateClientStatus(clientId, request.enabled)
         return ResponseEntity.ok(ClientResponse.from(client))
     }
 
@@ -136,12 +128,10 @@ class WireGuardController(
      */
     @DeleteMapping("/servers/{serverId}/clients/{clientId}")
     fun removeClientFromServer(
-        @PathVariable serverId: String,
-        @PathVariable clientId: String
+        @PathVariable serverId: UUID,
+        @PathVariable clientId: UUID
     ): ResponseEntity<Void> {
-        val serverUuid = UUID.fromString(serverId)
-        val clientUuid = UUID.fromString(clientId)
-        wireGuardService.removeClientFromServer(serverUuid, clientUuid)
+        wireGuardService.removeClientFromServer(serverId, clientId)
         return ResponseEntity.noContent().build()
     }
 
@@ -150,12 +140,11 @@ class WireGuardController(
      */
     @PutMapping("/clients/{clientId}/stats")
     fun updateClientStats(
-        @PathVariable clientId: String,
+        @PathVariable clientId: UUID,
         @Valid @RequestBody request: UpdateClientStatsRequest
     ): ResponseEntity<ClientResponse> {
-        val clientUuid = UUID.fromString(clientId)
         val client = wireGuardService.updateClientStats(
-            clientUuid,
+            clientId,
             request.lastHandshake,
             request.dataReceived,
             request.dataSent
