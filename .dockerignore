@@ -1,0 +1,36 @@
+# Ignore build artifacts and cache
+build/
+.gradle/
+
+# Ignore IDE files
+.idea/
+*.iml
+*.iws
+
+# Ignore version control
+.git/
+.gitignore
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore temporary files
+*.tmp
+*.log
+
+# Ignore test reports
+reports/
+
+# Ignore local environment files
+.env
+.env.local
+
+# Ignore documentation
+*.md
+HELP.md
+
+# Ignore Docker files from being copied again
+Dockerfile
+.dockerignore
+docker-compose.yml

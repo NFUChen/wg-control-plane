@@ -13,6 +13,11 @@ interface WireGuardManagementService {
     fun createServer(request: CreateServerRequest): WireGuardServer
 
     /**
+     * Update an existing WireGuard server
+     */
+    fun updateServer(serverId: UUID, request: UpdateServerRequest): WireGuardServer?
+
+    /**
      * Add a client to a server
      */
     fun addClientToServer(serverId: UUID, request: AddClientRequest): WireGuardClient

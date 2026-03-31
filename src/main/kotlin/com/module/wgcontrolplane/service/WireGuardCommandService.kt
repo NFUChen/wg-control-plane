@@ -77,6 +77,34 @@ class WireGuardCommandService {
     }
 
     /**
+     * Stop WireGuard interface
+     */
+    fun stopWireGuardInterface(interfaceName: String) {
+        val command = listOf("wg-quick", "down", interfaceName)
+
+        logger.info("Stopping WireGuard interface $interfaceName")
+        val result = executeWgCommand(command)
+        if (result.exitCode != 0) {
+            logger.warn("Failed to stop WireGuard interface $interfaceName: ${result.output}")
+        } else {
+            logger.info("Successfully stopped WireGuard interface $interfaceName")
+        }
+    }
+
+    /**
+     * Check if WireGuard interface is currently running
+     */
+    fun isInterfaceRunning(interfaceName: String): Boolean {
+        return try {
+            val command = listOf("wg", "show", interfaceName)
+            val result = executeWgCommand(command)
+            result.exitCode == 0
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
      * Execute WireGuard command with timeout
      */
     private fun executeWgCommand(command: List<String>): ProcessResult {

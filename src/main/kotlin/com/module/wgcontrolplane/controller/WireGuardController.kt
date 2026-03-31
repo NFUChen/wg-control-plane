@@ -63,6 +63,19 @@ class WireGuardController(
         return ResponseEntity.ok(stats)
     }
 
+    /**
+     * Update an existing WireGuard server
+     */
+    @PutMapping("/servers/{serverId}")
+    fun updateServer(
+        @PathVariable serverId: UUID,
+        @Valid @RequestBody request: UpdateServerRequest
+    ): ResponseEntity<ServerResponse> {
+        val server = wireGuardService.updateServer(serverId, request)
+            ?: return ResponseEntity.notFound().build()
+        return ResponseEntity.ok(ServerResponse.from(server))
+    }
+
 
     /**
      * Add existing client to server

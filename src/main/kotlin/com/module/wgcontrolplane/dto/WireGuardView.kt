@@ -10,6 +10,38 @@ import java.time.LocalDateTime
 /**
  * Request DTO for creating a WireGuard server
  */
+data class UpdateServerRequest(
+    @field:NotBlank(message = "Server name cannot be blank")
+    @field:Size(min = 1, max = 100, message = "Server name must be between 1 and 100 characters")
+    val name: String? = null,
+
+    @field:NotBlank(message = "Interface name cannot be blank")
+    @field:Pattern(
+        regexp = "^wg[0-9]{1,2}$",
+        message = "Interface name must be in the format 'wg0' to 'wg99'"
+    )
+    val interfaceName: String? = null,
+
+    @field:NotBlank(message = "Network address cannot be blank")
+    @field:Pattern(
+        regexp = "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(3[0-2]|[12]?[0-9])$",
+        message = "Network address must be in CIDR format (e.g., 10.0.0.1/24)"
+    )
+    val networkAddress: String? = null,
+
+    @field:Min(1024, message = "Listen port must be at least 1024")
+    @field:Max(65535, message = "Listen port must be at most 65535")
+    val listenPort: Int? = null,
+
+    @field:NotBlank(message = "Endpoint cannot be blank")
+    val endpoint: String? = null,
+
+    val dnsServers: List<String>? = null
+)
+
+/**
+ * Request DTO for creating a WireGuard server
+ */
 data class CreateServerRequest(
     @field:NotBlank(message = "Server name cannot be blank")
     @field:Size(min = 1, max = 100, message = "Server name must be between 1 and 100 characters")
@@ -39,17 +71,6 @@ data class CreateServerRequest(
     val dnsServers: List<String> = listOf(GOOGLE_DNS)
 )
 
-/**
- * Request DTO for creating a client
- */
-data class CreateClientRequest(
-    @field:NotBlank(message = "Client name cannot be blank")
-    @field:Size(min = 1, max = 100, message = "Client name must be between 1 and 100 characters")
-    val name: String,
-
-    val publicKey: String? = null, // If null, keys will be auto-generated
-    val presharedKey: String? = null
-)
 
 /**
  * Request DTO for adding existing client to server

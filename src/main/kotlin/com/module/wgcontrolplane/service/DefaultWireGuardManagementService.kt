@@ -2,6 +2,7 @@ package com.module.wgcontrolplane.service
 
 import com.module.wgcontrolplane.dto.AddClientRequest
 import com.module.wgcontrolplane.dto.CreateServerRequest
+import com.module.wgcontrolplane.dto.UpdateServerRequest
 import com.module.wgcontrolplane.dto.ServerStatisticsResponse
 import com.module.wgcontrolplane.model.IPAddress
 import com.module.wgcontrolplane.model.WireGuardClient
@@ -27,6 +28,35 @@ class DefaultWireGuardManagementService(
 
     companion object {
         private val logger = LoggerFactory.getLogger(DefaultWireGuardManagementService::class.java)
+    }
+
+    // Safe call that throws exception on failure
+    private inline fun <T> safeCall(block: () -> T): T {
+        return try {
+            block()
+        } catch (e: Exception) {
+            logger.error("Operation failed: ${e.message}", e)
+            throw e
+        }
+    }
+
+    // Safe call that only logs errors (for rollback operations)
+    private inline fun safeCallSilent(block: () -> Unit) {
+        try {
+            block()
+        } catch (e: Exception) {
+            logger.error("Operation failed: ${e.message}", e)
+        }
+    }
+
+    // Safe call with custom error message
+    private inline fun <T> safeCall(errorMessage: String, block: () -> T): T {
+        return try {
+            block()
+        } catch (e: Exception) {
+            logger.error("$errorMessage: ${e.message}", e)
+            throw RuntimeException(errorMessage, e)
+        }
     }
 
     /**
@@ -73,15 +103,11 @@ class DefaultWireGuardManagementService(
         )
 
         // First try to add peer to WireGuard interface (if server is enabled)
-        // Only proceed with database save if this succeeds
         if (server.enabled) {
-            try {
+            safeCall("Cannot add client: failed to add peer to WireGuard interface") {
                 val interfaceName = wireGuardCommandService.getInterfaceName(server.name)
                 wireGuardCommandService.addPeerToInterface(interfaceName, client)
                 logger.info("Successfully added peer to WireGuard interface, proceeding with database save")
-            } catch (e: Exception) {
-                logger.error("Failed to add peer to WireGuard interface, aborting database save", e)
-                throw RuntimeException("Cannot add client: failed to add peer to WireGuard interface", e)
             }
         }
 
@@ -107,15 +133,11 @@ class DefaultWireGuardManagementService(
             ?: throw IllegalArgumentException("Client not found: $clientId")
 
         // First try to remove peer from WireGuard interface (if server is enabled)
-        // Only proceed with database removal if this succeeds
         if (server.enabled) {
-            try {
+            safeCall("Cannot remove client: failed to remove peer from WireGuard interface") {
                 val interfaceName = wireGuardCommandService.getInterfaceName(server.name)
                 wireGuardCommandService.removePeerFromInterface(interfaceName, client.publicKey)
                 logger.info("Successfully removed peer from WireGuard interface, proceeding with database removal")
-            } catch (e: Exception) {
-                logger.error("Failed to remove peer from WireGuard interface, aborting database removal", e)
-                throw RuntimeException("Cannot remove client: failed to remove peer from WireGuard interface", e)
             }
         }
 
@@ -214,12 +236,174 @@ class DefaultWireGuardManagementService(
             return
         }
 
-        try {
+        safeCall("Cannot launch server: failed to execute WireGuard command") {
             wireGuardCommandService.launchWireGuardInterface(server.name)
             logger.info("Successfully launched WireGuard server: ${server.name} (ID: ${server.id})")
+        }
+    }
+
+    /**
+     * Update an existing WireGuard server with rollback support
+     */
+    @Transactional
+    override fun updateServer(serverId: UUID, request: UpdateServerRequest): WireGuardServer? {
+        val server = serverRepository.findByIdWithClients(serverId) ?: return null
+
+        logger.info("Starting update for server: ${server.name} (ID: ${server.id})")
+
+        // Create snapshot by cloning the original server state
+        val originalServer = cloneServer(server)
+        val originalInterfaceName = wireGuardCommandService.getInterfaceName(server.name)
+        val wasRunning = server.enabled && wireGuardCommandService.isInterfaceRunning(originalInterfaceName)
+
+        try {
+            // Validate constraints before making changes
+            validateServerUpdateConstraints(request, server)
+
+            // Determine if restart is needed
+            val needsRestart = needsInterfaceRestart(server, request) && wasRunning
+
+            if (needsRestart) {
+                logger.info("Server update requires restart. Stopping interface: $originalInterfaceName")
+                wireGuardCommandService.stopWireGuardInterface(originalInterfaceName)
+            }
+
+            // Apply updates
+            applyServerUpdates(server, request)
+
+            // Save to database
+            val updatedServer = serverRepository.save(server)
+            logger.info("Successfully updated server in database")
+
+            // Restart if needed
+            if (needsRestart) {
+                val newInterfaceName = wireGuardCommandService.getInterfaceName(updatedServer.name)
+                wireGuardCommandService.launchWireGuardInterface(newInterfaceName)
+                logger.info("Successfully restarted server with new configuration")
+            }
+
+            logger.info("Successfully updated server: ${updatedServer.name} (ID: ${updatedServer.id})")
+            return updatedServer
+
         } catch (e: Exception) {
-            logger.error("Failed to launch WireGuard server: ${server.name} (ID: ${server.id})", e)
-            throw RuntimeException("Cannot launch server: failed to execute WireGuard command", e)
+            logger.error("Server update failed, performing rollback", e)
+            rollbackServer(server, originalServer, originalInterfaceName, wasRunning)
+            throw RuntimeException("Server update failed: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Clone server for rollback snapshot (simple object copy)
+     */
+    private fun cloneServer(original: WireGuardServer): WireGuardServer {
+        return WireGuardServer(
+            id = original.id,
+            name = original.name,
+            interfaceName = original.interfaceName,
+            privateKey = original.privateKey,
+            publicKey = original.publicKey,
+            addresses = original.addresses.toMutableList(),
+            listenPort = original.listenPort,
+            endpoint = original.endpoint,
+            dnsServers = original.dnsServers.toMutableList(),
+            postUp = original.postUp,
+            postDown = original.postDown,
+            enabled = original.enabled
+        )
+    }
+
+    /**
+     * Check if interface restart is needed based on changes
+     */
+    private fun needsInterfaceRestart(server: WireGuardServer, request: UpdateServerRequest): Boolean {
+        return (request.interfaceName != null && request.interfaceName != server.interfaceName) ||
+               (request.networkAddress != null && request.networkAddress != server.primaryAddress.address) ||
+               (request.listenPort != null && request.listenPort != server.listenPort)
+    }
+
+    /**
+     * Apply update request to server entity
+     */
+    private fun applyServerUpdates(server: WireGuardServer, request: UpdateServerRequest) {
+        request.name?.let { server.name = it }
+        request.interfaceName?.let { server.interfaceName = it }
+        request.networkAddress?.let {
+            server.addresses.clear()
+            server.addresses.add(IPAddress(it))
+        }
+        request.listenPort?.let { server.listenPort = it }
+        request.endpoint?.let { server.endpoint = it }
+        request.dnsServers?.let { dnsList ->
+            server.dnsServers.clear()
+            server.dnsServers.addAll(dnsList.map { IPAddress(it) })
+        }
+    }
+
+    /**
+     * Rollback server state using snapshot
+     */
+    private fun rollbackServer(
+        current: WireGuardServer,
+        snapshot: WireGuardServer,
+        originalInterfaceName: String,
+        wasRunning: Boolean
+    ) {
+        safeCallSilent {
+            logger.info("Performing rollback for server: ${current.name}")
+
+            // Restore all properties from snapshot
+            current.name = snapshot.name
+            current.interfaceName = snapshot.interfaceName
+            current.addresses.clear()
+            current.addresses.addAll(snapshot.addresses)
+            current.listenPort = snapshot.listenPort
+            current.endpoint = snapshot.endpoint
+            current.dnsServers.clear()
+            current.dnsServers.addAll(snapshot.dnsServers)
+            current.enabled = snapshot.enabled
+
+            // Save rollback state
+            serverRepository.save(current)
+
+            // Restore interface if it was running
+            if (wasRunning) {
+                safeCallSilent {
+                    wireGuardCommandService.launchWireGuardInterface(originalInterfaceName)
+                    logger.info("Successfully restored original interface during rollback")
+                }
+            }
+
+            logger.info("Rollback completed successfully")
+        }
+    }
+
+    /**
+     * Validate server update constraints
+     */
+    private fun validateServerUpdateConstraints(request: UpdateServerRequest, server: WireGuardServer) {
+        request.name?.let { newName ->
+            if (newName != server.name && serverRepository.existsByName(newName)) {
+                throw IllegalArgumentException("Server with name '$newName' already exists")
+            }
+        }
+
+        request.listenPort?.let { newPort ->
+            if (newPort != server.listenPort && serverRepository.existsByListenPort(newPort)) {
+                throw IllegalArgumentException("Port $newPort is already in use")
+            }
+        }
+
+        request.interfaceName?.let { newInterfaceName ->
+            if (newInterfaceName != server.interfaceName &&
+                serverRepository.existsByInterfaceName(newInterfaceName)) {
+                throw IllegalArgumentException("Interface name '$newInterfaceName' is already in use")
+            }
+        }
+
+        request.networkAddress?.let { newAddress ->
+            safeCall("Invalid network address format: $newAddress") {
+                IPAddress(newAddress)
+            }
         }
     }
 }
