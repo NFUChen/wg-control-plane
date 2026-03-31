@@ -1,6 +1,6 @@
 # Ignore build artifacts and cache
-build/
-.gradle/
+# build/
+#.gradle/
 
 # Ignore IDE files
 .idea/
