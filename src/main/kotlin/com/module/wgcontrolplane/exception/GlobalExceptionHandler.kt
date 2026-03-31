@@ -88,7 +88,7 @@ class GlobalExceptionHandler {
         val errorResponse = ErrorResponse(
             status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
             error = "Internal Server Error",
-            message = "An unexpected error occurred",
+            message = "An unexpected error occurred: ${ex.message}",
             timestamp = LocalDateTime.now()
         )
 
@@ -103,7 +103,7 @@ class GlobalExceptionHandler {
         val errorResponse = ErrorResponse(
             status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
             error = "Internal Server Error",
-            message = "An unexpected error occurred",
+            message = "An unexpected error occurred: ${ex.message}",
             timestamp = LocalDateTime.now()
         )
 

@@ -1,6 +1,7 @@
 package com.module.wgcontrolplane.dto
 
 import com.module.wgcontrolplane.model.GOOGLE_DNS
+import com.module.wgcontrolplane.model.IPAddress
 import com.module.wgcontrolplane.model.WireGuardClient
 import com.module.wgcontrolplane.model.WireGuardServer
 import jakarta.validation.constraints.*
@@ -50,10 +51,11 @@ data class AddClientRequest(
     @field:NotBlank(message = "Client name cannot be blank")
     val clientName: String,
 
-    @field:NotBlank(message = "Public key cannot be blank")
-    val clientPublicKey: String,
+    val clientPublicKey: String? = null,
 
-    val presharedKey: String? = null
+    val presharedKey: String? = null,
+
+    val addresses: List<IPAddress>
 )
 
 /**
@@ -79,10 +81,10 @@ data class ServerResponse(
     val id: String,
     val name: String,
     val publicKey: String,
-    val networkAddress: String,
+    val networkAddress: IPAddress,
     val listenPort: Int,
     val endpoint: String,
-    val dnsServers: List<String>,
+    val dnsServers: List<IPAddress>,
     val enabled: Boolean,
     val totalClients: Int,
     val activeClients: Int,
@@ -96,7 +98,7 @@ data class ServerResponse(
                 id = server.id.toString(),
                 name = server.name,
                 publicKey = server.publicKey,
-                networkAddress = server.primaryAddress?.address ?: "",
+                networkAddress = server.primaryAddress,
                 listenPort = server.listenPort,
                 endpoint = server.endpoint,
                 dnsServers = server.dnsServers.toList(),
@@ -117,10 +119,10 @@ data class ServerDetailResponse(
     val id: String,
     val name: String,
     val publicKey: String,
-    val networkAddress: String,
+    val networkAddress: IPAddress,
     val listenPort: Int,
     val endpoint: String,
-    val dnsServers: List<String>,
+    val dnsServers: List<IPAddress>,
     val enabled: Boolean,
     val clients: List<ClientResponse>,
     val createdAt: LocalDateTime,
@@ -132,7 +134,7 @@ data class ServerDetailResponse(
                 id = server.id.toString(),
                 name = server.name,
                 publicKey = server.publicKey,
-                networkAddress = server.primaryAddress?.address ?: "",
+                networkAddress = server.primaryAddress,
                 listenPort = server.listenPort,
                 endpoint = server.endpoint,
                 dnsServers = server.dnsServers.toList(),

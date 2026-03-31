@@ -17,7 +17,7 @@ class WireGuardTemplateService(@Qualifier("templateConfiguration") private val f
             "privateKey" to server.privateKey,
             "address" to server.addresses.joinToString(", ") { it.address },
             "listenPort" to server.listenPort,
-            "dnsServers" to server.dnsServers.joinToString(", "),
+            "dnsServers" to server.dnsServers.joinToString(", ") { it.IP },
             "mtu" to (server.mtu ?: ""),
             "postUp" to (server.postUp ?: ""),
             "postDown" to (server.postDown ?: ""),
@@ -43,8 +43,8 @@ class WireGuardTemplateService(@Qualifier("templateConfiguration") private val f
 
         val dataModel = mutableMapOf<String, Any>(
             "privateKey" to "", // Client should provide their own private key
-            "address" to (client.primaryAllowedIP?.address ?: ""),
-            "dnsServers" to server.dnsServers.joinToString(", "),
+            "address" to (client.allowedIPs.joinToString(", ") { it.address }),
+            "dnsServers" to server.dnsServers.joinToString(", ") { it.IP },
             "serverPublicKey" to server.publicKey,
             "serverEndpoint" to server.endpoint,
             "allowedIPs" to allowedIPs.joinToString(", "),
@@ -75,8 +75,8 @@ class WireGuardTemplateService(@Qualifier("templateConfiguration") private val f
 
         val dataModel = mutableMapOf<String, Any>(
             "privateKey" to clientPrivateKey,
-            "address" to (client.primaryAllowedIP?.address ?: ""),
-            "dnsServers" to server.dnsServers.joinToString(", "),
+            "address" to (client.allowedIPs.joinToString(", ") { it.address }),
+            "dnsServers" to server.dnsServers.joinToString(", ") { it.IP },
             "serverPublicKey" to server.publicKey,
             "serverEndpoint" to server.endpoint,
             "allowedIPs" to allowedIPs.joinToString(", "),

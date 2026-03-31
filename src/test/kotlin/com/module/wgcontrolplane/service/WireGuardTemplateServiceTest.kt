@@ -24,6 +24,7 @@ class WireGuardTemplateServiceTest {
         val server = WireGuardServer(
             name = "Test Server",
             privateKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            publicKey = "ServerPublicKeyAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             addresses = mutableListOf(IPAddress("10.0.0.1/24")),
             listenPort = 51820,
             endpoint = "vpn.example.com:51820"
@@ -31,12 +32,14 @@ class WireGuardTemplateServiceTest {
 
         val client1 = WireGuardClient(
             name = "Test Client 1",
+            privateKey = "Client1PrivateKeyAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             publicKey = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32"))
         )
 
         val client2 = WireGuardClient(
             name = "Test Client 2",
+            privateKey = "Client2PrivateKeyAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             publicKey = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=",
             allowedIPs = mutableListOf(IPAddress("10.0.0.3/32"))
         )
@@ -69,6 +72,7 @@ class WireGuardTemplateServiceTest {
         val server = WireGuardServer(
             name = "Test Server",
             privateKey = "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE=",
+            publicKey = "ServerPublicKeyEEEEEEEEEEEEEEEEEEEEEEEEEEEEE=",
             addresses = mutableListOf(IPAddress("10.0.0.1/24")),
             listenPort = 51820,
             endpoint = "vpn.example.com:51820"
@@ -76,6 +80,7 @@ class WireGuardTemplateServiceTest {
 
         val client = WireGuardClient(
             name = "Test Client",
+            privateKey = "ClientPrivateKeyDDDDDDDDDDDDDDDDDDDDDDDDDDDD=",
             publicKey = "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD=",
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32"))
         )
@@ -110,12 +115,14 @@ class WireGuardTemplateServiceTest {
         val server = WireGuardServer(
             name = "Test Server",
             privateKey = "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG=",
+            publicKey = "ServerPublicKeyGGGGGGGGGGGGGGGGGGGGGGGGGGGGG=",
             addresses = mutableListOf(IPAddress("10.0.0.1/24")),
             endpoint = "vpn.example.com:51820"
         )
 
         val client = WireGuardClient(
             name = "Limited Client",
+            privateKey = "ClientPrivateKeyHHHHHHHHHHHHHHHHHHHHHHHHHHHH=",
             publicKey = "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH=",
             allowedIPs = mutableListOf(IPAddress("10.0.0.5/32"))
         )
@@ -176,5 +183,30 @@ class WireGuardTemplateServiceTest {
 
         assertEquals(hash1, hash2, "Same content should generate same hash")
         assertTrue(hash1 != hash3, "Different content should generate different hash")
+    }
+
+    @Test
+    fun `test IPAddress validation with plain IP addresses`() {
+        // Test plain IPv4 address - should work and default to /32
+        val ipv4PlainAddress = IPAddress("8.8.8.8")
+        assertEquals("8.8.8.8", ipv4PlainAddress.IP)
+        assertEquals(32, ipv4PlainAddress.prefixLength)
+
+        // Test DNS server with plain IP - this should now work
+        val dnsServer = IPAddress("1.1.1.1")
+        assertEquals("1.1.1.1", dnsServer.IP)
+        assertEquals(32, dnsServer.prefixLength)
+
+        // Test CIDR format still works
+        val cidrAddress = IPAddress("10.0.0.1/24")
+        assertEquals("10.0.0.1", cidrAddress.IP)
+        assertEquals(24, cidrAddress.prefixLength)
+
+        // Test plain IPv6 address - should work and default to /128
+        val ipv6PlainAddress = IPAddress("2001:db8::1")
+        assertEquals("2001:db8::1", ipv6PlainAddress.IP)
+        assertEquals(128, ipv6PlainAddress.prefixLength)
+
+        println("✓ Plain IP address validation test passed")
     }
 }

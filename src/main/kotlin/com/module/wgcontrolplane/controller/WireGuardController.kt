@@ -63,21 +63,6 @@ class WireGuardController(
         return ResponseEntity.ok(stats)
     }
 
-    /**
-     * Create a client for a server
-     */
-    @PostMapping("/servers/{serverId}/clients")
-    fun createClientForServer(
-        @PathVariable serverId: UUID,
-        @Valid @RequestBody request: CreateClientRequest
-    ): ResponseEntity<ClientCreationResponse> {
-        val (client, privateKey) = wireGuardService.createClientForServer(serverId, request)
-        val response = ClientCreationResponse(
-            client = ClientResponse.from(client),
-            privateKey = privateKey ?: ""
-        )
-        return ResponseEntity.status(HttpStatus.CREATED).body(response)
-    }
 
     /**
      * Add existing client to server
@@ -109,18 +94,6 @@ class WireGuardController(
         val clients = wireGuardService.getActiveServerClients(serverId)
         val clientResponses = clients.map { ClientResponse.from(it) }
         return ResponseEntity.ok(clientResponses)
-    }
-
-    /**
-     * Update client status
-     */
-    @PutMapping("/clients/{clientId}/status")
-    fun updateClientStatus(
-        @PathVariable clientId: UUID,
-        @Valid @RequestBody request: UpdateClientStatusRequest
-    ): ResponseEntity<ClientResponse> {
-        val client = wireGuardService.updateClientStatus(clientId, request.enabled)
-        return ResponseEntity.ok(ClientResponse.from(client))
     }
 
     /**

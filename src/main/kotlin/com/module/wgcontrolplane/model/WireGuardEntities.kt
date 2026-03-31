@@ -1,6 +1,8 @@
 package com.module.wgcontrolplane.model
 
-import com.module.wgcontrolplane.utils.WireGuardUtils
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp
@@ -23,23 +25,45 @@ class IPAddress(
         get() = if (address.contains("/")) address.split("/")[0] else address
 
     val prefixLength: Int
-        get() = if (address.contains("/")) address.split("/")[1].toInt() else 32
+        get() = if (address.contains("/")) {
+            address.split("/")[1].toInt()
+        } else {
+            // Default prefix based on IP version
+            val ipAddress = InetAddress.getByName(IP)
+            if (ipAddress.address.size == 4) 32 else 128
+        }
 
     init {
-        if (address.isNotEmpty()) {
-            validateAddress()
-        }
+        validateAddress()
     }
 
     private fun validateAddress() {
         val parts = address.split("/")
-        require(parts.size == 2) { "Invalid CIDR format: $address" }
 
-        val ip = parts[0]
-        val prefix = parts[1].toIntOrNull()
-            ?: throw IllegalArgumentException("Invalid prefix: $address")
+        // Allow both plain IP addresses and CIDR format
+        when (parts.size) {
+            1 -> {
+                // Plain IP address (e.g., "8.8.8.8") - will default to /32 or /128
+                val ip = parts[0]
+                require(isValidIP(ip)) { "Invalid IP address: $ip" }
+            }
+            2 -> {
+                // CIDR format (e.g., "8.8.8.8/24")
+                val ip = parts[0]
+                val prefix = parts[1].toIntOrNull()
+                    ?: throw IllegalArgumentException("Invalid prefix: $address")
 
-        require(isValidIP(ip)) { "Invalid IP address: $ip" }
+                require(isValidIP(ip)) { "Invalid IP address: $ip" }
+
+                // Validate prefix range based on IP version
+                val ipAddress = InetAddress.getByName(ip)
+                val maxPrefix = if (ipAddress.address.size == 4) 32 else 128 // IPv4 vs IPv6
+                require(prefix in 0..maxPrefix) { "Invalid prefix length $prefix for IP address: $ip" }
+            }
+            else -> {
+                throw IllegalArgumentException("Invalid IP address format: $address. Use either 'IP' or 'IP/prefix'")
+            }
+        }
     }
 
     private fun isValidIP(ip: String): Boolean {
@@ -88,44 +112,46 @@ class IPAddress(
 @Table(name = "wg_servers")
 class WireGuardServer(
     @Id
-    @GeneratedValue
     val id: UUID = UUID.randomUUID(),
 
     @Column(name = "name", nullable = false, unique = true)
-    val name: String = "",
+    var name: String,
 
     @Column(name = "private_key", nullable = false, length = 44)
-    val privateKey: String = "",
+    @JsonIgnore
+    val privateKey: String,
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "wg_server_addresses", joinColumns = [JoinColumn(name = "server_id")])
-    @AttributeOverride(name = "address", column = Column(name = "ip_address"))
-    val addresses: MutableList<IPAddress> = mutableListOf(), // e.g., ["10.0.0.1/24"]
+    @Column(name = "public_key", nullable = false, length = 44)
+    val publicKey: String,
+
+    @Convert(converter = IPAddressListConverter::class)
+    @Column(name = "addresses", columnDefinition = "TEXT")
+    var addresses: MutableList<IPAddress> = mutableListOf(), // e.g., ["10.0.0.1/24"]
 
     @Column(name = "listen_port", nullable = false)
-    val listenPort: Int = 51820,
+    var listenPort: Int = 51820,
 
     @Column(name = "endpoint", nullable = false)
-    val endpoint: String = "", // e.g., "vpn.example.com:51820"
+    var endpoint: String = "", // e.g., "vpn.example.com:51820"
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "wg_server_dns", joinColumns = [JoinColumn(name = "server_id")])
-    @Column(name = "dns_server")
-    val dnsServers: MutableList<String> = mutableListOf(GOOGLE_DNS),
+
+    @Convert(converter = IPAddressListConverter::class)
+    @Column(name = "dns_servers", columnDefinition = "TEXT")
+    val dnsServers: MutableList<IPAddress> = mutableListOf(IPAddress(GOOGLE_DNS)),
 
     @Column(name = "mtu")
     val mtu: Int? = null,
 
     @Column(name = "post_up")
-    val postUp: String? = null, // iptables rules for NAT, etc.
+    var postUp: String? = null, // iptables rules for NAT, etc.
 
     @Column(name = "post_down")
-    val postDown: String? = null,
+    var postDown: String? = null,
 
     @Column(name = "enabled", nullable = false)
-    val enabled: Boolean = true,
+    var enabled: Boolean = true,
 
-    @OneToMany(mappedBy = "server", cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "server", cascade = [CascadeType.ALL], fetch = FetchType.EAGER, orphanRemoval = true)
     val clients: MutableList<WireGuardClient> = mutableListOf(),
 
     @CreationTimestamp
@@ -134,26 +160,21 @@ class WireGuardServer(
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    var updatedAt: LocalDateTime = LocalDateTime.now()
-) {
-    /**
-     * Get corresponding public key
-     */
-    val publicKey: String
-        get() = if (privateKey.isNotEmpty()) WireGuardUtils.generatePublicKey(privateKey) else ""
+    var updatedAt: LocalDateTime = LocalDateTime.now(),
 
+) {
     /**
      * Get the primary server address (first address)
      */
-    val primaryAddress: IPAddress?
-        get() = addresses.firstOrNull()
+    val primaryAddress: IPAddress
+        get() = addresses.first()
 
     /**
      * Add a client to this server
      */
     fun addClient(client: WireGuardClient) {
         // Validate that client's allowed IPs are within server's network range
-        primaryAddress?.let { serverAddr ->
+        primaryAddress.let { serverAddr ->
             client.allowedIPs.forEach { clientIP ->
                 if (!serverAddr.contains(clientIP)) {
                     throw IllegalArgumentException(
@@ -173,28 +194,6 @@ class WireGuardServer(
     fun removeClient(clientId: UUID) {
         clients.removeIf { it.id == clientId }
     }
-
-    /**
-     * Get next available IP address for a new client
-     */
-    fun getNextAvailableClientIP(): IPAddress? {
-        val serverAddr = primaryAddress ?: return null
-        val usedIPs = clients.mapNotNull { it.primaryAllowedIP?.IP }.toSet()
-
-        // Simple IP allocation - increment from server IP
-        val serverIP = serverAddr.IP
-        val parts = serverIP.split(".")
-        if (parts.size != 4) return null
-
-        val base = "${parts[0]}.${parts[1]}.${parts[2]}"
-        for (i in 2..254) { // Start from .2, avoid .1 (server) and .255 (broadcast)
-            val candidateIP = "$base.$i"
-            if (!usedIPs.contains(candidateIP)) {
-                return IPAddress("$candidateIP/32")
-            }
-        }
-        return null
-    }
 }
 
 /**
@@ -204,28 +203,30 @@ class WireGuardServer(
 @Table(name = "wg_clients")
 class WireGuardClient(
     @Id
-    @GeneratedValue
     val id: UUID = UUID.randomUUID(),
 
     @Column(name = "name", nullable = false)
-    val name: String = "",
+    var name: String,
+
+    @Column(name = "private_key", nullable = false, length = 44)
+    @JsonIgnore
+    val privateKey: String,
 
     @Column(name = "public_key", nullable = false, length = 44)
-    val publicKey: String = "",
+    val publicKey: String,
 
     @Column(name = "preshared_key", length = 44)
-    val presharedKey: String? = null,
+    var presharedKey: String? = null,
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "wg_client_allowed_ips", joinColumns = [JoinColumn(name = "client_id")])
-    @AttributeOverride(name = "address", column = Column(name = "ip_address"))
-    val allowedIPs: MutableList<IPAddress> = mutableListOf(), // e.g., ["10.0.0.2/32"]
+    @Convert(converter = IPAddressListConverter::class)
+    @Column(name = "allowed_ips", columnDefinition = "TEXT")
+    var allowedIPs: MutableList<IPAddress> = mutableListOf(), // e.g., ["10.0.0.2/32"]
 
     @Column(name = "persistent_keepalive")
-    val persistentKeepalive: Int = 25,
+    var persistentKeepalive: Int = 25,
 
     @Column(name = "enabled", nullable = false)
-    val enabled: Boolean = true,
+    var enabled: Boolean = true,
 
     @Column(name = "last_handshake")
     var lastHandshake: LocalDateTime? = null,
@@ -238,6 +239,7 @@ class WireGuardClient(
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "server_id", nullable = false)
+    @JsonIgnore
     var server: WireGuardServer? = null,
 
     @CreationTimestamp
@@ -246,13 +248,8 @@ class WireGuardClient(
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    var updatedAt: LocalDateTime = LocalDateTime.now()
+    var updatedAt: LocalDateTime = LocalDateTime.now(),
 ) {
-    /**
-     * Get the first allowed IP address (usually the primary IP)
-     */
-    val primaryAllowedIP: IPAddress?
-        get() = allowedIPs.firstOrNull()
 
     /**
      * Check if routing all traffic is allowed
@@ -265,5 +262,41 @@ class WireGuardClient(
      */
     val isOnline: Boolean
         get() = lastHandshake?.isAfter(LocalDateTime.now().minusMinutes(3)) == true
+}
+
+/**
+ * JPA Attribute Converter for MutableList<IPAddress>
+ * Stores IP addresses as JSON string in database
+ */
+@Converter
+class IPAddressListConverter : AttributeConverter<MutableList<IPAddress>, String> {
+
+    private val objectMapper = ObjectMapper()
+
+    override fun convertToDatabaseColumn(attribute: MutableList<IPAddress>?): String? {
+        if (attribute.isNullOrEmpty()) return null
+
+        return try {
+            // Convert list of IPAddress to list of address strings
+            val addressStrings = attribute.map { it.address }
+            objectMapper.writeValueAsString(addressStrings)
+        } catch (e: Exception) {
+            throw RuntimeException("Failed to convert IP addresses to JSON", e)
+        }
+    }
+
+    override fun convertToEntityAttribute(dbData: String?): MutableList<IPAddress> {
+        if (dbData.isNullOrBlank()) return mutableListOf()
+
+        return try {
+            val addressStrings: List<String> = objectMapper.readValue(
+                dbData,
+                object : TypeReference<List<String>>() {}
+            )
+            addressStrings.map { IPAddress(it) }.toMutableList()
+        } catch (e: Exception) {
+            throw RuntimeException("Failed to convert JSON to IP addresses", e)
+        }
+    }
 }
 

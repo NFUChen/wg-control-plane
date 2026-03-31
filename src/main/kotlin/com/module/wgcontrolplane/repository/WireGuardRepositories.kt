@@ -41,10 +41,6 @@ interface WireGuardClientRepository : JpaRepository<WireGuardClient, UUID> {
 
     fun findByName(name: String): WireGuardClient?
 
-    fun findByPublicKey(publicKey: String): WireGuardClient?
-
-    fun existsByPublicKey(publicKey: String): Boolean
-
     fun findByServerId(serverId: UUID): List<WireGuardClient>
 
     fun findByServerIdAndEnabledTrue(serverId: UUID): List<WireGuardClient>

@@ -4,6 +4,7 @@ import com.module.wgcontrolplane.dto.*
 import com.module.wgcontrolplane.model.*
 import com.module.wgcontrolplane.repository.WireGuardServerRepository
 import com.module.wgcontrolplane.repository.WireGuardClientRepository
+import jakarta.persistence.EntityManager
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
@@ -29,6 +30,9 @@ class WireGuardManagementServiceTest {
 
     @Autowired
     private lateinit var clientRepository: WireGuardClientRepository
+
+    @Autowired
+    private lateinit var entityManager: EntityManager
 
     @BeforeEach
     fun setUp() {
@@ -109,7 +113,7 @@ class WireGuardManagementServiceTest {
     }
 
     @Test
-    fun `test createClientForServer`() {
+    fun `test addClientToServer`() {
         // Create server first
         val server = managementService.createServer(
             CreateServerRequest(
@@ -120,53 +124,22 @@ class WireGuardManagementServiceTest {
         )
 
         // Execute test
-        val (client, privateKey) = managementService.createClientForServer(
+        val client = managementService.addClientToServer(
             serverId = server.id,
-            request = CreateClientRequest(name = "Test Client")
+            request = AddClientRequest(
+                clientName = "Test Client",
+                addresses = listOf(IPAddress("192.168.100.2/32"))
+            )
         )
 
         // Verify result
         assertNotNull(client.id)
         assertEquals("Test Client", client.name)
         assertTrue(client.publicKey.isNotEmpty())
-        assertTrue(privateKey!!.isNotEmpty())
+        assertTrue(client.privateKey.isNotEmpty())
         assertEquals(1, client.allowedIPs.size)
-        assertTrue(client.allowedIPs.first().address.startsWith("192.168.100."))
+        assertEquals("192.168.100.2/32", client.allowedIPs.first().address)
         assertEquals(server.id, client.server?.id)
-    }
-
-    @Test
-    fun `test addClientToServer with existing public key should fail`() {
-        // Create server
-        val server = managementService.createServer(
-            CreateServerRequest(
-                name = "Duplicate Client Server",
-                networkAddress = "10.5.0.1/24",
-                endpoint = "dup.example.com:51820"
-            )
-        )
-
-        val existingPublicKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-
-        // Add first client
-        managementService.addClientToServer(
-            serverId = server.id,
-            request = AddClientRequest(
-                clientName = "First Client",
-                clientPublicKey = existingPublicKey
-            )
-        )
-
-        // Try to add client with same public key
-        assertFailsWith<IllegalArgumentException> {
-            managementService.addClientToServer(
-                serverId = server.id,
-                request = AddClientRequest(
-                    clientName = "Second Client",
-                    clientPublicKey = existingPublicKey
-                )
-            )
-        }
     }
 
     @Test
@@ -180,49 +153,27 @@ class WireGuardManagementServiceTest {
             )
         )
 
-        val (client, _) = managementService.createClientForServer(
+        val client = managementService.addClientToServer(
             serverId = server.id,
-            request = CreateClientRequest(name = "Client to Remove")
+            request = AddClientRequest(
+                clientName = "Client to Remove",
+                addresses = listOf(IPAddress("10.10.0.2/32"))
+            )
         )
 
         // Verify client exists
-        val clientsBefore = managementService.getServerClients(server.id)
-        assertEquals(1, clientsBefore.size)
+        assertEquals(1, managementService.getServerClients(server.id).size)
 
         // Execute test
         managementService.removeClientFromServer(server.id, client.id)
 
-        // Verify client is removed
-        val clientsAfter = managementService.getServerClients(server.id)
+        // Flush and clear persistence context to force fresh query
+        entityManager.flush()
+        entityManager.clear()
+
+        // Verify client is removed by querying the database
+        val clientsAfter = clientRepository.findByServerId(server.id)
         assertEquals(0, clientsAfter.size)
-    }
-
-    @Test
-    fun `test updateClientStatus`() {
-        // Create server and client
-        val server = managementService.createServer(
-            CreateServerRequest(
-                name = "Status Test Server",
-                networkAddress = "10.20.0.1/24",
-                endpoint = "status.example.com:51820"
-            )
-        )
-
-        val (client, _) = managementService.createClientForServer(
-            serverId = server.id,
-            request = CreateClientRequest(name = "Status Test Client")
-        )
-
-        // Verify client is enabled by default
-        assertTrue(client.enabled)
-
-        // Execute test - disable client
-        val disabledClient = managementService.updateClientStatus(client.id, false)
-
-        // Verify result
-        assertEquals(false, disabledClient.enabled)
-        assertEquals(client.id, disabledClient.id)
-        assertEquals(client.name, disabledClient.name)
     }
 
     @Test
@@ -236,8 +187,20 @@ class WireGuardManagementServiceTest {
             )
         )
 
-        val (client1, _) = managementService.createClientForServer(server.id, CreateClientRequest("Client 1"))
-        val (client2, _) = managementService.createClientForServer(server.id, CreateClientRequest("Client 2"))
+        val client1 = managementService.addClientToServer(
+            server.id,
+            AddClientRequest(
+                clientName = "Client 1",
+                addresses = listOf(IPAddress("10.30.0.2/32"))
+            )
+        )
+        val client2 = managementService.addClientToServer(
+            server.id,
+            AddClientRequest(
+                clientName = "Client 2",
+                addresses = listOf(IPAddress("10.30.0.3/32"))
+            )
+        )
 
         // Update client statistics
         managementService.updateClientStats(
@@ -269,38 +232,47 @@ class WireGuardManagementServiceTest {
     }
 
     @Test
-    fun `test automatic IP allocation`() {
+    fun `test multiple clients on same server`() {
         // Create server
         val server = managementService.createServer(
             CreateServerRequest(
-                name = "IP Allocation Server",
+                name = "Multi Client Server",
                 networkAddress = "172.16.0.1/24",
-                endpoint = "ip-test.example.com:51820"
+                endpoint = "multi.example.com:51820"
             )
         )
 
-        // Create multiple clients and verify IP allocation
-        val (client1, _) = managementService.createClientForServer(server.id, CreateClientRequest("Client 1"))
-        val (client2, _) = managementService.createClientForServer(server.id, CreateClientRequest("Client 2"))
-        val (client3, _) = managementService.createClientForServer(server.id, CreateClientRequest("Client 3"))
+        // Create multiple clients
+        val client1 = managementService.addClientToServer(
+            server.id,
+            AddClientRequest(
+                clientName = "Client 1",
+                addresses = listOf(IPAddress("172.16.0.2/32"))
+            )
+        )
+        val client2 = managementService.addClientToServer(
+            server.id,
+            AddClientRequest(
+                clientName = "Client 2",
+                addresses = listOf(IPAddress("172.16.0.3/32"))
+            )
+        )
+        val client3 = managementService.addClientToServer(
+            server.id,
+            AddClientRequest(
+                clientName = "Client 3",
+                addresses = listOf(IPAddress("172.16.0.4/32"))
+            )
+        )
 
-        // Verify each client gets a unique IP
-        val ip1 = client1.allowedIPs.firstOrNull()?.address
-        val ip2 = client2.allowedIPs.firstOrNull()?.address
-        val ip3 = client3.allowedIPs.firstOrNull()?.address
+        // Verify each client has correct data
+        val clients = managementService.getServerClients(server.id)
+        assertEquals(3, clients.size)
 
-        assertNotNull(ip1)
-        assertNotNull(ip2)
-        assertNotNull(ip3)
+        // Verify all IPs are different
+        val ips = clients.map { it.allowedIPs.first().address }.toSet()
+        assertEquals(3, ips.size)
 
-        // All IPs should be different
-        assertTrue(setOf(ip1, ip2, ip3).size == 3)
-
-        // All IPs should be in the server's network range
-        assertTrue(ip1!!.startsWith("172.16.0."))
-        assertTrue(ip2!!.startsWith("172.16.0."))
-        assertTrue(ip3!!.startsWith("172.16.0."))
-
-        println("Allocated IPs: $ip1, $ip2, $ip3")
+        println("Client IPs: $ips")
     }
 }

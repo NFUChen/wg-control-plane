@@ -4,7 +4,7 @@ import com.module.wgcontrolplane.dto.*
 import com.module.wgcontrolplane.model.*
 import com.module.wgcontrolplane.repository.WireGuardServerRepository
 import com.module.wgcontrolplane.repository.WireGuardClientRepository
-import com.module.wgcontrolplane.utils.WireGuardUtils
+import com.module.wgcontrolplane.utils.WireGuardKeyGenerator
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
@@ -23,20 +23,9 @@ interface WireGuardManagementService {
     fun addClientToServer(serverId: UUID, request: AddClientRequest): WireGuardClient
 
     /**
-     * Create a client with auto-generated keys
-     */
-    fun createClientForServer(serverId: UUID, request: CreateClientRequest): Pair<WireGuardClient, String?>
-
-    /**
      * Remove a client from server
      */
     fun removeClientFromServer(serverId: UUID, clientId: UUID)
-
-    /**
-     * Update client status (enable/disable)
-     */
-    fun updateClientStatus(clientId: UUID, enabled: Boolean): WireGuardClient
-
     /**
      * Get server with all its clients
      */
@@ -82,25 +71,28 @@ interface WireGuardManagementService {
 @Transactional
 class DefaultWireGuardManagementService(
     private val serverRepository: WireGuardServerRepository,
-    private val clientRepository: WireGuardClientRepository
+    private val clientRepository: WireGuardClientRepository,
+    private val keyGenerator: WireGuardKeyGenerator
 ) : WireGuardManagementService {
 
     /**
      * Create a new WireGuard server
      */
+    @Transactional
     override fun createServer(request: CreateServerRequest): WireGuardServer {
         require(!serverRepository.existsByName(request.name)) { "Server with name '${request.name}' already exists" }
         require(!serverRepository.existsByListenPort(request.listenPort)) { "Port ${request.listenPort} is already in use" }
 
-        val (privateKey, _) = WireGuardUtils.generateKeyPair()
+        val (privateKey, publicKey) = keyGenerator.generateKeyPair()
 
         val server = WireGuardServer(
             name = request.name,
             privateKey = privateKey,
+            publicKey = publicKey,
             addresses = mutableListOf(IPAddress(request.networkAddress)),
             listenPort = request.listenPort,
             endpoint = request.endpoint,
-            dnsServers = request.dnsServers.toMutableList()
+            dnsServers = request.dnsServers.map { IPAddress(it) }.toMutableList(),
         )
 
         return serverRepository.save(server)
@@ -109,93 +101,48 @@ class DefaultWireGuardManagementService(
     /**
      * Add a client to a server
      */
+    @Transactional
     override fun addClientToServer(serverId: UUID, request: AddClientRequest): WireGuardClient {
         val server = serverRepository.findById(serverId)
             .orElseThrow { IllegalArgumentException("Server not found: $serverId") }
 
-        require(!clientRepository.existsByPublicKey(request.clientPublicKey)) {
-            "Client with public key already exists"
-        }
-
-        // Auto-assign IP address
-        val clientIP = server.getNextAvailableClientIP()
-            ?: throw IllegalStateException("No available IP addresses in server network")
+        val (privateKey, publicKey) = keyGenerator.generateKeyPair()
 
         val client = WireGuardClient(
             name = request.clientName,
-            publicKey = request.clientPublicKey,
-            allowedIPs = mutableListOf(clientIP),
-            presharedKey = request.presharedKey
+            privateKey = privateKey,
+            publicKey = publicKey,
+            allowedIPs = request.addresses.toMutableList(),
+            presharedKey = request.presharedKey,
+            server = server
         )
 
+        // Add client to server - this sets the server relationship and validates
         server.addClient(client)
-        serverRepository.save(server)
 
-        return client
-    }
+        // Save server - cascade will save the client due to CascadeType.ALL
+        val savedServer = serverRepository.save(server)
 
-    /**
-     * Create a client with auto-generated keys
-     */
-    override fun createClientForServer(serverId: UUID, request: CreateClientRequest): Pair<WireGuardClient, String?> {
-        return if (request.publicKey.isNullOrBlank()) {
-            // Auto-generate keys
-            val (privateKey, publicKey) = WireGuardUtils.generateKeyPair()
-            val addRequest = AddClientRequest(
-                clientName = request.name,
-                clientPublicKey = publicKey,
-                presharedKey = request.presharedKey
-            )
-            val client = addClientToServer(serverId, addRequest)
-            Pair(client, privateKey)
-        } else {
-            // Use provided key
-            val addRequest = AddClientRequest(
-                clientName = request.name,
-                clientPublicKey = request.publicKey,
-                presharedKey = request.presharedKey
-            )
-            val client = addClientToServer(serverId, addRequest)
-            Pair(client, null) // No private key to return since it was provided
-        }
+        // Return the persisted client (find it in the saved server's clients)
+        return savedServer.clients.find { it.name == client.name && it.privateKey == client.privateKey }
+            ?: throw IllegalStateException("Failed to save client")
     }
 
     /**
      * Remove a client from server
      */
     override fun removeClientFromServer(serverId: UUID, clientId: UUID) {
-        val server = serverRepository.findById(serverId)
-            .orElseThrow { IllegalArgumentException("Server not found: $serverId") }
+        // Get server with clients
+        val server = serverRepository.findByIdWithClients(serverId)
+            ?: throw IllegalArgumentException("Server not found: $serverId")
 
-        server.removeClient(clientId)
-        clientRepository.deleteById(clientId)
+        // Find and remove the client from the server's collection
+        val client = server.clients.find { it.id == clientId }
+            ?: throw IllegalArgumentException("Client not found: $clientId")
+
+        // Remove from collection - orphanRemoval will delete from DB
+        server.clients.remove(client)
         serverRepository.save(server)
-    }
-
-    /**
-     * Update client status (enable/disable)
-     */
-    override fun updateClientStatus(clientId: UUID, enabled: Boolean): WireGuardClient {
-        val client = clientRepository.findById(clientId)
-            .orElseThrow { IllegalArgumentException("Client not found: $clientId") }
-
-        val updatedClient = WireGuardClient(
-            id = client.id,
-            name = client.name,
-            publicKey = client.publicKey,
-            presharedKey = client.presharedKey,
-            allowedIPs = client.allowedIPs,
-            persistentKeepalive = client.persistentKeepalive,
-            enabled = enabled,
-            lastHandshake = client.lastHandshake,
-            dataReceived = client.dataReceived,
-            dataSent = client.dataSent,
-            server = client.server,
-            createdAt = client.createdAt,
-            updatedAt = client.updatedAt
-        )
-
-        return clientRepository.save(updatedClient)
     }
 
     /**
@@ -246,23 +193,14 @@ class DefaultWireGuardManagementService(
         val client = clientRepository.findById(clientId)
             .orElseThrow { IllegalArgumentException("Client not found: $clientId") }
 
-        val updatedClient = WireGuardClient(
-            id = client.id,
-            name = client.name,
-            publicKey = client.publicKey,
-            presharedKey = client.presharedKey,
-            allowedIPs = client.allowedIPs,
-            persistentKeepalive = client.persistentKeepalive,
-            enabled = client.enabled,
-            lastHandshake = lastHandshake,
-            dataReceived = dataReceived,
-            dataSent = dataSent,
-            server = client.server,
-            createdAt = client.createdAt,
-            updatedAt = client.updatedAt
-        )
+        // Update mutable properties directly on the managed entity
+        // This is JPA-friendly since these properties are var (mutable)
+        client.lastHandshake = lastHandshake
+        client.dataReceived = dataReceived
+        client.dataSent = dataSent
+        // updatedAt will be automatically updated by @UpdateTimestamp
 
-        return clientRepository.save(updatedClient)
+        return clientRepository.save(client)
     }
 
     /**
@@ -284,7 +222,7 @@ class DefaultWireGuardManagementService(
             "offlineClients" to (activeClients.size - onlineClients.size),
             "totalDataReceived" to activeClients.sumOf { it.dataReceived },
             "totalDataSent" to activeClients.sumOf { it.dataSent },
-            "networkAddress" to (server.primaryAddress?.address ?: "")
+            "networkAddress" to server.primaryAddress.address
         )
     }
 }
