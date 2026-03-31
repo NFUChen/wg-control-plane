@@ -1,5 +1,5 @@
 # Use our custom base image with Java 17, WireGuard, and system tools
-FROM wg-control-plane-base:latest
+FROM ghcr.io/nfuchen/wg-control-plane-dev-base:latest
 
 # Ensure we're in the correct working directory
 WORKDIR $APP_HOME

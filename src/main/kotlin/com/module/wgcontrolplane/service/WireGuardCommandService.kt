@@ -68,13 +68,6 @@ class WireGuardCommandService {
         }
     }
 
-    /**
-     * Get interface name from server name (convert to valid interface name)
-     */
-    fun getInterfaceName(serverName: String): String {
-        // Convert server name to valid WireGuard interface name (alphanumeric + underscores only)
-        return "wg_${serverName.replace(Regex("[^a-zA-Z0-9]"), "_")}"
-    }
 
     /**
      * Stop WireGuard interface

@@ -105,8 +105,7 @@ class DefaultWireGuardManagementService(
         // First try to add peer to WireGuard interface (if server is enabled)
         if (server.enabled) {
             safeCall("Cannot add client: failed to add peer to WireGuard interface") {
-                val interfaceName = wireGuardCommandService.getInterfaceName(server.name)
-                wireGuardCommandService.addPeerToInterface(interfaceName, client)
+                wireGuardCommandService.addPeerToInterface(server.interfaceName, client)
                 logger.info("Successfully added peer to WireGuard interface, proceeding with database save")
             }
         }
@@ -135,8 +134,7 @@ class DefaultWireGuardManagementService(
         // First try to remove peer from WireGuard interface (if server is enabled)
         if (server.enabled) {
             safeCall("Cannot remove client: failed to remove peer from WireGuard interface") {
-                val interfaceName = wireGuardCommandService.getInterfaceName(server.name)
-                wireGuardCommandService.removePeerFromInterface(interfaceName, client.publicKey)
+                wireGuardCommandService.removePeerFromInterface(server.interfaceName, client.publicKey)
                 logger.info("Successfully removed peer from WireGuard interface, proceeding with database removal")
             }
         }
@@ -253,8 +251,7 @@ class DefaultWireGuardManagementService(
 
         // Create snapshot by cloning the original server state
         val originalServer = cloneServer(server)
-        val originalInterfaceName = wireGuardCommandService.getInterfaceName(server.name)
-        val wasRunning = server.enabled && wireGuardCommandService.isInterfaceRunning(originalInterfaceName)
+        val wasRunning = server.enabled && wireGuardCommandService.isInterfaceRunning(server.interfaceName)
 
         try {
             // Validate constraints before making changes
@@ -264,8 +261,8 @@ class DefaultWireGuardManagementService(
             val needsRestart = needsInterfaceRestart(server, request) && wasRunning
 
             if (needsRestart) {
-                logger.info("Server update requires restart. Stopping interface: $originalInterfaceName")
-                wireGuardCommandService.stopWireGuardInterface(originalInterfaceName)
+                logger.info("Server update requires restart. Stopping interface: ${server.interfaceName}")
+                wireGuardCommandService.stopWireGuardInterface(server.interfaceName)
             }
 
             // Apply updates
@@ -277,8 +274,7 @@ class DefaultWireGuardManagementService(
 
             // Restart if needed
             if (needsRestart) {
-                val newInterfaceName = wireGuardCommandService.getInterfaceName(updatedServer.name)
-                wireGuardCommandService.launchWireGuardInterface(newInterfaceName)
+                wireGuardCommandService.launchWireGuardInterface(updatedServer.interfaceName)
                 logger.info("Successfully restarted server with new configuration")
             }
 
@@ -287,7 +283,7 @@ class DefaultWireGuardManagementService(
 
         } catch (e: Exception) {
             logger.error("Server update failed, performing rollback", e)
-            rollbackServer(server, originalServer, originalInterfaceName, wasRunning)
+            rollbackServer(server, originalServer, originalServer.interfaceName, wasRunning)
             throw RuntimeException("Server update failed: ${e.message}", e)
         }
     }
