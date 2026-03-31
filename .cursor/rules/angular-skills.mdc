@@ -1,0 +1,18 @@
+---
+description: Use repo Angular skills for idiomatic Angular work in static/
+globs: static/**/*.ts,static/**/*.html,static/**/*.scss,static/**/*.css
+alwaysApply: false
+---
+
+# Angular skills (this repo)
+
+Align with current Angular, best practices, and modern features. Prefer idiomatic Angular code and sound architecture.
+
+## When to read which skill
+
+- **`skills/angular-developer/SKILL.md`**: Default reference for components, services, reactivity (signals, `linkedSignal`, `resource`), forms, DI, routing, SSR, ARIA, animations, styling, testing, and CLI. Pull topic-specific detail from `skills/angular-developer/references/` when needed.
+- **`skills/angular-new-app/SKILL.md`**: Use when scaffolding or restructuring a **new** Angular app with the CLI—not for routine edits to this control-plane UI.
+
+## Maintaining bundled skills
+
+Upstream lives in [angular/angular](https://github.com/angular/angular). Bugs or improvements to the skill text itself belong in that repo’s issue tracker or PRs (see `skills/README.md`). Routine app changes stay in this repository under `static/`.
