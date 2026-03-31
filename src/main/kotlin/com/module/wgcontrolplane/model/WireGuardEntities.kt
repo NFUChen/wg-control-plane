@@ -117,6 +117,9 @@ class WireGuardServer(
     @Column(name = "name", nullable = false, unique = true)
     var name: String,
 
+    @Column(name = "interface_name", nullable = false, unique = true)
+    var interfaceName: String = "wg0", // Default interface name, can be customized
+
     @Column(name = "private_key", nullable = false, length = 44)
     @JsonIgnore
     val privateKey: String,

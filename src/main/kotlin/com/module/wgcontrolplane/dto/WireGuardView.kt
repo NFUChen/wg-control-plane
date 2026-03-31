@@ -15,6 +15,13 @@ data class CreateServerRequest(
     @field:Size(min = 1, max = 100, message = "Server name must be between 1 and 100 characters")
     val name: String,
 
+    @field:NotBlank(message = "Interface name cannot be blank")
+    @field:Pattern(
+        regexp = "^wg[0-9]{1,2}$",
+        message = "Interface name must be in the format 'wg0' to 'wg99'"
+    )
+    val interfaceName: String = "wg0",
+
     @field:NotBlank(message = "Network address cannot be blank")
     @field:Pattern(
         regexp = "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(3[0-2]|[12]?[0-9])$",

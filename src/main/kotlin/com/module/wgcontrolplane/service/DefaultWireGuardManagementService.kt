@@ -41,6 +41,7 @@ class DefaultWireGuardManagementService(
 
         val server = WireGuardServer(
             name = request.name,
+            interfaceName = request.interfaceName,
             privateKey = privateKey,
             publicKey = publicKey,
             addresses = mutableListOf(IPAddress(request.networkAddress)),
@@ -202,5 +203,23 @@ class DefaultWireGuardManagementService(
             totalDataReceived = activeClients.sumOf { it.dataReceived },
             totalDataSent = activeClients.sumOf { it.dataSent }
         )
+    }
+
+    override fun launchServer(serverId: UUID) {
+        val server = serverRepository.findById(serverId)
+            .orElseThrow { IllegalArgumentException("Server not found: $serverId") }
+
+        if (!server.enabled) {
+            logger.warn("Attempting to launch server that is not enabled: ${server.name} (ID: ${server.id})")
+            return
+        }
+
+        try {
+            wireGuardCommandService.launchWireGuardInterface(server.name)
+            logger.info("Successfully launched WireGuard server: ${server.name} (ID: ${server.id})")
+        } catch (e: Exception) {
+            logger.error("Failed to launch WireGuard server: ${server.name} (ID: ${server.id})", e)
+            throw RuntimeException("Cannot launch server: failed to execute WireGuard command", e)
+        }
     }
 }

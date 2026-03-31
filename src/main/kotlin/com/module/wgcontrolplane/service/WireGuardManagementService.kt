@@ -60,4 +60,6 @@ interface WireGuardManagementService {
      * Get server statistics
      */
     fun getServerStatistics(serverId: UUID): ServerStatisticsResponse?
+
+    fun launchServer(serverId: UUID)
 }

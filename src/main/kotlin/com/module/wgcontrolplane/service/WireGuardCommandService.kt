@@ -16,6 +16,18 @@ class WireGuardCommandService {
         private val logger = LoggerFactory.getLogger(WireGuardCommandService::class.java)
     }
 
+    fun launchWireGuardInterface(interfaceName: String) {
+        val command = listOf("wg-quick", "up", interfaceName)
+
+        logger.info("Launching WireGuard interface $interfaceName")
+        val result = executeWgCommand(command)
+        if (result.exitCode != 0) {
+            throw RuntimeException("Failed to launch WireGuard interface $interfaceName: ${result.output}")
+        }
+
+        logger.info("Successfully launched WireGuard interface $interfaceName")
+    }
+
     /**
      * Add peer to WireGuard interface dynamically
      */
@@ -33,7 +45,7 @@ class WireGuardCommandService {
                 command.addAll(listOf("preshared-key", psk))
             }
         }
-
+        logger.info("Adding peer ${client.name} (${client.publicKey.take(8)}...) to interface $interfaceName with allowed IPs: ${client.allowedIPs.joinToString(", ")}")
         val result = executeWgCommand(command)
         if (result.exitCode != 0) {
             throw RuntimeException("Failed to add peer to interface $interfaceName: ${result.output}")
