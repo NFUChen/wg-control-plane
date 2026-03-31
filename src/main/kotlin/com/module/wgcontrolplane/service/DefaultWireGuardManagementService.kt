@@ -30,6 +30,7 @@ class DefaultWireGuardManagementService(
     private val keyGenerator: WireGuardKeyGenerator,
     private val wireGuardCommandService: WireGuardCommandService,
     private val wireGuardTemplateService: WireGuardTemplateService,
+    private val ipConflictDetectionService: IPConflictDetectionService,
     @Value("\${wireguard.config.directory:/etc/wireguard}") private val configDirectory: String
 ) : WireGuardManagementService {
 
@@ -95,8 +96,11 @@ class DefaultWireGuardManagementService(
      */
     @Transactional
     override fun addClientToServer(serverId: UUID, request: AddClientRequest): WireGuardClient {
-        val server = serverRepository.findById(serverId)
-            .orElseThrow { IllegalArgumentException("Server not found: $serverId") }
+        val server = serverRepository.findByIdWithClients(serverId)
+            ?: throw IllegalArgumentException("Server not found: $serverId")
+
+        // Check for IP conflicts before creating the client
+        ipConflictDetectionService.validateNewClientIPs(server, request.addresses.toMutableList())
 
         val (privateKey, publicKey) = keyGenerator.generateKeyPair()
 

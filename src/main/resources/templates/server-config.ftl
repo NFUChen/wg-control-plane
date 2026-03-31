@@ -8,7 +8,7 @@ Address = ${address}
 
 <#list clients as client>
 <#if client.enabled>
-# Client: ${client.publicKey?substring(0, 8)}...
+# Client: ${client.name}...
 [Peer]
 PublicKey = ${client.publicKey}
 AllowedIPs = ${client.allowedIPs}
