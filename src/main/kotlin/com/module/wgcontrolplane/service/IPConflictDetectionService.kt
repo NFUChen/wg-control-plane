@@ -39,27 +39,9 @@ class IPConflictDetectionService {
             }
         }
 
-        // Check against server network range
-        val serverNetwork = try {
-            val serverAddr = IPAddressString(server.primaryAddress.address).address
-                ?: throw IllegalArgumentException("Invalid server network: ${server.primaryAddress.address}")
-
-            // Convert to proper network address (e.g., 10.8.0.1/24 -> 10.8.0.0/24)
-            serverAddr.toPrefixBlock()
-        } catch (e: Exception) {
-            throw IllegalArgumentException("Invalid server network format: ${server.primaryAddress.address}")
-        }
-
         // Validate each new IP
         newClientIPs.forEachIndexed { index, newIP ->
             val newAddr = newAddresses[index]
-
-            // Check if within server network range
-            if (!serverNetwork.contains(newAddr)) {
-                throw IllegalArgumentException(
-                    "IP ${newIP.address} is outside server network range ${server.primaryAddress.address}"
-                )
-            }
 
             // Check for CIDR overlaps with existing clients
             activeClients.forEach { existingClient ->

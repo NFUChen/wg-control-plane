@@ -139,6 +139,7 @@ class WireGuardTemplateService(@Qualifier("templateConfiguration") private val f
  * Extension function: Convert WireGuardClient to template data
  */
 private fun WireGuardClient.toTemplateMap(): Map<String, Any> = mapOf(
+    "name" to name,
     "publicKey" to publicKey,
     "allowedIPs" to allowedIPs.joinToString(", ") { it.address },
     "presharedKey" to (presharedKey ?: ""),

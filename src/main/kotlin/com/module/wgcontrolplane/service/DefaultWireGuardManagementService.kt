@@ -20,6 +20,7 @@ import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.time.LocalDateTime
 import java.util.*
+import kotlin.jvm.optionals.getOrNull
 
 
 @Service
@@ -188,6 +189,10 @@ class DefaultWireGuardManagementService(
         return serverRepository.findByEnabledTrue()
     }
 
+    override fun getServerById(serverId: UUID): WireGuardServer {
+        return serverRepository.findById(serverId).getOrNull() ?: throw IllegalArgumentException("Server not found: $serverId")
+    }
+
     /**
      * Get clients for a specific server
      */
@@ -200,6 +205,13 @@ class DefaultWireGuardManagementService(
      */
     override fun getActiveServerClients(serverId: UUID): List<WireGuardClient> {
         return clientRepository.findActiveClientsByServerId(serverId)
+    }
+
+    /**
+     * Get client by ID
+     */
+    override fun getClientById(clientId: UUID): WireGuardClient {
+        return clientRepository.findById(clientId).getOrNull() ?: throw IllegalArgumentException("Client not found: $clientId")
     }
 
 

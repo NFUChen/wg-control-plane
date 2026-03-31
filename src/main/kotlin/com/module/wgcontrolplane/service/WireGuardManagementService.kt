@@ -41,6 +41,8 @@ interface WireGuardManagementService {
      */
     fun getActiveServers(): List<WireGuardServer>
 
+    fun getServerById(serverId: UUID): WireGuardServer
+
     /**
      * Get clients for a specific server
      */
@@ -50,6 +52,11 @@ interface WireGuardManagementService {
      * Get active clients for a specific server
      */
     fun getActiveServerClients(serverId: UUID): List<WireGuardClient>
+
+    /**
+     * Get client by ID
+     */
+    fun getClientById(clientId: UUID): WireGuardClient
 
     /**
      * Update client connection statistics

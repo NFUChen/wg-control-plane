@@ -240,10 +240,10 @@ class WireGuardClient(
     @Column(name = "data_sent")
     var dataSent: Long = 0,
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "server_id", nullable = false)
     @JsonIgnore
-    var server: WireGuardServer? = null,
+    var server: WireGuardServer,
 
     @CreationTimestamp
     @Column(name = "created_at")
