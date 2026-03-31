@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   wg-control-plane:
-    build: .
+    image: wg-control-plane:dev
     container_name: wg-control-plane-app
     ports:
       - "8080:8080"

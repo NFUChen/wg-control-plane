@@ -23,6 +23,13 @@ class WireGuardController(
         return ResponseEntity.status(HttpStatus.CREATED).body(ServerResponse.from(server))
     }
 
+
+    @PostMapping("/server-up/{serverId}")
+    fun launchServer(@PathVariable serverId: UUID): ResponseEntity<Void> {
+        wireGuardService.launchServer(serverId)
+        return ResponseEntity.ok().build()
+    }
+
     /**
      * Get all servers
      */

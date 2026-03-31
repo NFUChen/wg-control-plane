@@ -254,6 +254,9 @@ class WireGuardClient(
     var updatedAt: LocalDateTime = LocalDateTime.now(),
 ) {
 
+    val plainTextAllowedIPs: String
+        get() = allowedIPs.joinToString(",") { it.address }
+
     /**
      * Check if routing all traffic is allowed
      */

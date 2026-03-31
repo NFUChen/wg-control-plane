@@ -36,7 +36,7 @@ class WireGuardCommandService {
 
         // Add allowed IPs
         if (client.allowedIPs.isNotEmpty()) {
-            command.addAll(listOf("allowed-ips", client.allowedIPs.joinToString(",")))
+            command.addAll(listOf("allowed-ips", client.plainTextAllowedIPs))
         }
 
         // Add preshared key if present
@@ -45,7 +45,7 @@ class WireGuardCommandService {
                 command.addAll(listOf("preshared-key", psk))
             }
         }
-        logger.info("Adding peer ${client.name} (${client.publicKey.take(8)}...) to interface $interfaceName with allowed IPs: ${client.allowedIPs.joinToString(", ")}")
+        logger.info("Adding peer ${client.name} (${client.publicKey.take(8)}...) to interface $interfaceName with allowed IPs: ${client.plainTextAllowedIPs}")
         val result = executeWgCommand(command)
         if (result.exitCode != 0) {
             throw RuntimeException("Failed to add peer to interface $interfaceName: ${result.output}")

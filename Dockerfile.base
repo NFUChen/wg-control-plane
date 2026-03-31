@@ -14,7 +14,6 @@ RUN apt-get update && \
     apt-get install -y \
         openjdk-17-jdk \
         wireguard-tools \
-        resolvconf \
         iproute2 \
         iptables \
         curl \

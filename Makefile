@@ -82,7 +82,7 @@ stop: ## Stop the running application container
 	@echo -e "$(GREEN)✓ Container stopped$(NC)"
 
 logs: ## Show logs from the running container
-	docker logs -f wg-control-plane-dev
+	docker logs -f wg-control-plane-app
 
 dev-up: ## Start development environment with docker-compose
 	@echo -e "$(BLUE)Starting development environment...$(NC)"
@@ -102,13 +102,12 @@ dev-build: ## Quick rebuild for development (uses cache)
 	docker build -f Dockerfile -t $(APP_IMAGE_NAME):$(APP_IMAGE_TAG) .
 	@echo -e "$(GREEN)✓ Development build completed$(NC)"
 
+local-build:
+	./gradlew bootJar
+	docker build -f Dockerfile.dev -t wg-control-plane:dev .
+
 shell: ## Open shell in the application container
-	docker run --rm -it \
-		--privileged \
-		-v /dev/net/tun:/dev/net/tun \
-		-v $(PWD):/workspace \
-		$(APP_IMAGE_NAME):$(APP_IMAGE_TAG) \
-		bash
+	docker exec -it wg-control-plane-app sh
 
 base-shell: ## Open shell in the base image for debugging
 	docker run --rm -it \

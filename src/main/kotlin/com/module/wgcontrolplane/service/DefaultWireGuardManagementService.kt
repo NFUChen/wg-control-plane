@@ -11,8 +11,13 @@ import com.module.wgcontrolplane.repository.WireGuardClientRepository
 import com.module.wgcontrolplane.repository.WireGuardServerRepository
 import com.module.wgcontrolplane.utils.WireGuardKeyGenerator
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.nio.file.StandardOpenOption
 import java.time.LocalDateTime
 import java.util.*
 
@@ -23,7 +28,9 @@ class DefaultWireGuardManagementService(
     private val serverRepository: WireGuardServerRepository,
     private val clientRepository: WireGuardClientRepository,
     private val keyGenerator: WireGuardKeyGenerator,
-    private val wireGuardCommandService: WireGuardCommandService
+    private val wireGuardCommandService: WireGuardCommandService,
+    private val wireGuardTemplateService: WireGuardTemplateService,
+    @Value("\${wireguard.config.directory:/etc/wireguard}") private val configDirectory: String
 ) : WireGuardManagementService {
 
     companion object {
@@ -103,7 +110,7 @@ class DefaultWireGuardManagementService(
         )
 
         // First try to add peer to WireGuard interface (if server is enabled)
-        if (server.enabled) {
+        if (server.enabled && wireGuardCommandService.isInterfaceRunning(server.interfaceName)) {
             safeCall("Cannot add client: failed to add peer to WireGuard interface") {
                 wireGuardCommandService.addPeerToInterface(server.interfaceName, client)
                 logger.info("Successfully added peer to WireGuard interface, proceeding with database save")
@@ -113,6 +120,12 @@ class DefaultWireGuardManagementService(
         // Only save to database if WireGuard command succeeded (or server is disabled)
         server.addClient(client)
         val savedServer = serverRepository.save(server)
+
+        // Update local configuration file to include the new client
+        safeCall("Cannot add client: failed to update configuration file") {
+            writeServerConfigFile(savedServer)
+            logger.info("Successfully updated configuration file with new client")
+        }
 
         // Return the persisted client
         return savedServer.clients.find { it.name == client.name && it.privateKey == client.privateKey }
@@ -132,7 +145,7 @@ class DefaultWireGuardManagementService(
             ?: throw IllegalArgumentException("Client not found: $clientId")
 
         // First try to remove peer from WireGuard interface (if server is enabled)
-        if (server.enabled) {
+        if (server.enabled && wireGuardCommandService.isInterfaceRunning(server.interfaceName)) {
             safeCall("Cannot remove client: failed to remove peer from WireGuard interface") {
                 wireGuardCommandService.removePeerFromInterface(server.interfaceName, client.publicKey)
                 logger.info("Successfully removed peer from WireGuard interface, proceeding with database removal")
@@ -141,7 +154,13 @@ class DefaultWireGuardManagementService(
 
         // Only remove from database if WireGuard command succeeded (or server is disabled)
         server.clients.remove(client)
-        serverRepository.save(server)
+        val updatedServer = serverRepository.save(server)
+
+        // Update local configuration file to remove the client
+        safeCall("Cannot remove client: failed to update configuration file") {
+            writeServerConfigFile(updatedServer)
+            logger.info("Successfully updated configuration file after removing client")
+        }
     }
 
     /**
@@ -226,18 +245,60 @@ class DefaultWireGuardManagementService(
     }
 
     override fun launchServer(serverId: UUID) {
-        val server = serverRepository.findById(serverId)
-            .orElseThrow { IllegalArgumentException("Server not found: $serverId") }
+        val server = serverRepository.findByIdWithClients(serverId)
+            ?: throw IllegalArgumentException("Server not found: $serverId")
 
         if (!server.enabled) {
             logger.warn("Attempting to launch server that is not enabled: ${server.name} (ID: ${server.id})")
             return
         }
 
-        safeCall("Cannot launch server: failed to execute WireGuard command") {
-            wireGuardCommandService.launchWireGuardInterface(server.name)
-            logger.info("Successfully launched WireGuard server: ${server.name} (ID: ${server.id})")
+        // Check if interface is already running
+        val isRunning = wireGuardCommandService.isInterfaceRunning(server.interfaceName)
+        if (isRunning) {
+            logger.info("WireGuard interface ${server.interfaceName} is already running, stopping to apply latest configuration")
+            safeCall("Cannot restart server: failed to stop existing interface") {
+                wireGuardCommandService.stopWireGuardInterface(server.interfaceName)
+                logger.info("Successfully stopped existing interface: ${server.interfaceName}")
+            }
         }
+
+        safeCall("Cannot launch server: failed to write configuration file") {
+            // Generate and write configuration file with latest data
+            writeServerConfigFile(server)
+            logger.info("Successfully wrote configuration file for server: ${server.name}")
+        }
+
+        safeCall("Cannot launch server: failed to execute WireGuard command") {
+            wireGuardCommandService.launchWireGuardInterface(server.interfaceName)
+            logger.info("Successfully launched WireGuard server: ${server.name}, interface name: ${server.interfaceName}, ID: ${server.id}")
+        }
+    }
+
+    /**
+     * Write server configuration file to local filesystem
+     */
+    private fun writeServerConfigFile(server: WireGuardServer) {
+        // Generate configuration content using template service
+        val configContent = wireGuardTemplateService.generateServerConfig(server)
+
+        // Ensure config directory exists
+        val configDir = File(configDirectory)
+        if (!configDir.exists()) {
+            configDir.mkdirs()
+            logger.info("Created WireGuard configuration directory: $configDirectory")
+        }
+
+        // Write configuration file
+        val configFile = Paths.get(configDirectory, "${server.interfaceName}.conf")
+        Files.write(
+            configFile,
+            configContent.toByteArray(),
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
+        )
+
+        logger.info("Wrote WireGuard configuration file: $configFile")
     }
 
     /**

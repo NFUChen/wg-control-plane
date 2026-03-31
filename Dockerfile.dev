@@ -7,23 +7,13 @@ ENV APP_HOME=/app
 # Ensure we're in the correct working directory
 WORKDIR $APP_HOME
 
-# Copy Gradle wrapper and build files
-COPY gradlew $APP_HOME/
-COPY gradle/ $APP_HOME/gradle/
-COPY build.gradle.kts $APP_HOME/
-COPY settings.gradle.kts $APP_HOME/
-
-# Copy source code
-COPY src/ $APP_HOME/src/
-
-# Make gradlew executable
-RUN chmod +x gradlew
-
 # Fix JAVA_HOME - the base image has incorrect path (ARM64 architecture)
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
-RUN ./gradlew bootJar
+# Copy the pre-built jar file from local build
+COPY build/libs/wg-control-plane-0.0.1-SNAPSHOT.jar $APP_HOME/app.jar
+
 # Expose the default Spring Boot port
 EXPOSE 8080
 
@@ -33,6 +23,5 @@ RUN chown -R appuser:appuser $APP_HOME
 # Note: For WireGuard operations, the container will need to run with privileged mode
 # or have specific capabilities (NET_ADMIN, SYS_MODULE) and access to /dev/net/tun
 
-
 # Run the application
-CMD ["java", "-jar", "build/libs/wg-control-plane-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-jar", "app.jar"]
