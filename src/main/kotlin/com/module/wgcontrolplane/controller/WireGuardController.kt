@@ -57,7 +57,7 @@ class WireGuardController(
      * Get server statistics
      */
     @GetMapping("/servers/{serverId}/stats")
-    fun getServerStats(@PathVariable serverId: UUID): ResponseEntity<Map<String, Any>> {
+    fun getServerStats(@PathVariable serverId: UUID): ResponseEntity<ServerStatisticsResponse> {
         val stats = wireGuardService.getServerStatistics(serverId)
             ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(stats)
