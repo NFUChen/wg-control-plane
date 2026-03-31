@@ -36,7 +36,13 @@ data class UpdateServerRequest(
     @field:NotBlank(message = "Endpoint cannot be blank")
     val endpoint: String? = null,
 
-    val dnsServers: List<String>? = null
+    val dnsServers: List<String>? = null,
+
+    @field:Size(max = 8192, message = "PostUp must be at most 8192 characters")
+    val postUp: String? = null,
+
+    @field:Size(max = 8192, message = "PostDown must be at most 8192 characters")
+    val postDown: String? = null
 )
 
 /**
@@ -68,7 +74,13 @@ data class CreateServerRequest(
     @field:NotBlank(message = "Endpoint cannot be blank")
     val endpoint: String,
 
-    val dnsServers: List<String> = listOf(GOOGLE_DNS)
+    val dnsServers: List<String> = listOf(GOOGLE_DNS),
+
+    @field:Size(max = 8192, message = "PostUp must be at most 8192 characters")
+    val postUp: String? = null,
+
+    @field:Size(max = 8192, message = "PostDown must be at most 8192 characters")
+    val postDown: String? = null
 )
 
 
@@ -114,6 +126,8 @@ data class ServerResponse(
     val listenPort: Int,
     val endpoint: String,
     val dnsServers: List<IPAddress>,
+    val postUp: String?,
+    val postDown: String?,
     val enabled: Boolean,
     val totalClients: Int,
     val activeClients: Int,
@@ -132,6 +146,8 @@ data class ServerResponse(
                 listenPort = server.listenPort,
                 endpoint = server.endpoint,
                 dnsServers = server.dnsServers.toList(),
+                postUp = server.postUp,
+                postDown = server.postDown,
                 enabled = server.enabled,
                 totalClients = server.clients.size,
                 activeClients = activeClients,
@@ -154,6 +170,8 @@ data class ServerDetailResponse(
     val listenPort: Int,
     val endpoint: String,
     val dnsServers: List<IPAddress>,
+    val postUp: String?,
+    val postDown: String?,
     val enabled: Boolean,
     val clients: List<ClientResponse>,
     val createdAt: LocalDateTime,
@@ -170,6 +188,8 @@ data class ServerDetailResponse(
                 listenPort = server.listenPort,
                 endpoint = server.endpoint,
                 dnsServers = server.dnsServers.toList(),
+                postUp = server.postUp,
+                postDown = server.postDown,
                 enabled = server.enabled,
                 clients = server.clients.map { ClientResponse.from(it) },
                 createdAt = server.createdAt,

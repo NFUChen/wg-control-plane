@@ -34,14 +34,16 @@ class WireGuardTemplateServiceTest {
             name = "Test Client 1",
             privateKey = "Client1PrivateKeyAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             publicKey = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
-            allowedIPs = mutableListOf(IPAddress("10.0.0.2/32"))
+            allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
+            server = server
         )
 
         val client2 = WireGuardClient(
             name = "Test Client 2",
             privateKey = "Client2PrivateKeyAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             publicKey = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=",
-            allowedIPs = mutableListOf(IPAddress("10.0.0.3/32"))
+            allowedIPs = mutableListOf(IPAddress("10.0.0.3/32")),
+            server = server
         )
 
         server.addClient(client1)
@@ -82,7 +84,8 @@ class WireGuardTemplateServiceTest {
             name = "Test Client",
             privateKey = "ClientPrivateKeyDDDDDDDDDDDDDDDDDDDDDDDDDDDD=",
             publicKey = "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD=",
-            allowedIPs = mutableListOf(IPAddress("10.0.0.2/32"))
+            allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
+            server = server
         )
 
         val clientPrivateKey = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF="
@@ -124,7 +127,8 @@ class WireGuardTemplateServiceTest {
             name = "Limited Client",
             privateKey = "ClientPrivateKeyHHHHHHHHHHHHHHHHHHHHHHHHHHHH=",
             publicKey = "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH=",
-            allowedIPs = mutableListOf(IPAddress("10.0.0.5/32"))
+            allowedIPs = mutableListOf(IPAddress("10.0.0.5/32")),
+            server = server
         )
 
         val clientPrivateKey = "IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII="

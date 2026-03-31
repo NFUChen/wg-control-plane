@@ -11,6 +11,8 @@ export interface CreateServerRequest {
   listenPort: number;
   endpoint: string;
   dnsServers: string[];
+  postUp?: string | null;
+  postDown?: string | null;
 }
 
 export interface UpdateServerRequest {
@@ -20,6 +22,8 @@ export interface UpdateServerRequest {
   listenPort?: number;
   endpoint?: string;
   dnsServers?: string[];
+  postUp?: string | null;
+  postDown?: string | null;
 }
 
 export interface ServerResponse {
@@ -31,6 +35,8 @@ export interface ServerResponse {
   listenPort: number;
   endpoint: string;
   dnsServers: IPAddress[];
+  postUp?: string | null;
+  postDown?: string | null;
   enabled: boolean;
   totalClients: number;
   activeClients: number;
@@ -47,6 +53,8 @@ export interface ServerDetailResponse {
   listenPort: number;
   endpoint: string;
   dnsServers: IPAddress[];
+  postUp?: string | null;
+  postDown?: string | null;
   enabled: boolean;
   clients: ClientResponse[];
   createdAt: string;

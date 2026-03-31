@@ -161,6 +161,42 @@ import {
             </div>
           </div>
 
+          <!-- PostUp / PostDown (wg-quick hooks) -->
+          <div class="space-y-4">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Interface scripts</h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 -mt-2">
+              Optional shell commands run after the interface comes up (PostUp) or before it goes down (PostDown), e.g. iptables NAT.
+            </p>
+
+            <div>
+              <label for="postUp" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                PostUp
+              </label>
+              <textarea
+                id="postUp"
+                formControlName="postUp"
+                rows="3"
+                maxlength="8192"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                placeholder="e.g. iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE"
+              ></textarea>
+            </div>
+
+            <div>
+              <label for="postDown" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                PostDown
+              </label>
+              <textarea
+                id="postDown"
+                formControlName="postDown"
+                rows="3"
+                maxlength="8192"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                placeholder="e.g. iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE"
+              ></textarea>
+            </div>
+          </div>
+
           <!-- DNS Configuration -->
           <div class="space-y-4">
             <div class="flex items-center justify-between">
@@ -286,6 +322,8 @@ export class ServerFormComponent implements OnInit, OnDestroy {
       networkAddress: ['', [Validators.required, Validators.pattern(/^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/)]],
       endpoint: ['', [Validators.required]],
       listenPort: [51820, [Validators.required, Validators.min(1), Validators.max(65535)]],
+      postUp: ['', [Validators.maxLength(8192)]],
+      postDown: ['', [Validators.maxLength(8192)]],
       dnsServers: this.fb.array([])
     });
 
@@ -317,7 +355,9 @@ export class ServerFormComponent implements OnInit, OnDestroy {
       interfaceName: server.interfaceName,
       networkAddress: this.getNetworkAddress(server),
       endpoint: server.endpoint,
-      listenPort: server.listenPort
+      listenPort: server.listenPort,
+      postUp: server.postUp ?? '',
+      postDown: server.postDown ?? ''
     });
 
     // Clear existing DNS servers and add the ones from the server
@@ -375,7 +415,15 @@ export class ServerFormComponent implements OnInit, OnDestroy {
       networkAddress: formValue.networkAddress,
       listenPort: formValue.listenPort,
       endpoint: formValue.endpoint,
-      dnsServers: dnsServers
+      dnsServers: dnsServers,
+      postUp: (() => {
+        const t = (formValue.postUp ?? '').trim();
+        return t.length > 0 ? t : undefined;
+      })(),
+      postDown: (() => {
+        const t = (formValue.postDown ?? '').trim();
+        return t.length > 0 ? t : undefined;
+      })()
     };
 
     this.wireguardService.createServer(createRequest).subscribe({
@@ -398,7 +446,9 @@ export class ServerFormComponent implements OnInit, OnDestroy {
       networkAddress: formValue.networkAddress,
       listenPort: formValue.listenPort,
       endpoint: formValue.endpoint,
-      dnsServers: dnsServers
+      dnsServers: dnsServers,
+      postUp: (formValue.postUp ?? '').trim(),
+      postDown: (formValue.postDown ?? '').trim()
     };
 
     this.wireguardService.updateServer(this.serverId, updateRequest).subscribe({

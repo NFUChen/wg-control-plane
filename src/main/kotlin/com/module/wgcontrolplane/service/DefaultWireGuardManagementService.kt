@@ -87,6 +87,8 @@ class DefaultWireGuardManagementService(
             listenPort = request.listenPort,
             endpoint = request.endpoint,
             dnsServers = request.dnsServers.map { IPAddress(it) }.toMutableList(),
+            postUp = request.postUp?.trim()?.takeIf { it.isNotEmpty() },
+            postDown = request.postDown?.trim()?.takeIf { it.isNotEmpty() },
         )
 
         return serverRepository.save(server)
@@ -349,7 +351,8 @@ class DefaultWireGuardManagementService(
             val updatedServer = serverRepository.save(server)
             logger.info("Successfully updated server in database")
 
-            // Restart if needed
+            writeServerConfigFile(updatedServer)
+
             if (needsRestart) {
                 wireGuardCommandService.launchWireGuardInterface(updatedServer.interfaceName)
                 logger.info("Successfully restarted server with new configuration")
@@ -389,9 +392,28 @@ class DefaultWireGuardManagementService(
      * Check if interface restart is needed based on changes
      */
     private fun needsInterfaceRestart(server: WireGuardServer, request: UpdateServerRequest): Boolean {
-        return (request.interfaceName != null && request.interfaceName != server.interfaceName) ||
-               (request.networkAddress != null && request.networkAddress != server.primaryAddress.address) ||
-               (request.listenPort != null && request.listenPort != server.listenPort)
+        // Same trimming rules as applyServerUpdates: blank or whitespace-only means "no script"
+        fun trimmedNonBlankOrNull(value: String?): String? =
+            value?.trim()?.takeIf { it.isNotEmpty() }
+
+        val interfaceNameChanged =
+            request.interfaceName != null && request.interfaceName != server.interfaceName
+        val networkAddressChanged =
+            request.networkAddress != null && request.networkAddress != server.primaryAddress.address
+        val listenPortChanged =
+            request.listenPort != null && request.listenPort != server.listenPort
+        val postUpChanged =
+            request.postUp != null &&
+                trimmedNonBlankOrNull(request.postUp) != trimmedNonBlankOrNull(server.postUp)
+        val postDownChanged =
+            request.postDown != null &&
+                trimmedNonBlankOrNull(request.postDown) != trimmedNonBlankOrNull(server.postDown)
+
+        return interfaceNameChanged ||
+            networkAddressChanged ||
+            listenPortChanged ||
+            postUpChanged ||
+            postDownChanged
     }
 
     /**
@@ -409,6 +431,12 @@ class DefaultWireGuardManagementService(
         request.dnsServers?.let { dnsList ->
             server.dnsServers.clear()
             server.dnsServers.addAll(dnsList.map { IPAddress(it) })
+        }
+        if (request.postUp != null) {
+            server.postUp = request.postUp.trim().takeIf { it.isNotEmpty() }
+        }
+        if (request.postDown != null) {
+            server.postDown = request.postDown.trim().takeIf { it.isNotEmpty() }
         }
     }
 
@@ -433,6 +461,8 @@ class DefaultWireGuardManagementService(
             current.endpoint = snapshot.endpoint
             current.dnsServers.clear()
             current.dnsServers.addAll(snapshot.dnsServers)
+            current.postUp = snapshot.postUp
+            current.postDown = snapshot.postDown
             current.enabled = snapshot.enabled
 
             // Save rollback state
