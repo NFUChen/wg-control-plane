@@ -25,6 +25,7 @@ export interface UpdateServerRequest {
 export interface ServerResponse {
   id: string;
   name: string;
+  interfaceName: string;
   publicKey: string;
   networkAddress: IPAddress;
   listenPort: number;
@@ -40,6 +41,7 @@ export interface ServerResponse {
 export interface ServerDetailResponse {
   id: string;
   name: string;
+  interfaceName: string;
   publicKey: string;
   networkAddress: IPAddress;
   listenPort: number;

@@ -108,6 +108,7 @@ data class UpdateClientStatsRequest(
 data class ServerResponse(
     val id: String,
     val name: String,
+    val interfaceName: String,
     val publicKey: String,
     val networkAddress: IPAddress,
     val listenPort: Int,
@@ -125,6 +126,7 @@ data class ServerResponse(
             return ServerResponse(
                 id = server.id.toString(),
                 name = server.name,
+                interfaceName = server.interfaceName,
                 publicKey = server.publicKey,
                 networkAddress = server.primaryAddress,
                 listenPort = server.listenPort,
@@ -146,6 +148,7 @@ data class ServerResponse(
 data class ServerDetailResponse(
     val id: String,
     val name: String,
+    val interfaceName: String,
     val publicKey: String,
     val networkAddress: IPAddress,
     val listenPort: Int,
@@ -161,6 +164,7 @@ data class ServerDetailResponse(
             return ServerDetailResponse(
                 id = server.id.toString(),
                 name = server.name,
+                interfaceName = server.interfaceName,
                 publicKey = server.publicKey,
                 networkAddress = server.primaryAddress,
                 listenPort = server.listenPort,

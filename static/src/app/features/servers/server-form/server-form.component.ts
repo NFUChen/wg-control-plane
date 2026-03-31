@@ -314,7 +314,7 @@ export class ServerFormComponent implements OnInit, OnDestroy {
   populateForm(server: ServerDetailResponse): void {
     this.serverForm.patchValue({
       name: server.name,
-      interfaceName: server.id, // This might need to be mapped differently
+      interfaceName: server.interfaceName,
       networkAddress: this.getNetworkAddress(server),
       endpoint: server.endpoint,
       listenPort: server.listenPort
