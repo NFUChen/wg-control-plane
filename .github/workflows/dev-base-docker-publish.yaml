@@ -6,6 +6,12 @@ on:
       - main
     tags:
       - 'v*'
+    paths:
+      - 'Dockerfile.base'
+      - '.dockerignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/dev-base-docker-publish.yaml'
   workflow_dispatch:
 
 env:
