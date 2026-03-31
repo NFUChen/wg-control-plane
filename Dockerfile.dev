@@ -1,27 +1,20 @@
-# Use our custom base image with Java 17, WireGuard, and system tools
+# Local-friendly image: build on the host (see Makefile local-build), then copy artifacts in.
+# Expects: ./gradlew bootJar and static/dist/static/browser/ from npm run build in static/.
 FROM ghcr.io/nfuchen/wg-control-plane-dev-base:latest
 
-# Set app directory (defined in base image but explicit here for clarity)
 ENV APP_HOME=/app
-
-# Ensure we're in the correct working directory
 WORKDIR $APP_HOME
 
-# Fix JAVA_HOME - the base image has incorrect path (ARM64 architecture)
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
-# Copy the pre-built jar file from local build
 COPY build/libs/wg-control-plane-0.0.1-SNAPSHOT.jar $APP_HOME/app.jar
+COPY static/dist/static/browser/ $APP_HOME/static/
 
-# Expose the default Spring Boot port
 EXPOSE 8080
 
-# Update ownership for the app directory (appuser already exists in base image)
 RUN chown -R appuser:appuser $APP_HOME
 
-# Note: For WireGuard operations, the container will need to run with privileged mode
-# or have specific capabilities (NET_ADMIN, SYS_MODULE) and access to /dev/net/tun
+# WireGuard may need privileged mode or NET_ADMIN / SYS_MODULE and /dev/net/tun.
 
-# Run the application
-CMD ["java", "-jar", "app.jar"]
+CMD ["java", "-jar", "app.jar", "--spring.profiles.active=docker-dev"]

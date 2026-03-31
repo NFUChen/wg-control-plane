@@ -1,38 +1,39 @@
-# Use our custom base image with Java 17, WireGuard, and system tools
+# Stage 1: build Angular app (production) — output is packed into the Spring Boot jar
+FROM node:22-bookworm-slim AS frontend
+WORKDIR /frontend
+COPY static/package.json static/package-lock.json ./
+RUN npm ci
+COPY static/ ./
+RUN npm run build
+
+# Stage 2: JVM app + WireGuard base image
 FROM ghcr.io/nfuchen/wg-control-plane-dev-base:latest
 
-# Set app directory (defined in base image but explicit here for clarity)
 ENV APP_HOME=/app
-
-# Ensure we're in the correct working directory
 WORKDIR $APP_HOME
 
-# Copy Gradle wrapper and build files
 COPY gradlew $APP_HOME/
 COPY gradle/ $APP_HOME/gradle/
 COPY build.gradle.kts $APP_HOME/
 COPY settings.gradle.kts $APP_HOME/
 
-# Copy source code
 COPY src/ $APP_HOME/src/
 
-# Make gradlew executable
+# Spring Boot serves from classpath:/static/ — Angular "application" builder emits browser bundle here
+COPY --from=frontend /frontend/dist/static/browser/ $APP_HOME/src/main/resources/static/
+
 RUN chmod +x gradlew
 
-# Fix JAVA_HOME - the base image has incorrect path (ARM64 architecture)
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
 RUN ./gradlew bootJar
-# Expose the default Spring Boot port
+
 EXPOSE 8080
 
-# Update ownership for the app directory (appuser already exists in base image)
 RUN chown -R appuser:appuser $APP_HOME
 
-# Note: For WireGuard operations, the container will need to run with privileged mode
-# or have specific capabilities (NET_ADMIN, SYS_MODULE) and access to /dev/net/tun
+# For WireGuard operations, the container may need privileged mode or capabilities
+# (NET_ADMIN, SYS_MODULE) and access to /dev/net/tun.
 
-
-# Run the application
 CMD ["java", "-jar", "build/libs/wg-control-plane-0.0.1-SNAPSHOT.jar"]

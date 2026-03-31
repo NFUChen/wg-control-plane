@@ -1,16 +1,24 @@
 spring:
-  # spring datasource configuration ???
   datasource:
-    driver-class-name: 'org.h2.Driver'  # H2 ? JDBC driver class name
+    driver-class-name: 'org.h2.Driver'
     username: 'sa'
     password:
-    url: 'jdbc:h2:mem:my_app'  # H2 ? JDBC URL, mem ???????, my_app ???????
+    url: 'jdbc:h2:mem:my_app'
   h2:
     console:
-      enabled: true  # ????? H2 ? console ?????????? table
-      path: '/h2' # ??? console ? URL ??
+      enabled: true
+      path: '/h2'
   jpa:
     generate-ddl: false
     open-in-view: false
     hibernate:
-      ddl-auto: update  # ? spring boot entity ????, ????? DB scheam
+      ddl-auto: update
+
+  web:
+    resources:
+      static-locations:
+        - file:/app/static/
+        - classpath:/META-INF/resources/
+        - classpath:/resources/
+        - classpath:/static/
+        - classpath:/public/

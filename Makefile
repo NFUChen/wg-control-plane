@@ -16,7 +16,7 @@ BLUE := \033[0;34m
 RED := \033[0;31m
 NC := \033[0m
 
-.PHONY: help base app all clean list run stop logs dev-up dev-down
+.PHONY: help base app all clean list run stop logs dev-up dev-down local-build
 
 # Default target
 all: base app
@@ -102,9 +102,18 @@ dev-build: ## Quick rebuild for development (uses cache)
 	docker build -f Dockerfile -t $(APP_IMAGE_NAME):$(APP_IMAGE_TAG) .
 	@echo -e "$(GREEN)✓ Development build completed$(NC)"
 
-local-build:
+local-build: ## Build Angular dist, bootJar, then wg-control-plane:dev (Dockerfile.dev)
+	@echo -e "$(BLUE)Building frontend (static/dist)...$(NC)"
+	cd static && npm ci && npm run build
+	@echo -e "$(BLUE)Building application JAR...$(NC)"
 	./gradlew bootJar
+	@echo -e "$(BLUE)Building dev Docker image...$(NC)"
 	docker build -f Dockerfile.dev -t wg-control-plane:dev .
+	@echo -e "$(GREEN)✓ local-build done: wg-control-plane:dev$(NC)"
+
+local-run: local-build
+	docker compose up -d
+	@echo -e "$(GREEN)✓ local-run done: wg-control-plane:dev$(NC)"
 
 shell: ## Open shell in the application container
 	docker exec -it wg-control-plane-app sh
