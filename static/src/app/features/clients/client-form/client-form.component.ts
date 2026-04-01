@@ -350,7 +350,7 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   clientId?: string;
   /** Shown in edit mode (public key is immutable in the API). */
   publicKeyDisplay = '';
-  /** For edit flow: wait for GET /api/clients/:id before showing the form. */
+  /** For edit flow: wait for GET /api/private/wireguard/clients/:id before showing the form. */
   editDataReady = true;
   loadingState: LoadingState = { isLoading: false };
   /** Shown when add/update client fails (e.g. duplicate IP from API). */

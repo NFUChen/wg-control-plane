@@ -22,8 +22,10 @@ import {
   providedIn: 'root'
 })
 export class WireguardService {
-  private readonly baseUrl = '/api/wireguard'; // Change this if your backend uses different path
-  private readonly clientBaseUrl = '/api/clients';
+  private readonly baseUrl = '/api/private/wireguard';
+  private readonly clientBaseUrl = '/api/private/wireguard/clients';
+  /** Agent / automation stats upload — requires X-API-Key (see application.yaml app.security.internal-api-key). */
+  private readonly internalBaseUrl = '/api/internal/wireguard';
 
   // Loading states for UI feedback
   private serversLoadingSubject = new BehaviorSubject<LoadingState>({ isLoading: false });
@@ -154,13 +156,13 @@ export class WireguardService {
    * Launch server
    */
   launchServer(serverId: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/server-up/${serverId}`, {}).pipe(
+    return this.http.post<void>(`${this.baseUrl}/servers/${serverId}/start`, {}).pipe(
       catchError(error => this.handleError(error))
     );
   }
 
   stopServer(serverId: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/server-down/${serverId}`, {}).pipe(
+    return this.http.post<void>(`${this.baseUrl}/servers/${serverId}/stop`, {}).pipe(
       catchError(error => this.handleError(error))
     );
   }
@@ -256,9 +258,10 @@ export class WireguardService {
    * Update client statistics
    */
   updateClientStats(clientId: string, request: UpdateClientStatsRequest): Observable<ClientResponse> {
-    return this.http.put<ClientResponse>(`${this.baseUrl}/clients/${clientId}/stats`, request).pipe(
-      catchError(error => this.handleError(error))
-    );
+    return this.http.put<ClientResponse>(
+      `${this.internalBaseUrl}/clients/${clientId}/stats`,
+      request
+    ).pipe(catchError(error => this.handleError(error)));
   }
 
   /**

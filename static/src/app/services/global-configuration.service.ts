@@ -9,7 +9,7 @@ import { GlobalConfig, GlobalConfiguration } from '../models/global-config.inter
   providedIn: 'root'
 })
 export class GlobalConfigurationService {
-  private readonly baseUrl = '/api/global-config';
+  private readonly baseUrl = '/api/private/global-config';
 
   constructor(private http: HttpClient) {}
 

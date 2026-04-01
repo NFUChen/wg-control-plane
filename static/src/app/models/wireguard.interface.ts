@@ -68,7 +68,7 @@ export interface AddClientRequest {
   addresses: IPAddress[];
 }
 
-/** PUT /api/wireguard/servers/{serverId}/clients/{clientId} — omitted fields unchanged; presharedKey: '' clears PSK */
+/** PUT /api/private/wireguard/servers/{serverId}/clients/{clientId} — omitted fields unchanged; presharedKey: '' clears PSK */
 export interface UpdateClientRequest {
   clientName?: string;
   addresses?: IPAddress[];
@@ -77,7 +77,7 @@ export interface UpdateClientRequest {
   enabled?: boolean;
 }
 
-/** GET /api/clients/{id} */
+/** GET /api/private/wireguard/clients/{id} */
 export interface ClientDetailResponse {
   id: string;
   name: string;
@@ -150,7 +150,7 @@ export interface ClientInfo {
   };
 }
 
-/** GET /api/clients/{id}/preview — WireGuard config text (includes PrivateKey; same generation as download) */
+/** GET /api/private/wireguard/clients/{id}/preview — WireGuard config text (includes PrivateKey; same generation as download) */
 export interface ConfigurationMetadata {
   clientId: string;
   serverName: string;

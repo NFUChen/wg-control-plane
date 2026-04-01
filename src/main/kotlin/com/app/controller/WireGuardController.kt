@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*
 import java.util.*
 
 @RestController
-@RequestMapping("/api/wireguard")
+@RequestMapping("/api/private/wireguard")
 class WireGuardController(
     private val wireGuardService: WireGuardManagementService,
     private val globalConfigurationService: GlobalConfigurationService
@@ -29,13 +29,13 @@ class WireGuardController(
     }
 
 
-    @PostMapping("/server-up/{serverId}")
+    @PostMapping("/servers/{serverId}/start")
     fun launchServer(@PathVariable serverId: UUID): ResponseEntity<Void> {
         wireGuardService.launchServer(serverId)
         return ResponseEntity.ok().build()
     }
 
-    @PostMapping("/server-down/{serverId}")
+    @PostMapping("/servers/{serverId}/stop")
     fun stopServer(@PathVariable serverId: UUID): ResponseEntity<Void> {
         wireGuardService.stopServer(serverId)
         return ResponseEntity.ok().build()
@@ -160,22 +160,5 @@ class WireGuardController(
     ): ResponseEntity<Void> {
         wireGuardService.removeClientFromServer(serverId, clientId)
         return ResponseEntity.noContent().build()
-    }
-
-    /**
-     * Update client statistics
-     */
-    @PutMapping("/clients/{clientId}/stats")
-    fun updateClientStats(
-        @PathVariable clientId: UUID,
-        @Valid @RequestBody request: UpdateClientStatsRequest
-    ): ResponseEntity<ClientResponse> {
-        val client = wireGuardService.updateClientStats(
-            clientId,
-            request.lastHandshake,
-            request.dataReceived,
-            request.dataSent
-        )
-        return ResponseEntity.ok(ClientResponse.from(client))
     }
 }

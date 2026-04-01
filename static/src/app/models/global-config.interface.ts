@@ -1,4 +1,4 @@
-/** Mirrors backend GlobalConfig — used for GET /api/global-config/current/data and PUT body */
+/** Mirrors backend GlobalConfig — used for GET /api/private/global-config/current/data and PUT body */
 export interface GlobalConfig {
   serverEndpoint: string;
   defaultDnsServers: string[];
@@ -8,7 +8,7 @@ export interface GlobalConfig {
   autoGenerateKeys: boolean;
 }
 
-/** Full row from GET /api/global-config/current */
+/** Full row from GET /api/private/global-config/current */
 export interface GlobalConfiguration {
   id: string;
   version: number;

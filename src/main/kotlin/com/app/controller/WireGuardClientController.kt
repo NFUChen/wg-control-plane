@@ -13,7 +13,7 @@ import java.time.LocalDateTime
 import java.util.*
 
 @RestController
-@RequestMapping("/api/clients")
+@RequestMapping("/api/private/wireguard/clients")
 class WireGuardClientController(
     private val managementService: WireGuardManagementService,
     private val templateService: WireGuardTemplateService,

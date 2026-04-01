@@ -6,15 +6,13 @@ import com.app.service.GlobalConfigurationService
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.web.PageableDefault
-import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ResponseStatusException
-import java.time.LocalDateTime
 
 @RestController
-@RequestMapping("/api/global-config")
+@RequestMapping("/api/private/global-config")
 class GlobalConfigurationController(
     private val configurationService: GlobalConfigurationService
 ) {
