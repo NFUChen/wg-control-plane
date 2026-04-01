@@ -12,3 +12,5 @@ data:
   MAIL_USERNAME: {{ .Values.env.mailUsername | quote }}
   EMAIL_FROM: {{ .Values.env.emailFrom | quote }}
   EMAIL_FROM_NAME: {{ .Values.env.emailFromName | quote }}
+  APP_ADMIN_USERNAME: {{ .Values.env.adminUsername | quote }}
+  APP_ADMIN_EMAIL: {{ .Values.env.adminEmail | quote }}

@@ -6,8 +6,18 @@ replicaCount: 1
 nameOverride: ""
 fullnameOverride: ""
 
+# WireGuard needs NET_ADMIN (and often privileged + /dev/net/tun). Namespaces with
+# Pod Security "baseline" or "restricted" will reject that.
+# - Dedicated NS: helm install ... -n wg-cp --create-namespace with namespace.create: true
+#   (not valid for default/kube-system — use kubectl label instead).
+# - Any NS: kubectl label ns <namespace> pod-security.kubernetes.io/enforce=privileged --overwrite
+namespace:
+  create: false
+  labels: {}
+
+
 image:
-  repository: wg-control-plane
+  repository: ghcr.io/nfuchen/wg-control-plane
   tag: "latest"
   pullPolicy: IfNotPresent
 
@@ -44,11 +54,11 @@ service:
   annotations: {}
 
 ingress:
-  enabled: false
-  className: ""
+  enabled: true
+  className: "traefik"
   annotations: {}
   hosts:
-    - host: wg-cp.example.com
+    - host: wg-cp.prod.ainfolink.net
       paths:
         - path: /
           pathType: Prefix
@@ -65,7 +75,7 @@ resources:
 probes:
   http:
     enabled: true
-    path: /actuator/health
+    path: /swagger-ui/index.html
     liveness:
       initialDelaySeconds: 90
       periodSeconds: 30
@@ -87,7 +97,7 @@ persistence:
 
 env:
   wireguardConfigDir: /etc/wireguard
-  appBaseUrl: "http://localhost:8080"
+  appBaseUrl: "https://wg-cp.prod.ainfolink.net"
   mailHost: smtp.gmail.com
   mailPort: "587"
   mailUsername: ""
@@ -95,6 +105,9 @@ env:
   emailFrom: noreply@example.com
   emailFromName: "WireGuard Control Plane"
   appInternalApiKey: ""
+  adminUsername: admin
+  adminPassword: changeme
+  adminEmail: admin@example.com
 
 # Embedded PostgreSQL (Bitnami). Set postgresql.enabled: false to use an external database.
 postgresql:
@@ -110,8 +123,15 @@ postgresql:
 
 # Used when postgresql.enabled is false
 externalDatabase:
-  host: ""
+  host: <host>
   port: 5432
   database: wg_control_plane
-  username: wguser
-  password: ""
+  username: <username>
+  password: <password>
+
+# create the namespace and label it as privileged
+# kubectl create namespace wg-cp
+# kubectl label ns wg-cp pod-security.kubernetes.io/enforce=privileged --overwrite
+
+# install the chart
+# helm upgrade --install wg-cp . -n wg-cp

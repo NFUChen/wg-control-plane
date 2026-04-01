@@ -65,9 +65,9 @@ logging:
 
 app:
   admin:
-    username: 'admin'
-    password: 'admin'
-    email: 'admin@example.com'
+    username: '${APP_ADMIN_USERNAME:admin}'
+    password: '${APP_ADMIN_PASSWORD:admin}'
+    email: '${APP_ADMIN_EMAIL:admin@example.com}'
   base-url: '${APP_BASE_URL:http://localhost:8080}'
   security:
     internal-api-key: '${APP_INTERNAL_API_KEY:}'

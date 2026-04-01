@@ -37,6 +37,9 @@ services:
       DB_USERNAME: ${POSTGRES_USER:-wguser}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      APP_ADMIN_USERNAME: ${APP_ADMIN_USERNAME:-admin}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-admin}
+      APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL:-admin@example.com}
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
