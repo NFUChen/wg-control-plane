@@ -1,6 +1,6 @@
 package com.module.wgcontrolplane.service
 
-import com.module.wgcontrolplane.dto.*
+import com.module.wgcontrolplane.view.*
 import com.module.wgcontrolplane.model.*
 import java.time.LocalDateTime
 import java.util.*

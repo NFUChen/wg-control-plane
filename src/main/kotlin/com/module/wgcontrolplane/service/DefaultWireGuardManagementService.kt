@@ -1,10 +1,10 @@
 package com.module.wgcontrolplane.service
 
-import com.module.wgcontrolplane.dto.AddClientRequest
-import com.module.wgcontrolplane.dto.CreateServerRequest
-import com.module.wgcontrolplane.dto.UpdateClientRequest
-import com.module.wgcontrolplane.dto.UpdateServerRequest
-import com.module.wgcontrolplane.dto.ServerStatisticsResponse
+import com.module.wgcontrolplane.view.AddClientRequest
+import com.module.wgcontrolplane.view.CreateServerRequest
+import com.module.wgcontrolplane.view.UpdateClientRequest
+import com.module.wgcontrolplane.view.UpdateServerRequest
+import com.module.wgcontrolplane.view.ServerStatisticsResponse
 import com.module.wgcontrolplane.model.IPAddress
 import com.module.wgcontrolplane.model.WireGuardClient
 import com.module.wgcontrolplane.model.WireGuardServer

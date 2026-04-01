@@ -1,4 +1,4 @@
-package com.module.wgcontrolplane.dto
+package com.module.wgcontrolplane.view
 
 import com.module.wgcontrolplane.model.GOOGLE_DNS
 import com.module.wgcontrolplane.model.GlobalConfig

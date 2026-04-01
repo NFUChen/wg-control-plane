@@ -1,6 +1,6 @@
 package com.module.wgcontrolplane.controller
 
-import com.module.wgcontrolplane.dto.*
+import com.module.wgcontrolplane.view.*
 import com.module.wgcontrolplane.service.GlobalConfigurationService
 import com.module.wgcontrolplane.service.WireGuardManagementService
 import jakarta.validation.Valid

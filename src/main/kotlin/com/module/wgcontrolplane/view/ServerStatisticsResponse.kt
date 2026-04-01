@@ -1,4 +1,4 @@
-package com.module.wgcontrolplane.dto
+package com.module.wgcontrolplane.view
 
 import java.util.*
 
