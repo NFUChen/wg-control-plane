@@ -30,7 +30,7 @@ class DefaultWireGuardManagementService(
     private val serverRepository: WireGuardServerRepository,
     private val clientRepository: WireGuardClientRepository,
     private val keyGenerator: WireGuardKeyGenerator,
-    private val wireGuardCommandService: com.app.service.WireGuardCommandService,
+    private val wireGuardCommandService: WireGuardCommandService,
     private val wireGuardTemplateService: WireGuardTemplateService,
     private val ipConflictDetectionService: IPConflictDetectionService,
     private val globalConfigurationService: GlobalConfigurationService,

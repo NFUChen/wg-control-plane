@@ -13,19 +13,19 @@ import java.util.concurrent.TimeUnit
 class WireGuardCommandService {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(com.app.service.WireGuardCommandService::class.java)
+        private val logger = LoggerFactory.getLogger(WireGuardCommandService::class.java)
     }
 
     fun launchWireGuardInterface(interfaceName: String) {
         val command = listOf("wg-quick", "up", interfaceName)
 
-        com.app.service.WireGuardCommandService.Companion.logger.info("Launching WireGuard interface $interfaceName")
+        logger.info("Launching WireGuard interface $interfaceName")
         val result = executeWgCommand(command)
         if (result.exitCode != 0) {
             throw RuntimeException("Failed to launch WireGuard interface $interfaceName: ${result.output}")
         }
 
-        com.app.service.WireGuardCommandService.Companion.logger.info("Successfully launched WireGuard interface $interfaceName")
+        logger.info("Successfully launched WireGuard interface $interfaceName")
     }
 
     /**
@@ -50,13 +50,13 @@ class WireGuardCommandService {
             command.addAll(listOf("persistent-keepalive", client.persistentKeepalive.toString()))
         }
 
-        com.app.service.WireGuardCommandService.Companion.logger.info("Adding peer ${client.name} (${client.publicKey.take(8)}...) to interface $interfaceName with allowed IPs: ${client.plainTextAllowedIPs}")
+        logger.info("Adding peer ${client.name} (${client.publicKey.take(8)}...) to interface $interfaceName with allowed IPs: ${client.plainTextAllowedIPs}")
         val result = executeWgCommand(command)
         if (result.exitCode != 0) {
             throw RuntimeException("Failed to add peer to interface $interfaceName: ${result.output}")
         }
 
-        com.app.service.WireGuardCommandService.Companion.logger.info("Successfully added peer ${client.name} (${client.publicKey.take(8)}...) to interface $interfaceName")
+        logger.info("Successfully added peer ${client.name} (${client.publicKey.take(8)}...) to interface $interfaceName")
     }
 
     /**
@@ -67,9 +67,9 @@ class WireGuardCommandService {
 
         val result = executeWgCommand(command)
         if (result.exitCode != 0) {
-            com.app.service.WireGuardCommandService.Companion.logger.warn("Failed to remove peer from interface $interfaceName: ${result.output}")
+            logger.warn("Failed to remove peer from interface $interfaceName: ${result.output}")
         } else {
-            com.app.service.WireGuardCommandService.Companion.logger.info("Successfully removed peer (${publicKey.take(8)}...) from interface $interfaceName")
+            logger.info("Successfully removed peer (${publicKey.take(8)}...) from interface $interfaceName")
         }
     }
 
@@ -80,12 +80,12 @@ class WireGuardCommandService {
     fun stopWireGuardInterface(interfaceName: String) {
         val command = listOf("wg-quick", "down", interfaceName)
 
-        com.app.service.WireGuardCommandService.Companion.logger.info("Stopping WireGuard interface $interfaceName")
+        logger.info("Stopping WireGuard interface $interfaceName")
         val result = executeWgCommand(command)
         if (result.exitCode != 0) {
-            com.app.service.WireGuardCommandService.Companion.logger.warn("Failed to stop WireGuard interface $interfaceName: ${result.output}")
+            logger.warn("Failed to stop WireGuard interface $interfaceName: ${result.output}")
         } else {
-            com.app.service.WireGuardCommandService.Companion.logger.info("Successfully stopped WireGuard interface $interfaceName")
+            logger.info("Successfully stopped WireGuard interface $interfaceName")
         }
     }
 
@@ -105,9 +105,9 @@ class WireGuardCommandService {
     /**
      * Execute WireGuard command with timeout
      */
-    private fun executeWgCommand(command: List<String>): com.app.service.WireGuardCommandService.ProcessResult {
+    private fun executeWgCommand(command: List<String>): ProcessResult {
         return try {
-            com.app.service.WireGuardCommandService.Companion.logger.info("Executing WireGuard command: ${command.joinToString(" ")}")
+            logger.info("Executing WireGuard command: ${command.joinToString(" ")}")
 
             val process = ProcessBuilder(command)
                 .redirectErrorStream(true)
@@ -121,9 +121,9 @@ class WireGuardCommandService {
                 throw IOException("WireGuard command timed out")
             }
 
-            com.app.service.WireGuardCommandService.ProcessResult(exitCode, output.trim())
+            ProcessResult(exitCode, output.trim())
         } catch (e: Exception) {
-            com.app.service.WireGuardCommandService.Companion.logger.error("Failed to execute WireGuard command: ${command.joinToString(" ")}", e)
+            logger.error("Failed to execute WireGuard command: ${command.joinToString(" ")}", e)
             throw RuntimeException("WireGuard command execution failed: ${e.message}", e)
         }
     }

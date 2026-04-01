@@ -13,7 +13,6 @@ import java.util.*
 enum class Role(val value: String) {
     SuperAdmin("ROLE_SUPER_ADMIN"),
     Admin("ROLE_ADMIN"),
-    Employee("ROLE_EMPLOYEE"),
     User("ROLE_USER"),
 }
 data class UserView(
