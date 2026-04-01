@@ -38,9 +38,29 @@ spring:
         - 'classpath:/resources/'
         - 'classpath:/static/'
         - 'classpath:/public/'
+  application:
+    name: wg-control-plane
 
 logging:
   level:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
   root: INFO
+
+app:
+  admin:
+    username: 'admin'
+    password: 'admin'
+    email: 'admin@example.com'
+  base-url: '${APP_BASE_URL:http://localhost:8080}'
+  security:
+    internal-api-key: '${APP_INTERNAL_API_KEY:}'
+web:
+  jwt-secret: ItIsASecretValueForJWT
+  jwt-valid-seconds: 3600
+  domain: stg.ainfolink.net
+  unprotected-routes: /swagger-ui.html, /swagger-ui/**, /v3/api-docs/**, /v2/api-docs/**, /swagger-resources/**, /webjars/**, /api/public/**, /actuator/health, /actuator/health/**, /actuator/info, /actuator/metrics
+
+wireguard:
+  config:
+    directory: '${WIREGUARD_CONFIG_DIR:/etc/wireguard}'

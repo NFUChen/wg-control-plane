@@ -7,9 +7,9 @@ import com.app.security.repository.UserRepository
 import com.app.security.repository.model.User
 import com.app.security.service.email.*
 import com.app.security.service.redis.RedisRepository
+import com.app.security.config.AppProperties
 import com.app.security.service.template.TemplateService
 import jakarta.transaction.Transactional
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -35,8 +35,6 @@ interface VerificationTokenService {
     fun isTokenValid(token: String): Boolean
 }
 
-// frontend-endpoint: https://auth.stg.ainfolink.net
-// backend-endpoint: https://auth-backend.stg.ainfolink.net
 @Service
 class RedisVerificationTokenService(
     private val redisRepository: RedisRepository,
@@ -67,12 +65,7 @@ class RedisVerificationTokenService(
 
 @Service
 class DefaultUserVerificationService(
-
-    @Value("\${app.frontend-endpoint}")
-    private val frontendEndpoint: String,
-    @Value("\${app.backend-endpoint}")
-    private val backendEndpoint: String,
-
+    private val appProperties: AppProperties,
     private val emailService: EmailService,
     private val verificationTokenService: VerificationTokenService,
     private val userRepository: UserRepository,
@@ -109,7 +102,7 @@ class DefaultUserVerificationService(
 
 
     override fun createVerificationEmail(user: User, verificationToken: String): Email {
-        val verificationUrl = "${backendEndpoint}/api/public/user/verification/verify?token=$verificationToken"
+        val verificationUrl = "${appProperties.baseUrl}/api/public/user/verification/verify?token=$verificationToken"
 
         val variables = mapOf(
             "username" to user.username,
@@ -133,6 +126,6 @@ class DefaultUserVerificationService(
     }
 
     override fun getVerificationFrontendEndpoint(): String {
-        return frontendEndpoint
+        return appProperties.baseUrl
     }
 }

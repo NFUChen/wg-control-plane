@@ -10,9 +10,9 @@ import com.app.model.WireGuardClient
 import com.app.model.WireGuardServer
 import com.app.repository.WireGuardClientRepository
 import com.app.repository.WireGuardServerRepository
+import com.app.security.config.WireGuardProperties
 import com.app.utils.WireGuardKeyGenerator
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.io.File
@@ -34,7 +34,7 @@ class DefaultWireGuardManagementService(
     private val wireGuardTemplateService: WireGuardTemplateService,
     private val ipConflictDetectionService: IPConflictDetectionService,
     private val globalConfigurationService: GlobalConfigurationService,
-    @Value("\${wireguard.config.directory:/etc/wireguard}") private val configDirectory: String
+    private val wireGuardProperties: WireGuardProperties
 ) : WireGuardManagementService {
 
     companion object {
@@ -423,14 +423,14 @@ class DefaultWireGuardManagementService(
         val configContent = wireGuardTemplateService.generateServerConfig(server)
 
         // Ensure config directory exists
-        val configDir = File(configDirectory)
+        val configDir = File(wireGuardProperties.config.directory)
         if (!configDir.exists()) {
             configDir.mkdirs()
-            logger.info("Created WireGuard configuration directory: $configDirectory")
+            logger.info("Created WireGuard configuration directory: ${wireGuardProperties.config.directory}")
         }
 
         // Write configuration file
-        val configFile = Paths.get(configDirectory, "${server.interfaceName}.conf")
+        val configFile = Paths.get(wireGuardProperties.config.directory, "${server.interfaceName}.conf")
         Files.write(
             configFile,
             configContent.toByteArray(),

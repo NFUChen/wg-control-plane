@@ -7,9 +7,9 @@ import com.app.security.repository.UserRepository
 import com.app.security.repository.model.User
 import com.app.security.service.email.*
 import com.app.security.service.redis.RedisRepository
+import com.app.security.config.AppProperties
 import com.app.security.service.template.TemplateService
 import jakarta.transaction.Transactional
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.util.*
@@ -100,9 +100,7 @@ class RedisPasswordResetTokenService(
  */
 @Service
 class DefaultPasswordResetService(
-    @Value("\${app.frontend-endpoint}")
-    private val frontendEndpoint: String,
-
+    private val appProperties: AppProperties,
     private val emailService: EmailService,
     private val passwordResetTokenService: PasswordResetTokenService,
     private val userRepository: UserRepository,
@@ -169,6 +167,6 @@ class DefaultPasswordResetService(
     }
 
     override fun getPasswordResetFrontendEndpoint(): String {
-        return frontendEndpoint
+        return appProperties.baseUrl
     }
 }

@@ -1,6 +1,6 @@
 package com.app.security.web.filter
 
-import org.springframework.beans.factory.annotation.Value
+import com.app.security.config.SecurityProperties
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
@@ -10,7 +10,7 @@ import org.springframework.web.servlet.HandlerInterceptor
 
 @Component
 class ApiKeyAuthenticationInterceptor(
-    @Value("\${app.internal-api-key:}") private val validApiKey: String
+    private val securityProperties: SecurityProperties
 ) : HandlerInterceptor {
 
     private val logger = LoggerFactory.getLogger(ApiKeyAuthenticationInterceptor::class.java)
@@ -31,8 +31,11 @@ class ApiKeyAuthenticationInterceptor(
             return true
         }
 
+        // Get configured API key
+        val configuredApiKey = securityProperties.internalApiKey
+
         // Check if API key is configured
-        if (validApiKey.isBlank()) {
+        if (configuredApiKey.isNullOrBlank()) {
             logger.error("Internal API key not configured")
             response.status = HttpStatus.INTERNAL_SERVER_ERROR.value()
             response.setHeader("Content-Type", "application/json")
@@ -49,7 +52,7 @@ class ApiKeyAuthenticationInterceptor(
             return false
         }
 
-        if (providedApiKey != validApiKey) {
+        if (providedApiKey != configuredApiKey) {
             logger.warn("Invalid API key provided for request to ${request.requestURI}")
             response.status = HttpStatus.UNAUTHORIZED.value()
             response.setHeader("Content-Type", "application/json")
