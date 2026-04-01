@@ -68,6 +68,8 @@ spec:
                 secretKeyRef:
                   name: {{ include "wg-control-plane.fullname" . }}-app
                   key: admin-password
+            - name: APP_DOMAIN
+              value: {{ .Values.env.appDomain | quote }}
           envFrom:
             - configMapRef:
                 name: {{ include "wg-control-plane.fullname" . }}-config
