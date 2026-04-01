@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 
 import { ThemeService } from '../services/theme.service';
+import { AuthService } from '../services/auth.service';
 import { WireguardService } from '../services/wireguard.service';
 import { GlobalSettingsPanelComponent } from './global-settings-panel/global-settings-panel.component';
 
@@ -35,6 +36,18 @@ import { GlobalSettingsPanelComponent } from './global-settings-panel/global-set
             </div>
 
             <div class="flex items-center gap-1">
+            @if (auth.user(); as u) {
+              <span class="hidden sm:inline max-w-[14rem] truncate text-sm text-gray-600 dark:text-gray-400 mr-1" [title]="u.email || u.username || ''">
+                {{ u.email || u.username }}
+              </span>
+              <button
+                type="button"
+                (click)="signOut()"
+                class="inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Sign out
+              </button>
+            }
             <button
               type="button"
               (click)="globalSettingsOpen = true"
@@ -150,6 +163,7 @@ import { GlobalSettingsPanelComponent } from './global-settings-panel/global-set
 })
 export class LayoutComponent {
   readonly theme = inject(ThemeService);
+  readonly auth = inject(AuthService);
   private readonly wireguard = inject(WireguardService);
   globalSettingsOpen = false;
 
@@ -157,6 +171,12 @@ export class LayoutComponent {
 
   onGlobalSettingsSaved(): void {
     this.wireguard.refreshServers().subscribe({ error: () => {} });
+  }
+
+  signOut(): void {
+    this.auth.logout().subscribe({
+      next: () => this.router.navigate(['/login'])
+    });
   }
 
   getCurrentPageTitle(): string {
