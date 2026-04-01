@@ -66,7 +66,7 @@ import {
         <div class="flex items-center justify-between">
           <div>
             <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ server.name }}</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ server.endpoint }}:{{ server.listenPort }}</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ server.endpoint }}</p>
           </div>
           <div class="flex items-center gap-3">
             <app-status-badge

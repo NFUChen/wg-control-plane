@@ -6,11 +6,12 @@ import { ThemeService } from '../services/theme.service';
 import { AuthService } from '../services/auth.service';
 import { WireguardService } from '../services/wireguard.service';
 import { GlobalSettingsPanelComponent } from './global-settings-panel/global-settings-panel.component';
+import { UserAccountMenuComponent } from './user-account-menu/user-account-menu.component';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, GlobalSettingsPanelComponent],
+  imports: [CommonModule, RouterModule, GlobalSettingsPanelComponent, UserAccountMenuComponent],
   template: `
     <div class="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <!-- Navigation Header -->
@@ -31,22 +32,20 @@ import { GlobalSettingsPanelComponent } from './global-settings-panel/global-set
                   >
                     Servers
                   </a>
+                  <a
+                    routerLink="/profile"
+                    routerLinkActive="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                    class="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                  >
+                    Profile
+                  </a>
                 </div>
               </div>
             </div>
 
             <div class="flex items-center gap-1">
-            @if (auth.user(); as u) {
-              <span class="hidden sm:inline max-w-[14rem] truncate text-sm text-gray-600 dark:text-gray-400 mr-1" [title]="u.email || u.username || ''">
-                {{ u.email || u.username }}
-              </span>
-              <button
-                type="button"
-                (click)="signOut()"
-                class="inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                Sign out
-              </button>
+            @if (auth.user()) {
+              <app-user-account-menu />
             }
             <button
               type="button"
@@ -117,6 +116,13 @@ import { GlobalSettingsPanelComponent } from './global-settings-panel/global-set
             >
               Servers
             </a>
+            <a
+              routerLink="/profile"
+              routerLinkActive="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+              class="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+            >
+              Profile
+            </a>
           </div>
         </div>
       </nav>
@@ -173,14 +179,9 @@ export class LayoutComponent {
     this.wireguard.refreshServers().subscribe({ error: () => {} });
   }
 
-  signOut(): void {
-    this.auth.logout().subscribe({
-      next: () => this.router.navigate(['/login'])
-    });
-  }
-
   getCurrentPageTitle(): string {
     const url = this.router.url;
+    if (url.includes('/profile')) return 'Profile';
     if (url.includes('/servers/new')) return 'Create Server';
     if (url.includes('/edit')) return 'Edit Server';
     if (url.includes('/clients/new')) return 'Add Client';

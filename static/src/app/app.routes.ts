@@ -61,6 +61,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/clients/client-form/client-form.component').then(c => c.ClientFormComponent),
         title: 'Edit Client'
+      },
+      {
+        path: 'profile',
+        loadComponent: () =>
+          import('./features/profile/user-profile.component').then(c => c.UserProfileComponent),
+        title: 'Profile'
       }
     ]
   },
