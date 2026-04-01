@@ -61,9 +61,4 @@ interface GlobalConfigurationService {
         targetVersion: Long,
         rolledBackBy: String? = null
     ): GlobalConfiguration
-
-    /**
-     * Validate and merge configuration updates
-     */
-    fun validateAndMergeConfig(updates: Map<String, Any>): GlobalConfig
 }

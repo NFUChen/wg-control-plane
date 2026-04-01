@@ -111,28 +111,6 @@ class DefaultGlobalConfigurationService(
         )
     }
 
-    override fun validateAndMergeConfig(updates: Map<String, Any>): GlobalConfig {
-        val current = getCurrentConfig()
-
-        // Create a new config with updates applied
-        val updated = current.copy(
-            serverEndpoint = updates["serverEndpoint"] as? String ?: current.serverEndpoint,
-            defaultDnsServers = updates["defaultDnsServers"] as? List<String> ?: current.defaultDnsServers,
-            defaultMtu = updates["defaultMtu"] as? Int ?: current.defaultMtu,
-            defaultPersistentKeepalive = updates["defaultPersistentKeepalive"] as? Int ?: current.defaultPersistentKeepalive,
-            enablePresharedKeys = updates["enablePresharedKeys"] as? Boolean ?: current.enablePresharedKeys,
-            autoGenerateKeys = updates["autoGenerateKeys"] as? Boolean ?: current.autoGenerateKeys,
-        )
-
-        // Validate the updated config
-        val validationErrors = updated.validate()
-        if (validationErrors.isNotEmpty()) {
-            throw IllegalArgumentException("Configuration validation failed: ${validationErrors.joinToString(", ")}")
-        }
-
-        return updated
-    }
-
     /**
      * Get next version number
      */
