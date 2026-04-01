@@ -6,6 +6,7 @@ services:
     container_name: wg-control-plane-app
     ports:
       - "8080:8080"
+      - "51820:51820/udp"
     environment:
       - SPRING_PROFILES_ACTIVE=prod
     # WireGuard requires privileged access to manage network interfaces

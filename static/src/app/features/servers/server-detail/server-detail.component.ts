@@ -326,14 +326,13 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
   }
 
   downloadClientConfig(clientId: string): void {
-    this.wireguardService.downloadClientConfig(clientId).subscribe({
-      next: (configContent) => {
-        // Create download link
-        const blob = new Blob([configContent], { type: 'text/plain' });
+    this.wireguardService.downloadClientConfig(clientId, false).subscribe({
+      next: ({ content, fileName }) => {
+        const blob = new Blob([content], { type: 'text/plain' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `client-${clientId}.conf`;
+        link.download = fileName;
         link.click();
         window.URL.revokeObjectURL(url);
 

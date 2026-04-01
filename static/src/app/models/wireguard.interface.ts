@@ -121,6 +121,22 @@ export interface ClientInfo {
   };
 }
 
+/** GET /api/clients/{id}/preview — WireGuard config text without private key */
+export interface ConfigurationMetadata {
+  clientId: string;
+  serverName: string;
+  createdAt: string;
+  allowAllTraffic: boolean;
+  configHash: string;
+  validationErrors: string[];
+}
+
+export interface ConfigurationPreview {
+  fileName: string;
+  content: string;
+  metadata: ConfigurationMetadata;
+}
+
 // API 回應包裝器
 export interface ApiResponse<T> {
   success: boolean;

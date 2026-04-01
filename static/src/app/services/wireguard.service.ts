@@ -12,7 +12,8 @@ import {
   UpdateClientStatsRequest,
   ServerStatisticsResponse,
   ClientInfo,
-  LoadingState
+  LoadingState,
+  ConfigurationPreview
 } from '../models/wireguard.interface';
 
 @Injectable({
@@ -233,15 +234,62 @@ export class WireguardService {
   }
 
   /**
-   * Download client configuration
+   * Preview client configuration (no private key) for safe UI display
    */
-  downloadClientConfig(clientId: string, allowAllTraffic: boolean = false): Observable<string> {
-    const params = allowAllTraffic ? '?allowAllTraffic=true' : '';
-    return this.http.get(`${this.clientBaseUrl}/${clientId}/config${params}`, {
-      responseType: 'text'
-    }).pipe(
-      catchError(error => this.handleError(error))
-    );
+  getClientConfigurationPreview(
+    clientId: string,
+    allowAllTraffic: boolean = false
+  ): Observable<ConfigurationPreview> {
+    const q = allowAllTraffic ? '?allowAllTraffic=true' : '';
+    return this.http
+      .get<ConfigurationPreview>(`${this.clientBaseUrl}/${clientId}/preview${q}`)
+      .pipe(catchError(error => this.handleError(error)));
+  }
+
+  /**
+   * Download full client configuration (includes private key)
+   */
+  downloadClientConfig(
+    clientId: string,
+    allowAllTraffic: boolean = false
+  ): Observable<{ content: string; fileName: string }> {
+    const q = allowAllTraffic ? '?allowAllTraffic=true' : '';
+    return this.http
+      .get(`${this.clientBaseUrl}/${clientId}/download${q}`, {
+        responseType: 'text',
+        observe: 'response'
+      })
+      .pipe(
+        map(response => {
+          const body = response.body ?? '';
+          const fileName = this.parseContentDispositionFileName(
+            response.headers.get('Content-Disposition'),
+            `client-${clientId}.conf`
+          );
+          return { content: body, fileName };
+        }),
+        catchError(error => this.handleError(error))
+      );
+  }
+
+  private parseContentDispositionFileName(
+    header: string | null,
+    fallback: string
+  ): string {
+    if (!header) return fallback;
+    const star = /filename\*\s*=\s*UTF-8''([^;\s]+)/i.exec(header);
+    if (star?.[1]) {
+      try {
+        return decodeURIComponent(star[1].replace(/"/g, ''));
+      } catch {
+        return star[1];
+      }
+    }
+    const quoted = /filename\s*=\s*"([^"]+)"/i.exec(header);
+    if (quoted?.[1]) return quoted[1];
+    const unquoted = /filename\s*=\s*([^;\s]+)/i.exec(header);
+    if (unquoted?.[1]) return unquoted[1].replace(/"/g, '');
+    return fallback;
   }
 
   // ==================== Utility Methods ====================
