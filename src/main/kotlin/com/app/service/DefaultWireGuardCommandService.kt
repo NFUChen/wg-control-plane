@@ -1,14 +1,17 @@
-package com.app.service.wireguard
+package com.app.service
 
 import com.app.model.WireGuardClient
 import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-class LocalWireGuardCommandService: WireGuardCommandService {
+
+@Service
+class DefaultWireGuardCommandService: WireGuardCommandService {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(LocalWireGuardCommandService::class.java)
+        private val logger = LoggerFactory.getLogger(DefaultWireGuardCommandService::class.java)
     }
 
     override fun launchWireGuardInterface(interfaceName: String) {

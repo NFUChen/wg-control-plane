@@ -11,7 +11,6 @@ import com.app.model.WireGuardServer
 import com.app.repository.WireGuardClientRepository
 import com.app.repository.WireGuardServerRepository
 import com.app.security.config.WireGuardProperties
-import com.app.service.wireguard.WireGuardCommandService
 import com.app.utils.WireGuardKeyGenerator
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service

@@ -1,4 +1,4 @@
-package com.app.service.wireguard
+package com.app.service
 
 import com.app.model.WireGuardClient
 
