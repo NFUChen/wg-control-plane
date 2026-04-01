@@ -8,7 +8,7 @@ import com.app.security.repository.model.User
 import com.app.security.service.email.*
 import com.app.security.service.redis.RedisRepository
 import com.app.security.config.AppProperties
-import com.app.security.service.template.TemplateService
+import com.app.common.template.TemplateService
 import jakarta.transaction.Transactional
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service

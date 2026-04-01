@@ -1,4 +1,4 @@
-package com.app.security.service.template
+package com.app.common.template
 
 import freemarker.template.Configuration
 import org.springframework.beans.factory.annotation.Qualifier

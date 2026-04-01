@@ -1,7 +1,7 @@
 package com.app.service
 
 import com.app.model.*
-import com.app.security.service.template.TemplateService
+import com.app.common.template.TemplateService
 import org.springframework.stereotype.Service
 
 @Service
