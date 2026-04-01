@@ -1,0 +1,12 @@
+apiVersion: v2
+name: wg-control-plane
+description: WireGuard Control Plane (Spring Boot + Angular SPA)
+type: application
+version: 0.1.0
+appVersion: "0.0.1-SNAPSHOT"
+dependencies:
+  # Bitnami legacy HTTPS repo often returns 403; use OCI (helm pull oci://registry-1.docker.io/bitnamicharts/postgresql).
+  - name: postgresql
+    version: "18.2.3"
+    repository: "oci://registry-1.docker.io/bitnamicharts"
+    condition: postgresql.enabled

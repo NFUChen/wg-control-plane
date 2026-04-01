@@ -1,0 +1,13 @@
+1. HTTP UI (in-cluster):
+   kubectl port-forward svc/{{ include "wg-control-plane.fullname" . }} {{ .Values.service.httpPort }}:{{ .Values.service.httpPort }}
+
+2. Database:
+{{- if .Values.postgresql.enabled }}
+   PostgreSQL is installed as a subchart. App uses host {{ .Release.Name }}-postgresql:5432.
+{{- else }}
+   Using external database at {{ .Values.externalDatabase.host }}.
+{{- end }}
+
+3. WireGuard UDP ({{ .Values.service.wireguardPort }}) is exposed on the Service; expose it via LoadBalancer/NodePort or hostNetwork depending on your platform. Ingress only applies to HTTP.
+
+4. Change default passwords in values before production use.

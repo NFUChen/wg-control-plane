@@ -1,0 +1,117 @@
+# Default values for wg-control-plane.
+# Install: helm install wgcp ./deployment/k8s/wg-control-plane -f your-values.yaml
+
+replicaCount: 1
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: wg-control-plane
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+# WireGuard needs interface management; many clusters require privileged or NET_ADMIN + /dev/net/tun.
+securityContext:
+  privileged: true
+  capabilities:
+    add:
+      - NET_ADMIN
+      - SYS_MODULE
+  # If your CNI allows a non-privileged setup, set privileged: false and tune capabilities.
+
+hostNetwork: false
+
+# Some clusters need the TUN device from the node; requires a compatible CNI and hostPath.
+wireguard:
+  mountDevNetTun: false
+
+service:
+  type: ClusterIP
+  httpPort: 8080
+  wireguardPort: 51820
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: wg-cp.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+# HTTP probes use Spring Boot Actuator (/actuator/health). Set to tcpSocket if actuator is disabled.
+probes:
+  http:
+    enabled: true
+    path: /actuator/health
+    liveness:
+      initialDelaySeconds: 90
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 2Gi
+  # Set to use an existing PVC instead of creating one
+  existingClaim: ""
+
+env:
+  wireguardConfigDir: /etc/wireguard
+  appBaseUrl: "http://localhost:8080"
+  mailHost: smtp.gmail.com
+  mailPort: "587"
+  mailUsername: ""
+  mailPassword: ""
+  emailFrom: noreply@example.com
+  emailFromName: "WireGuard Control Plane"
+  appInternalApiKey: ""
+
+# Embedded PostgreSQL (Bitnami). Set postgresql.enabled: false to use an external database.
+postgresql:
+  enabled: true
+  auth:
+    username: wguser
+    password: changeme
+    database: wg_control_plane
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+
+# Used when postgresql.enabled is false
+externalDatabase:
+  host: ""
+  port: 5432
+  database: wg_control_plane
+  username: wguser
+  password: ""

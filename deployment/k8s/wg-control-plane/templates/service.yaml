@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "wg-control-plane.fullname" . }}
+  labels:
+    {{- include "wg-control-plane.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.service.httpPort }}
+      targetPort: http
+      protocol: TCP
+    - name: wireguard
+      port: {{ .Values.service.wireguardPort }}
+      targetPort: wireguard
+      protocol: UDP
+  selector:
+    {{- include "wg-control-plane.selectorLabels" . | nindent 4 }}

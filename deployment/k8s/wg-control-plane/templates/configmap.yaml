@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "wg-control-plane.fullname" . }}-config
+  labels:
+    {{- include "wg-control-plane.labels" . | nindent 4 }}
+data:
+  WIREGUARD_CONFIG_DIR: {{ .Values.env.wireguardConfigDir | quote }}
+  APP_BASE_URL: {{ .Values.env.appBaseUrl | quote }}
+  MAIL_HOST: {{ .Values.env.mailHost | quote }}
+  MAIL_PORT: {{ .Values.env.mailPort | quote }}
+  MAIL_USERNAME: {{ .Values.env.mailUsername | quote }}
+  EMAIL_FROM: {{ .Values.env.emailFrom | quote }}
+  EMAIL_FROM_NAME: {{ .Values.env.emailFromName | quote }}

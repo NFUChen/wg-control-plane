@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "wg-control-plane.fullname" . }}
+  labels:
+    {{- include "wg-control-plane.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "wg-control-plane.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "wg-control-plane.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "wg-control-plane.serviceAccountName" . }}
+      hostNetwork: {{ .Values.hostNetwork }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.httpPort }}
+              protocol: TCP
+            - name: wireguard
+              containerPort: {{ .Values.service.wireguardPort }}
+              protocol: UDP
+          env:
+            - name: DB_HOST
+              value: {{ include "wg-control-plane.dbHost" . | quote }}
+            - name: DB_PORT
+              value: {{ include "wg-control-plane.dbPort" . | quote }}
+            - name: DB_NAME
+              value: {{ include "wg-control-plane.dbName" . | quote }}
+            - name: DB_USERNAME
+              value: {{ include "wg-control-plane.dbUser" . | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "wg-control-plane.fullname" . }}-app
+                  key: db-password
+            - name: MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "wg-control-plane.fullname" . }}-app
+                  key: mail-password
+            - name: APP_INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "wg-control-plane.fullname" . }}-app
+                  key: app-internal-api-key
+          envFrom:
+            - configMapRef:
+                name: {{ include "wg-control-plane.fullname" . }}-config
+          {{- if .Values.probes.http.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.http.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.http.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.http.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.http.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.http.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.http.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.http.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.http.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.http.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.http.readiness.failureThreshold }}
+          {{- else }}
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            privileged: {{ .Values.securityContext.privileged }}
+            {{- with .Values.securityContext.capabilities }}
+            capabilities:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+          volumeMounts:
+            - name: wireguard-config
+              mountPath: {{ .Values.env.wireguardConfigDir }}
+            {{- if .Values.wireguard.mountDevNetTun }}
+            - name: dev-net-tun
+              mountPath: /dev/net/tun
+            {{- end }}
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        {{- if .Values.persistence.existingClaim }}
+        - name: wireguard-config
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim }}
+        {{- else }}
+        - name: wireguard-config
+          persistentVolumeClaim:
+            claimName: {{ include "wg-control-plane.fullname" . }}-wg
+        {{- end }}
+        {{- else }}
+        - name: wireguard-config
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.wireguard.mountDevNetTun }}
+        - name: dev-net-tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+        {{- end }}
