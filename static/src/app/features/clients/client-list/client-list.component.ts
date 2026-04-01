@@ -317,18 +317,6 @@ export class ClientListComponent implements OnInit, OnDestroy {
       variant: 'primary'
     },
     {
-      label: 'Download (All Traffic)',
-      icon: 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10',
-      action: 'download-all',
-      variant: 'secondary'
-    },
-    {
-      label: 'View Info',
-      icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-      action: 'info',
-      variant: 'secondary'
-    },
-    {
       label: 'Remove',
       icon: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
       action: 'remove',

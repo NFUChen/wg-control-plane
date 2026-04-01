@@ -109,7 +109,7 @@ import { GlobalSettingsPanelComponent } from './global-settings-panel/global-set
       </nav>
 
       <!-- Main content -->
-      <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main class="max-w-8xl mx-auto py-6 sm:px-6 lg:px-8">
         <div class="px-4 py-6 sm:px-0">
           <!-- Breadcrumb navigation -->
           <nav class="flex mb-6" aria-label="Breadcrumb">

@@ -359,6 +359,16 @@ export class WireguardService {
     return throwError(() => error);
   }
 
+  /**
+   * Parses a failed HTTP response into a user-visible message (e.g. validation errors from 400).
+   */
+  getApiErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      return this.getErrorMessage(error);
+    }
+    return 'An unexpected error occurred';
+  }
+
   private getErrorMessage(error: HttpErrorResponse): string {
     if (error.error instanceof ErrorEvent) {
       // Client-side error
@@ -368,8 +378,16 @@ export class WireguardService {
       switch (error.status) {
         case 404:
           return 'Resource not found';
-        case 400:
-          return error.error?.message || 'Bad request';
+        case 400: {
+          const body = error.error;
+          const msg =
+            typeof body === 'string'
+              ? body
+              : body && typeof body === 'object' && 'message' in body
+                ? String((body as { message?: unknown }).message ?? '')
+                : '';
+          return msg || 'Bad request';
+        }
         case 401:
           return 'Unauthorized access';
         case 403:

@@ -44,12 +44,12 @@ import {
         />
       }
 
-      <!-- Error Alert -->
-      @if (loadingState.error) {
+      <!-- Error Alert (server load or save validation/API errors) -->
+      @if (alertErrorMessage) {
         <app-alert
           type="error"
           title="Error"
-          [message]="loadingState.error"
+          [message]="alertErrorMessage"
           (dismissed)="clearError()"
         />
       }
@@ -353,10 +353,17 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   /** For edit flow: wait for GET /api/clients/:id before showing the form. */
   editDataReady = true;
   loadingState: LoadingState = { isLoading: false };
+  /** Shown when add/update client fails (e.g. duplicate IP from API). */
+  formSubmitError: string | null = null;
   submitting = false;
 
   get isEditMode(): boolean {
     return !!this.clientId;
+  }
+
+  /** Combined load + submit error for `app-alert` ([message] must be `string`). */
+  get alertErrorMessage(): string {
+    return this.loadingState.error ?? this.formSubmitError ?? '';
   }
 
   private destroy$ = new Subject<void>();
@@ -486,6 +493,7 @@ export class ClientFormComponent implements OnInit, OnDestroy {
     }
 
     this.submitting = true;
+    this.formSubmitError = null;
 
     const formValue = this.clientForm.value;
 
@@ -513,6 +521,7 @@ export class ClientFormComponent implements OnInit, OnDestroy {
         error: (error) => {
           console.error('Error updating client:', error);
           this.submitting = false;
+          this.formSubmitError = this.wireguardService.getApiErrorMessage(error);
         }
       });
       return;
@@ -543,6 +552,7 @@ export class ClientFormComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('Error adding client:', error);
         this.submitting = false;
+        this.formSubmitError = this.wireguardService.getApiErrorMessage(error);
       }
     });
   }
@@ -557,6 +567,7 @@ export class ClientFormComponent implements OnInit, OnDestroy {
 
   clearError(): void {
     this.loadingState = { isLoading: false };
+    this.formSubmitError = null;
   }
 
   getServerStatusVariant(enabled: boolean): 'success' | 'gray' {
