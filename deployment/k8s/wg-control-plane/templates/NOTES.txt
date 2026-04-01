@@ -11,3 +11,7 @@
 3. WireGuard UDP ({{ .Values.service.wireguardPort }}) is exposed on the Service; expose it via LoadBalancer/NodePort or hostNetwork depending on your platform. Ingress only applies to HTTP.
 
 4. Change default passwords in values before production use.
+
+5. Pod Security: this workload uses privileged / NET_ADMIN. If installs fail with
+   PodSecurity "baseline" violations, set namespace.create: true (dedicated NS) or run:
+   kubectl label ns {{ .Release.Namespace }} pod-security.kubernetes.io/enforce=privileged --overwrite
