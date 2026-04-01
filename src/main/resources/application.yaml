@@ -79,7 +79,7 @@ email:
 web:
   jwt-secret: cdfa7f921cd099d9b8319d29c8b0c696f2b414fc5652e63e3d5ad55adbe9a103
   jwt-valid-seconds: 3600
-  domain: localhost
+  domain: '${APP_DOMAIN:localhost}'
   spa-base-path: /app
   unprotected-routes: /swagger-ui.html, /swagger-ui/**, /v3/api-docs/**, /v2/api-docs/**, /swagger-resources/**, /webjars/**, /api/public/**, /api/internal/**, /actuator/health, /actuator/health/**, /actuator/info, /actuator/metrics
 
