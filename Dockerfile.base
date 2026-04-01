@@ -28,6 +28,8 @@ RUN apt-get update && \
         python3-venv \
         # SSH client for Ansible connections
         openssh-client \
+        # sshpass for SSH password authentication
+        sshpass \
         # Additional development tools that might be useful
         vim \
         git && \
@@ -35,8 +37,7 @@ RUN apt-get update && \
     pip3 install --no-cache-dir \
         ansible \
         ansible-core \
-        paramiko \
-        sshpass && \
+        paramiko && \
     # Clean up apt cache to reduce image size
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

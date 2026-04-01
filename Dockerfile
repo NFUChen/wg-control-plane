@@ -46,12 +46,13 @@ RUN apt-get update && \
         python3 \
         python3-pip \
         openssh-client \
+        # sshpass for SSH password authentication
+        sshpass \
         curl \
     && pip3 install --no-cache-dir \
         ansible \
         ansible-core \
         paramiko \
-        sshpass \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf ~/.cache/pip
 
