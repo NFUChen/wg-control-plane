@@ -95,7 +95,7 @@ import {
             <!-- Endpoint -->
             <span *ngSwitchCase="'endpoint'">
               <div class="font-mono text-sm text-gray-900 dark:text-gray-100">
-                {{ item.endpoint }}:{{ item.listenPort }}
+                {{ item.endpoint }}
               </div>
             </span>
 
