@@ -1,15 +1,17 @@
 package com.app.controller
 
+import com.app.security.config.WebProperties
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
 
-// Forwards SPA routes to index.html. Static files and /api REST handlers take precedence.
 @Controller
-class SpaController {
+class SpaController(
+    private val webProperties: WebProperties,
+) {
 
     @GetMapping("/")
-    fun root(): String = "forward:/index.html"
-
-    @GetMapping("/servers", "/servers/**")
-    fun servers(): String = "forward:/index.html"
+    fun root(): String {
+        val base = webProperties.spaBasePath.trimEnd('/')
+        return "redirect:$base/"
+    }
 }

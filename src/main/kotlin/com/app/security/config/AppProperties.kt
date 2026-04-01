@@ -28,7 +28,11 @@ data class WebProperties(
     val unprotectedRoutes: List<String>,
     val jwtSecret: String,
     val jwtValidSeconds: Int,
-    val domain: String
+    val domain: String,
+    /**
+     * URL prefix for the Angular SPA (must match Angular `baseHref`). Used by [com.app.controller.SpaController] and public security matchers.
+     */
+    val spaBasePath: String = "/app",
 )
 
 @ConfigurationProperties(prefix = "wireguard")

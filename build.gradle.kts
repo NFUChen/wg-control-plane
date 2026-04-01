@@ -72,3 +72,15 @@ allOpen {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+// Packs the Angular bundle into the JAR at classpath:/static/app/ (same layout as Dockerfile COPY …/static/app/).
+// Prerequisite: run `npm run build` in static/ so static/dist/static/browser exists; if missing, /app/ has no UI until you build.
+val spaBrowserDir = layout.projectDirectory.dir("static/dist/static/browser")
+tasks.named<ProcessResources>("processResources") {
+    val browser = spaBrowserDir.asFile
+    if (browser.exists()) {
+        from(browser) {
+            into("static/app")
+        }
+    }
+}

@@ -63,13 +63,24 @@ class SpringSecurityConfig(
         return Customizer { auth ->
             auth
                 .requestMatchers(*webProperties.unprotectedRoutes.toTypedArray()).permitAll()
+                .requestMatchers(*spaPublicPathMatchers()).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
         }
     }
 
+    /**
+     * Paths that serve the SPA shell (HTML + hashed assets under the same prefix as Angular `baseHref`).
+     * Kept in code alongside [WebProperties.spaBasePath] so `unprotected-routes` does not list every client route.
+     */
+    private fun spaPublicPathMatchers(): Array<String> {
+        val base = webProperties.spaBasePath.trimEnd('/')
+        return arrayOf("/", base, "$base/**")
+    }
+
     fun userJwtAuthenticationFilter(): UserJwtAuthenticationFilter {
-        return UserJwtAuthenticationFilter(authService, webProperties.unprotectedRoutes)
+        val merged = webProperties.unprotectedRoutes + spaPublicPathMatchers().toList()
+        return UserJwtAuthenticationFilter(authService, merged)
     }
 
     fun withDefaultCorsConfigurationSource(): CorsConfigurationSource {

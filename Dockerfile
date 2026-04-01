@@ -19,8 +19,8 @@ COPY settings.gradle.kts $APP_HOME/
 
 COPY src/ $APP_HOME/src/
 
-# Spring Boot serves from classpath:/static/ — Angular "application" builder emits browser bundle here
-COPY --from=frontend /frontend/dist/static/browser/ $APP_HOME/src/main/resources/static/
+# Spring Boot serves from classpath:/static/ — must match Angular baseHref (/app/) and SpaController forward:/app/index.html
+COPY --from=frontend /frontend/dist/static/browser/ $APP_HOME/src/main/resources/static/app/
 
 RUN chmod +x gradlew
 
