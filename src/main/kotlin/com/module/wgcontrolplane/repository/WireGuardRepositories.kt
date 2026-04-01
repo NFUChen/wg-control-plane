@@ -28,8 +28,6 @@ interface WireGuardServerRepository : JpaRepository<WireGuardServer, UUID> {
 
     fun existsByInterfaceName(interfaceName: String): Boolean
 
-    @Query("SELECT s FROM WireGuardServer s WHERE s.endpoint LIKE %:domain%")
-    fun findByEndpointDomain(@Param("domain") domain: String): List<WireGuardServer>
 
     @Query("SELECT s FROM WireGuardServer s LEFT JOIN FETCH s.clients WHERE s.id = :id")
     fun findByIdWithClients(@Param("id") id: UUID): WireGuardServer?

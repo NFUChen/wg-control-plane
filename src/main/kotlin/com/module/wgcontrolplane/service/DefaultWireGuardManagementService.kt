@@ -32,6 +32,7 @@ class DefaultWireGuardManagementService(
     private val wireGuardCommandService: WireGuardCommandService,
     private val wireGuardTemplateService: WireGuardTemplateService,
     private val ipConflictDetectionService: IPConflictDetectionService,
+    private val globalConfigurationService: GlobalConfigurationService,
     @Value("\${wireguard.config.directory:/etc/wireguard}") private val configDirectory: String
 ) : WireGuardManagementService {
 
@@ -85,7 +86,6 @@ class DefaultWireGuardManagementService(
             publicKey = publicKey,
             addresses = mutableListOf(IPAddress(request.networkAddress)),
             listenPort = request.listenPort,
-            endpoint = request.endpoint,
             dnsServers = request.dnsServers.map { IPAddress(it) }.toMutableList(),
             postUp = request.postUp?.trim()?.takeIf { it.isNotEmpty() },
             postDown = request.postDown?.trim()?.takeIf { it.isNotEmpty() },
@@ -106,6 +106,7 @@ class DefaultWireGuardManagementService(
         ipConflictDetectionService.validateNewClientIPs(server, request.addresses.toMutableList())
 
         val (privateKey, publicKey) = keyGenerator.generateKeyPair()
+        val globalConfig = globalConfigurationService.getCurrentConfig()
 
         val client = WireGuardClient(
             name = request.clientName,
@@ -114,7 +115,10 @@ class DefaultWireGuardManagementService(
             allowedIPs = request.addresses.toMutableList(),
             presharedKey = request.presharedKey,
             server = server
-        )
+        ).apply {
+            // Apply global configuration defaults
+            persistentKeepalive = globalConfig.defaultPersistentKeepalive
+        }
 
         // First try to add peer to WireGuard interface (if server is enabled)
         if (server.enabled && wireGuardCommandService.isInterfaceRunning(server.interfaceName)) {
@@ -247,11 +251,12 @@ class DefaultWireGuardManagementService(
 
         val activeClients = server.clients.filter { it.enabled }
         val onlineClients = activeClients.filter { it.isOnline }
+        val globalConfig = globalConfigurationService.getCurrentConfig()
 
         return ServerStatisticsResponse(
             serverId = server.id,
             serverName = server.name,
-            endpoint = server.endpoint,
+            endpoint = globalConfig.serverEndpoint,
             listenPort = server.listenPort,
             networkAddress = server.primaryAddress.address,
             totalClients = activeClients.size,
@@ -380,7 +385,6 @@ class DefaultWireGuardManagementService(
             publicKey = original.publicKey,
             addresses = original.addresses.toMutableList(),
             listenPort = original.listenPort,
-            endpoint = original.endpoint,
             dnsServers = original.dnsServers.toMutableList(),
             postUp = original.postUp,
             postDown = original.postDown,
@@ -427,7 +431,6 @@ class DefaultWireGuardManagementService(
             server.addresses.add(IPAddress(it))
         }
         request.listenPort?.let { server.listenPort = it }
-        request.endpoint?.let { server.endpoint = it }
         request.dnsServers?.let { dnsList ->
             server.dnsServers.clear()
             server.dnsServers.addAll(dnsList.map { IPAddress(it) })
@@ -458,7 +461,6 @@ class DefaultWireGuardManagementService(
             current.addresses.clear()
             current.addresses.addAll(snapshot.addresses)
             current.listenPort = snapshot.listenPort
-            current.endpoint = snapshot.endpoint
             current.dnsServers.clear()
             current.dnsServers.addAll(snapshot.dnsServers)
             current.postUp = snapshot.postUp

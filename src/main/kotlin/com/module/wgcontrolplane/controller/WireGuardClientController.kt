@@ -1,6 +1,7 @@
 package com.module.wgcontrolplane.controller
 
 import com.module.wgcontrolplane.model.*
+import com.module.wgcontrolplane.service.GlobalConfigurationService
 import com.module.wgcontrolplane.service.WireGuardManagementService
 import com.module.wgcontrolplane.service.WireGuardTemplateService
 import org.springframework.http.HttpStatus
@@ -15,7 +16,8 @@ import java.util.*
 @RequestMapping("/api/clients")
 class WireGuardClientController(
     private val managementService: WireGuardManagementService,
-    private val templateService: WireGuardTemplateService
+    private val templateService: WireGuardTemplateService,
+    private val globalConfigurationService: GlobalConfigurationService
 ) {
 
     /**
@@ -24,6 +26,8 @@ class WireGuardClientController(
     @GetMapping("/{clientId}")
     fun getClientDetails(@PathVariable clientId: UUID): ResponseEntity<ClientConfigurationResponse> {
         val client = managementService.getClientById(clientId)
+
+        val globalConfig = globalConfigurationService.getCurrentConfig()
 
         val response = ClientConfigurationResponse(
             id = client.id,
@@ -37,7 +41,7 @@ class WireGuardClientController(
             server = ServerInfo(
                 id = client.server.id,
                 name = client.server.name,
-                endpoint = client.server.endpoint,
+                endpoint = globalConfig.serverEndpoint,
                 publicKey = client.server.publicKey,
                 dnsServers = client.server.dnsServers.map { it.IP },
                 mtu = client.server.mtu

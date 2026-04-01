@@ -1,6 +1,7 @@
 package com.module.wgcontrolplane.controller
 
 import com.module.wgcontrolplane.dto.*
+import com.module.wgcontrolplane.service.GlobalConfigurationService
 import com.module.wgcontrolplane.service.WireGuardManagementService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -11,7 +12,8 @@ import java.util.*
 @RestController
 @RequestMapping("/api/wireguard")
 class WireGuardController(
-    private val wireGuardService: WireGuardManagementService
+    private val wireGuardService: WireGuardManagementService,
+    private val globalConfigurationService: GlobalConfigurationService
 ) {
 
     /**
@@ -20,7 +22,8 @@ class WireGuardController(
     @PostMapping("/servers")
     fun createServer(@Valid @RequestBody request: CreateServerRequest): ResponseEntity<ServerResponse> {
         val server = wireGuardService.createServer(request)
-        return ResponseEntity.status(HttpStatus.CREATED).body(ServerResponse.from(server))
+        val globalConfig = globalConfigurationService.getCurrentConfig()
+        return ResponseEntity.status(HttpStatus.CREATED).body(ServerResponse.from(server, globalConfig))
     }
 
 
@@ -36,7 +39,8 @@ class WireGuardController(
     @GetMapping("/servers")
     fun getAllServers(): ResponseEntity<List<ServerResponse>> {
         val servers = wireGuardService.getAllServers()
-        val serverResponses = servers.map { ServerResponse.from(it) }
+        val globalConfig = globalConfigurationService.getCurrentConfig()
+        val serverResponses = servers.map { ServerResponse.from(it, globalConfig) }
         return ResponseEntity.ok(serverResponses)
     }
 
@@ -46,7 +50,8 @@ class WireGuardController(
     @GetMapping("/servers/active")
     fun getActiveServers(): ResponseEntity<List<ServerResponse>> {
         val servers = wireGuardService.getActiveServers()
-        val serverResponses = servers.map { ServerResponse.from(it) }
+        val globalConfig = globalConfigurationService.getCurrentConfig()
+        val serverResponses = servers.map { ServerResponse.from(it, globalConfig) }
         return ResponseEntity.ok(serverResponses)
     }
 
@@ -57,7 +62,8 @@ class WireGuardController(
     fun getServerWithClients(@PathVariable serverId: UUID): ResponseEntity<ServerDetailResponse> {
         val server = wireGuardService.getServerWithClients(serverId)
             ?: return ResponseEntity.notFound().build()
-        return ResponseEntity.ok(ServerDetailResponse.from(server))
+        val globalConfig = globalConfigurationService.getCurrentConfig()
+        return ResponseEntity.ok(ServerDetailResponse.from(server, globalConfig))
     }
 
     /**
@@ -80,7 +86,8 @@ class WireGuardController(
     ): ResponseEntity<ServerResponse> {
         val server = wireGuardService.updateServer(serverId, request)
             ?: return ResponseEntity.notFound().build()
-        return ResponseEntity.ok(ServerResponse.from(server))
+        val globalConfig = globalConfigurationService.getCurrentConfig()
+        return ResponseEntity.ok(ServerResponse.from(server, globalConfig))
     }
 
 

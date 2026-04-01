@@ -134,10 +134,6 @@ class WireGuardServer(
     @Column(name = "listen_port", nullable = false)
     var listenPort: Int = 51820,
 
-    @Column(name = "endpoint", nullable = false)
-    var endpoint: String = "", // e.g., "vpn.example.com:51820"
-
-
     @Convert(converter = IPAddressListConverter::class)
     @Column(name = "dns_servers", columnDefinition = "TEXT")
     val dnsServers: MutableList<IPAddress> = mutableListOf(IPAddress(GOOGLE_DNS)),

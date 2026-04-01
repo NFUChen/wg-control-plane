@@ -1,6 +1,7 @@
 package com.module.wgcontrolplane.dto
 
 import com.module.wgcontrolplane.model.GOOGLE_DNS
+import com.module.wgcontrolplane.model.GlobalConfig
 import com.module.wgcontrolplane.model.IPAddress
 import com.module.wgcontrolplane.model.WireGuardClient
 import com.module.wgcontrolplane.model.WireGuardServer
@@ -32,9 +33,6 @@ data class UpdateServerRequest(
     @field:Min(1024, message = "Listen port must be at least 1024")
     @field:Max(65535, message = "Listen port must be at most 65535")
     val listenPort: Int? = null,
-
-    @field:NotBlank(message = "Endpoint cannot be blank")
-    val endpoint: String? = null,
 
     val dnsServers: List<String>? = null,
 
@@ -70,9 +68,6 @@ data class CreateServerRequest(
     @field:Min(1024, message = "Listen port must be at least 1024")
     @field:Max(65535, message = "Listen port must be at most 65535")
     val listenPort: Int = 51820,
-
-    @field:NotBlank(message = "Endpoint cannot be blank")
-    val endpoint: String,
 
     val dnsServers: List<String> = listOf(GOOGLE_DNS),
 
@@ -135,7 +130,7 @@ data class ServerResponse(
     val updatedAt: LocalDateTime
 ) {
     companion object {
-        fun from(server: WireGuardServer): ServerResponse {
+        fun from(server: WireGuardServer, globalConfig: GlobalConfig): ServerResponse {
             val activeClients = server.clients.count { it.enabled }
             return ServerResponse(
                 id = server.id.toString(),
@@ -144,7 +139,7 @@ data class ServerResponse(
                 publicKey = server.publicKey,
                 networkAddress = server.primaryAddress,
                 listenPort = server.listenPort,
-                endpoint = server.endpoint,
+                endpoint = globalConfig.serverEndpoint,
                 dnsServers = server.dnsServers.toList(),
                 postUp = server.postUp,
                 postDown = server.postDown,
@@ -178,7 +173,7 @@ data class ServerDetailResponse(
     val updatedAt: LocalDateTime
 ) {
     companion object {
-        fun from(server: WireGuardServer): ServerDetailResponse {
+        fun from(server: WireGuardServer, globalConfig: GlobalConfig): ServerDetailResponse {
             return ServerDetailResponse(
                 id = server.id.toString(),
                 name = server.name,
@@ -186,7 +181,7 @@ data class ServerDetailResponse(
                 publicKey = server.publicKey,
                 networkAddress = server.primaryAddress,
                 listenPort = server.listenPort,
-                endpoint = server.endpoint,
+                endpoint = globalConfig.serverEndpoint,
                 dnsServers = server.dnsServers.toList(),
                 postUp = server.postUp,
                 postDown = server.postDown,

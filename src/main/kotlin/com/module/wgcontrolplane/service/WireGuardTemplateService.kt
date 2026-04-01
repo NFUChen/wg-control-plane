@@ -7,7 +7,10 @@ import org.springframework.stereotype.Service
 import java.io.StringWriter
 
 @Service
-class WireGuardTemplateService(@Qualifier("templateConfiguration") private val freemarkerConfig: Configuration) {
+class WireGuardTemplateService(
+    @Qualifier("templateConfiguration") private val freemarkerConfig: Configuration,
+    private val globalConfigurationService: GlobalConfigurationService
+) {
 
     /**
      * Generate server configuration with all its clients
@@ -41,12 +44,14 @@ class WireGuardTemplateService(@Qualifier("templateConfiguration") private val f
             server.addresses.map { it.address }
         }
 
+        val globalConfig = globalConfigurationService.getCurrentConfig()
+
         val dataModel = mutableMapOf<String, Any>(
             "privateKey" to "", // Client should provide their own private key
             "address" to (client.allowedIPs.joinToString(", ") { it.address }),
             "dnsServers" to server.dnsServers.joinToString(", ") { it.IP },
             "serverPublicKey" to server.publicKey,
-            "serverEndpoint" to server.endpoint,
+            "serverEndpoint" to globalConfig.serverEndpoint,
             "allowedIPs" to allowedIPs.joinToString(", "),
             "persistentKeepalive" to client.persistentKeepalive
         )
@@ -73,12 +78,14 @@ class WireGuardTemplateService(@Qualifier("templateConfiguration") private val f
             server.addresses.map { it.address }
         }
 
+        val globalConfig = globalConfigurationService.getCurrentConfig()
+
         val dataModel = mutableMapOf<String, Any>(
             "privateKey" to clientPrivateKey,
             "address" to (client.allowedIPs.joinToString(", ") { it.address }),
             "dnsServers" to server.dnsServers.joinToString(", ") { it.IP },
             "serverPublicKey" to server.publicKey,
-            "serverEndpoint" to server.endpoint,
+            "serverEndpoint" to globalConfig.serverEndpoint,
             "allowedIPs" to allowedIPs.joinToString(", "),
             "persistentKeepalive" to client.persistentKeepalive
         )

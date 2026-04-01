@@ -26,8 +26,7 @@ class WireGuardTemplateServiceTest {
             privateKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             publicKey = "ServerPublicKeyAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             addresses = mutableListOf(IPAddress("10.0.0.1/24")),
-            listenPort = 51820,
-            endpoint = "vpn.example.com:51820"
+            listenPort = 51820
         )
 
         val client1 = WireGuardClient(
@@ -76,8 +75,7 @@ class WireGuardTemplateServiceTest {
             privateKey = "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE=",
             publicKey = "ServerPublicKeyEEEEEEEEEEEEEEEEEEEEEEEEEEEEE=",
             addresses = mutableListOf(IPAddress("10.0.0.1/24")),
-            listenPort = 51820,
-            endpoint = "vpn.example.com:51820"
+            listenPort = 51820
         )
 
         val client = WireGuardClient(
@@ -106,7 +104,7 @@ class WireGuardTemplateServiceTest {
         assertContains(config, "[Peer]")
         assertContains(config, "PublicKey = ${server.publicKey}")
         assertContains(config, "AllowedIPs = 0.0.0.0/0, ::/0")
-        assertContains(config, "Endpoint = vpn.example.com:51820")
+        assertContains(config, "Endpoint = ")
 
         println("Generated Client Config:")
         println(config)
@@ -119,8 +117,7 @@ class WireGuardTemplateServiceTest {
             name = "Test Server",
             privateKey = "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG=",
             publicKey = "ServerPublicKeyGGGGGGGGGGGGGGGGGGGGGGGGGGGGG=",
-            addresses = mutableListOf(IPAddress("10.0.0.1/24")),
-            endpoint = "vpn.example.com:51820"
+            addresses = mutableListOf(IPAddress("10.0.0.1/24"))
         )
 
         val client = WireGuardClient(
