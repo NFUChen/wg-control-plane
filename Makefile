@@ -104,7 +104,8 @@ dev-build: ## Quick rebuild for development (uses cache)
 
 local-build: ## Build Angular dist, bootJar, then wg-control-plane:dev (Dockerfile.dev)
 	@echo -e "$(BLUE)Building frontend (static/dist)...$(NC)"
-	cd static && npm ci && npm run build
+
+	cd static && rm -rf dist/ && npm ci && npm run build
 	@echo -e "$(BLUE)Building application JAR...$(NC)"
 	./gradlew bootJar
 	@echo -e "$(BLUE)Building dev Docker image...$(NC)"

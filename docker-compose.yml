@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: wg-control-plane-postgres
+    environment:
+      POSTGRES_DB: wg_control_plane
+      POSTGRES_USER: wguser
+      POSTGRES_PASSWORD: wgpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - wg-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wguser -d wg_control_plane"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   wg-control-plane:
     image: wg-control-plane:dev
     container_name: wg-control-plane-app
@@ -8,7 +28,14 @@ services:
       - "8080:8080"
       - "51820:51820/udp"
     environment:
-      - SPRING_PROFILES_ACTIVE=prod
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=wg_control_plane
+      - DB_USERNAME=wguser
+      - DB_PASSWORD=wgpassword
+    depends_on:
+      postgres:
+        condition: service_healthy
     # WireGuard requires privileged access to manage network interfaces
     privileged: true
     # Alternative to privileged mode (more secure but may not work in all scenarios):
@@ -37,6 +64,7 @@ services:
 
 volumes:
   wireguard-config:
+  postgres-data:
 
 networks:
   wg-network:
