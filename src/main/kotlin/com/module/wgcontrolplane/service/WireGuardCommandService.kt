@@ -45,6 +45,11 @@ class WireGuardCommandService {
                 command.addAll(listOf("preshared-key", psk))
             }
         }
+
+        if (client.persistentKeepalive > 0) {
+            command.addAll(listOf("persistent-keepalive", client.persistentKeepalive.toString()))
+        }
+
         logger.info("Adding peer ${client.name} (${client.publicKey.take(8)}...) to interface $interfaceName with allowed IPs: ${client.plainTextAllowedIPs}")
         val result = executeWgCommand(command)
         if (result.exitCode != 0) {

@@ -132,7 +132,6 @@ class WireGuardClientController(
      */
     private fun generateClientConfiguration(clientId: UUID, allowAllTraffic: Boolean): String {
         val client = managementService.getClientById(clientId)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "Client not found")
 
         if (!client.enabled) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Client is disabled")

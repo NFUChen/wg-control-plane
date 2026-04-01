@@ -118,6 +118,19 @@ class WireGuardController(
     }
 
     /**
+     * Update an existing client (name, allowed IPs, PSK, keepalive, enabled).
+     */
+    @PutMapping("/servers/{serverId}/clients/{clientId}")
+    fun updateClient(
+        @PathVariable serverId: UUID,
+        @PathVariable clientId: UUID,
+        @RequestBody request: UpdateClientRequest
+    ): ResponseEntity<ClientResponse> {
+        val client = wireGuardService.updateClient(serverId, clientId, request)
+        return ResponseEntity.ok(ClientResponse.from(client))
+    }
+
+    /**
      * Get clients for a server
      */
     @GetMapping("/servers/{serverId}/clients")

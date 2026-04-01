@@ -9,6 +9,8 @@ import {
   UpdateServerRequest,
   ClientResponse,
   AddClientRequest,
+  UpdateClientRequest,
+  ClientDetailResponse,
   UpdateClientStatsRequest,
   ServerStatisticsResponse,
   ClientInfo,
@@ -205,6 +207,35 @@ export class WireguardService {
         return throwError(() => error);
       })
     );
+  }
+
+  /**
+   * Update an existing client (name, IPs, PSK, keepalive, enabled).
+   */
+  updateClient(
+    serverId: string,
+    clientId: string,
+    request: UpdateClientRequest
+  ): Observable<ClientResponse> {
+    this.setClientsLoading(true);
+    return this.http
+      .put<ClientResponse>(`${this.baseUrl}/servers/${serverId}/clients/${clientId}`, request)
+      .pipe(
+        tap(() => this.setClientsLoading(false)),
+        catchError(error => {
+          this.setClientsLoading(false, this.getErrorMessage(error));
+          return throwError(() => error);
+        })
+      );
+  }
+
+  /**
+   * Get client details (for edit form)
+   */
+  getClientDetails(clientId: string): Observable<ClientDetailResponse> {
+    return this.http
+      .get<ClientDetailResponse>(`${this.clientBaseUrl}/${clientId}`)
+      .pipe(catchError(error => this.handleError(error)));
   }
 
   /**

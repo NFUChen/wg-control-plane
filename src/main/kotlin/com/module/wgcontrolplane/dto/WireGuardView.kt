@@ -96,6 +96,18 @@ data class AddClientRequest(
 )
 
 /**
+ * Request DTO for updating an existing client. Omitted fields are left unchanged.
+ * [presharedKey]: omit to leave unchanged; send empty string to clear the pre-shared key.
+ */
+data class UpdateClientRequest(
+    val clientName: String? = null,
+    val addresses: List<IPAddress>? = null,
+    val presharedKey: String? = null,
+    val persistentKeepalive: Int? = null,
+    val enabled: Boolean? = null,
+)
+
+/**
  * Request DTO for updating client status
  */
 data class UpdateClientStatusRequest(

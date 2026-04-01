@@ -10,6 +10,7 @@ import { AlertComponent } from '../../../shared/components/alert/alert.component
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import {
   AddClientRequest,
+  UpdateClientRequest,
   ServerDetailResponse,
   LoadingState
 } from '../../../models/wireguard.interface';
@@ -27,10 +28,18 @@ import {
   template: `
     <div class="max-w-2xl mx-auto space-y-6">
       <!-- Loading Spinner -->
-      @if (loadingState.isLoading && !clientForm) {
+      @if (loadingState.isLoading && !server) {
         <app-loading-spinner
           [showText]="true"
           loadingText="Loading server details..."
+          containerClass="py-8"
+        />
+      }
+
+      @if (server && isEditMode && !editDataReady) {
+        <app-loading-spinner
+          [showText]="true"
+          loadingText="Loading client..."
           containerClass="py-8"
         />
       }
@@ -65,11 +74,15 @@ import {
       }
 
       <!-- Form -->
-      @if (clientForm) {
+      @if (clientForm && server && editDataReady) {
       <div class="bg-white dark:bg-gray-900 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Add New Client</h2>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Configure a new client for this WireGuard server</p>
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            {{ isEditMode ? 'Edit Client' : 'Add New Client' }}
+          </h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {{ isEditMode ? 'Update tunnel settings for this client (public key cannot be changed).' : 'Configure a new client for this WireGuard server' }}
+          </p>
         </div>
 
         <form [formGroup]="clientForm" (ngSubmit)="onSubmit()" class="p-6 space-y-6">
@@ -99,9 +112,37 @@ import {
                 </div>
               }
             </div>
+
+            @if (isEditMode) {
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    formControlName="enabled"
+                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+                  />
+                  Client enabled (peer appears in server config when checked)
+                </label>
+              </div>
+              <div>
+                <label for="persistentKeepalive" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Persistent keepalive (seconds)
+                </label>
+                <input
+                  type="number"
+                  id="persistentKeepalive"
+                  formControlName="persistentKeepalive"
+                  min="0"
+                  max="65535"
+                  class="w-full max-w-xs px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Use 0 to disable. Typical values: 0 or 25.</p>
+              </div>
+            }
           </div>
 
           <!-- Key Configuration -->
+          @if (!isEditMode) {
           <div class="space-y-4">
             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Key Configuration</h3>
             <p class="text-sm text-gray-600 dark:text-gray-300">
@@ -151,6 +192,47 @@ import {
               }
             </div>
           </div>
+          }
+
+          @if (isEditMode) {
+          <div class="space-y-4">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Keys</h3>
+            <div>
+              <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Public key</span>
+              <div
+                class="w-full break-all rounded-md border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 sm:text-sm"
+              >{{ publicKeyDisplay }}</div>
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">To change keys, remove this client and add a new one.</p>
+            </div>
+            <div>
+              <label for="presharedKeyEdit" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Pre-shared Key
+              </label>
+              <textarea
+                id="presharedKeyEdit"
+                formControlName="presharedKey"
+                rows="2"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                placeholder="Leave empty to keep the current key. Enter a new key to replace it."
+              ></textarea>
+              <label class="mt-2 flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  formControlName="removePresharedKey"
+                  class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+                />
+                Remove pre-shared key
+              </label>
+              @if (clientForm.get('presharedKey')?.invalid && clientForm.get('presharedKey')?.touched) {
+                <div class="mt-1 text-sm text-red-600">
+                  @if (clientForm.get('presharedKey')?.errors?.['pattern']) {
+                    <div>Invalid pre-shared key format</div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+          }
 
           <!-- IP Address Configuration -->
           <div class="space-y-4">
@@ -246,11 +328,11 @@ import {
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Adding Client...
+                  {{ isEditMode ? 'Saving...' : 'Adding Client...' }}
                 </span>
               }
               @if (!submitting) {
-                <span>Add Client</span>
+                <span>{{ isEditMode ? 'Save changes' : 'Add Client' }}</span>
               }
             </button>
           </div>
@@ -264,8 +346,18 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   clientForm!: FormGroup;
   server?: ServerDetailResponse;
   serverId?: string;
+  /** Set on route `.../clients/:clientId/edit` */
+  clientId?: string;
+  /** Shown in edit mode (public key is immutable in the API). */
+  publicKeyDisplay = '';
+  /** For edit flow: wait for GET /api/clients/:id before showing the form. */
+  editDataReady = true;
   loadingState: LoadingState = { isLoading: false };
   submitting = false;
+
+  get isEditMode(): boolean {
+    return !!this.clientId;
+  }
 
   private destroy$ = new Subject<void>();
 
@@ -281,6 +373,8 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {
       this.serverId = params['serverId'];
+      this.clientId = params['clientId'];
+      this.editDataReady = !this.isEditMode;
       if (this.serverId) {
         this.loadServer();
       }
@@ -302,8 +396,11 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   createForm(): void {
     this.clientForm = this.fb.group({
       clientName: ['', [Validators.required, Validators.minLength(2)]],
-      clientPublicKey: [''], // Optional
+      clientPublicKey: [''], // Optional (add client only)
       presharedKey: [''], // Optional
+      removePresharedKey: [false],
+      persistentKeepalive: [25, [Validators.min(0), Validators.max(65535)]],
+      enabled: [true],
       addresses: this.fb.array([])
     });
 
@@ -321,10 +418,44 @@ export class ClientFormComponent implements OnInit, OnDestroy {
     this.wireguardService.getServerWithClients(this.serverId).subscribe({
       next: (server) => {
         this.server = server;
-        this.suggestNextAvailableIP();
+        if (this.isEditMode && this.clientId) {
+          this.loadClientForEdit();
+        } else {
+          this.suggestNextAvailableIP();
+        }
       },
       error: (error) => {
         console.error('Error loading server:', error);
+      }
+    });
+  }
+
+  private loadClientForEdit(): void {
+    if (!this.clientId) return;
+    this.editDataReady = false;
+    this.wireguardService.getClientDetails(this.clientId).subscribe({
+      next: (details) => {
+        if (this.server && details.server.id !== this.server.id) {
+          console.warn('Client server id does not match route server id');
+        }
+        this.publicKeyDisplay = details.publicKey;
+        while (this.addresses.length) {
+          this.addresses.removeAt(0);
+        }
+        details.allowedIPs.forEach(ip => this.addIPAddress(ip));
+        this.clientForm.patchValue({
+          clientName: details.name,
+          persistentKeepalive: details.persistentKeepalive,
+          enabled: details.enabled,
+          clientPublicKey: '',
+          presharedKey: '',
+          removePresharedKey: false
+        });
+        this.editDataReady = true;
+      },
+      error: (error) => {
+        console.error('Error loading client:', error);
+        this.editDataReady = true;
       }
     });
   }
@@ -357,6 +488,35 @@ export class ClientFormComponent implements OnInit, OnDestroy {
     this.submitting = true;
 
     const formValue = this.clientForm.value;
+
+    if (this.isEditMode && this.clientId) {
+      const body: UpdateClientRequest = {
+        clientName: formValue.clientName.trim(),
+        addresses: formValue.addresses.map((addr: { address: string }) => ({
+          address: addr.address.trim()
+        })),
+        persistentKeepalive: formValue.persistentKeepalive,
+        enabled: formValue.enabled
+      };
+      if (formValue.removePresharedKey) {
+        body.presharedKey = '';
+      } else if (formValue.presharedKey?.trim()) {
+        body.presharedKey = formValue.presharedKey.trim();
+      }
+
+      this.wireguardService.updateClient(this.serverId, this.clientId, body).subscribe({
+        next: (client) => {
+          this.router.navigate(['/servers', this.serverId, 'clients'], {
+            queryParams: { success: `Client "${client.name}" updated` }
+          });
+        },
+        error: (error) => {
+          console.error('Error updating client:', error);
+          this.submitting = false;
+        }
+      });
+      return;
+    }
 
     // Create the request object
     const addClientRequest: AddClientRequest = {

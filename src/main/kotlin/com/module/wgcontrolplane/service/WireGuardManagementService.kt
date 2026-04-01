@@ -23,6 +23,11 @@ interface WireGuardManagementService {
     fun addClientToServer(serverId: UUID, request: AddClientRequest): WireGuardClient
 
     /**
+     * Update an existing client (name, IPs, PSK, keepalive, enabled). Public key is immutable.
+     */
+    fun updateClient(serverId: UUID, clientId: UUID, request: UpdateClientRequest): WireGuardClient
+
+    /**
      * Remove a client from server
      */
     fun removeClientFromServer(serverId: UUID, clientId: UUID)

@@ -68,6 +68,35 @@ export interface AddClientRequest {
   addresses: IPAddress[];
 }
 
+/** PUT /api/wireguard/servers/{serverId}/clients/{clientId} — omitted fields unchanged; presharedKey: '' clears PSK */
+export interface UpdateClientRequest {
+  clientName?: string;
+  addresses?: IPAddress[];
+  presharedKey?: string;
+  persistentKeepalive?: number;
+  enabled?: boolean;
+}
+
+/** GET /api/clients/{id} */
+export interface ClientDetailResponse {
+  id: string;
+  name: string;
+  publicKey: string;
+  allowedIPs: string[];
+  enabled: boolean;
+  isOnline: boolean;
+  lastHandshake?: string | null;
+  persistentKeepalive: number;
+  server: {
+    id: string;
+    name: string;
+    endpoint: string;
+    publicKey: string;
+    dnsServers: string[];
+    mtu: number | null;
+  };
+}
+
 export interface ClientResponse {
   id: string;
   name: string;

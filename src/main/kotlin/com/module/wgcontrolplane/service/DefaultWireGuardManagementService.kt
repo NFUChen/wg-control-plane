@@ -2,6 +2,7 @@ package com.module.wgcontrolplane.service
 
 import com.module.wgcontrolplane.dto.AddClientRequest
 import com.module.wgcontrolplane.dto.CreateServerRequest
+import com.module.wgcontrolplane.dto.UpdateClientRequest
 import com.module.wgcontrolplane.dto.UpdateServerRequest
 import com.module.wgcontrolplane.dto.ServerStatisticsResponse
 import com.module.wgcontrolplane.model.IPAddress
@@ -141,6 +142,107 @@ class DefaultWireGuardManagementService(
         // Return the persisted client
         return savedServer.clients.find { it.name == client.name && it.privateKey == client.privateKey }
             ?: throw IllegalStateException("Failed to save client")
+    }
+
+    @Transactional
+    override fun updateClient(serverId: UUID, clientId: UUID, request: UpdateClientRequest): WireGuardClient {
+        val server = serverRepository.findByIdWithClients(serverId)
+            ?: throw IllegalArgumentException("Server not found: $serverId")
+
+        val client = server.clients.find { it.id == clientId }
+            ?: throw IllegalArgumentException("Client not found: $clientId")
+
+        val hadNoChanges =
+            request.clientName == null &&
+                request.addresses == null &&
+                request.presharedKey == null &&
+                request.persistentKeepalive == null &&
+                request.enabled == null
+        if (hadNoChanges) {
+            return client
+        }
+
+        val wasEnabled = client.enabled
+        val previousPsk = client.presharedKey
+
+        request.clientName?.let { name ->
+            val trimmed = name.trim()
+            require(trimmed.length >= 2) { "Client name must be at least 2 characters" }
+            client.name = trimmed
+        }
+
+        request.addresses?.let { addrs ->
+            require(addrs.isNotEmpty()) { "At least one IP address is required" }
+            ipConflictDetectionService.validateUpdatedClientIPs(server, clientId, addrs)
+            server.primaryAddress.let { serverAddr ->
+                addrs.forEach { clientIP ->
+                    if (!serverAddr.contains(clientIP)) {
+                        throw IllegalArgumentException(
+                            "Client allowed IP ${clientIP.address} is not within server's network range ${serverAddr.address}"
+                        )
+                    }
+                }
+            }
+            client.allowedIPs.clear()
+            client.allowedIPs.addAll(addrs)
+        }
+
+        request.presharedKey?.let { psk ->
+            client.presharedKey = psk.trim().takeIf { it.isNotEmpty() }
+        }
+
+        request.persistentKeepalive?.let { ka ->
+            require(ka in 0..65535) { "Persistent keepalive must be between 0 and 65535" }
+            client.persistentKeepalive = ka
+        }
+
+        request.enabled?.let { client.enabled = it }
+
+        val pskChanged =
+            (previousPsk ?: "").trim() != (client.presharedKey ?: "").trim()
+
+        val updatedServer = serverRepository.save(server)
+
+        safeCall("Cannot update client: failed to update configuration file") {
+            writeServerConfigFile(updatedServer)
+        }
+
+        // The running interface can diverge from the DB: when wg is up, apply CLI changes so in-kernel peers match the client we just persisted.
+        // If we skip this block (server disabled or interface down), peers will be applied on the next server-up / restart from the config file.
+        if (server.enabled && wireGuardCommandService.isInterfaceRunning(server.interfaceName)) {
+            when {
+                // Disabled → enabled: the peer should not be present yet; add it.
+                client.enabled && !wasEnabled -> {
+                    safeCall("Cannot update client: failed to add peer to WireGuard interface") {
+                        wireGuardCommandService.addPeerToInterface(server.interfaceName, client)
+                    }
+                }
+                // Enabled → disabled: drop the peer from wg (disconnect); on-disk config was already updated by writeServerConfigFile.
+                !client.enabled && wasEnabled -> {
+                    safeCall("Cannot update client: failed to remove peer from WireGuard interface") {
+                        wireGuardCommandService.removePeerFromInterface(server.interfaceName, client.publicKey)
+                    }
+                }
+                // Stays enabled: for allowed-ips / keepalive-only changes, `wg set peer` overwrites the same public key.
+                // If the PSK changed, remove then re-add so we do not leave a stale PSK in some environments.
+                client.enabled && wasEnabled -> {
+                    if (pskChanged) {
+                        safeCall("Cannot update client: failed to refresh peer on WireGuard interface") {
+                            wireGuardCommandService.removePeerFromInterface(server.interfaceName, client.publicKey)
+                            wireGuardCommandService.addPeerToInterface(server.interfaceName, client)
+                        }
+                    } else {
+                        safeCall("Cannot update client: failed to update peer on WireGuard interface") {
+                            wireGuardCommandService.addPeerToInterface(server.interfaceName, client)
+                        }
+                    }
+                }
+                // Stays disabled (!enabled && !wasEnabled): no peer should be on the interface; nothing to do.
+            }
+        }
+
+        return updatedServer.clients.find { it.id == clientId }
+            ?: throw IllegalStateException("Failed to reload client after update")
     }
 
     /**

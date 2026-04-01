@@ -5,6 +5,7 @@ import com.module.wgcontrolplane.model.WireGuardServer
 import inet.ipaddr.IPAddressString
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.util.UUID
 
 /**
  * CIDR overlap detection service using seancfoley/IPAddress library
@@ -25,7 +26,24 @@ class IPConflictDetectionService {
      * @throws IllegalArgumentException if there are conflicts
      */
     fun validateNewClientIPs(server: WireGuardServer, newClientIPs: List<IPAddress>) {
-        val activeClients = server.clients.filter { it.enabled }
+        validateClientIPsAgainstPeers(server, newClientIPs, excludeClientId = null)
+    }
+
+    /**
+     * Validate IPs for an existing client being updated (exclude that client from conflict checks).
+     */
+    fun validateUpdatedClientIPs(server: WireGuardServer, updatingClientId: UUID, newClientIPs: List<IPAddress>) {
+        validateClientIPsAgainstPeers(server, newClientIPs, excludeClientId = updatingClientId)
+    }
+
+    private fun validateClientIPsAgainstPeers(
+        server: WireGuardServer,
+        newClientIPs: List<IPAddress>,
+        excludeClientId: UUID?
+    ) {
+        val activeClients = server.clients.filter {
+            it.enabled && (excludeClientId == null || it.id != excludeClientId)
+        }
 
         logger.debug("Validating ${newClientIPs.size} new IPs against ${activeClients.size} existing clients")
 

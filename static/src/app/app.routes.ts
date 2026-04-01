@@ -37,6 +37,11 @@ export const routes: Routes = [
     title: 'Add Client'
   },
   {
+    path: 'servers/:serverId/clients/:clientId/edit',
+    loadComponent: () => import('./features/clients/client-form/client-form.component').then(c => c.ClientFormComponent),
+    title: 'Edit Client'
+  },
+  {
     path: '**',
     redirectTo: '/servers'
   }
