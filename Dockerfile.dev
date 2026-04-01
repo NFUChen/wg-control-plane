@@ -1,21 +1,26 @@
 # Local-friendly image: build on the host (see Makefile local-build), then copy artifacts in.
-# Expects: ./gradlew bootJar and static/dist/static/browser/ from npm run build in static/.
-FROM ghcr.io/nfuchen/wg-control-plane-dev-base:latest
+# Expects: ./gradlew bootJar after `npm run build` in static/ so the SPA is embedded in the JAR.
+# Optional: mount host static/dist over /app/static if you need file: overrides (see application.yaml).
+# Same slim runtime as Dockerfile stage 3 (JRE + wg stack), not the dev-base image.
+FROM eclipse-temurin:17-jre-jammy
 
-ENV APP_HOME=/app
+ENV APP_HOME=/app \
+    DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        wireguard-tools \
+        iproute2 \
+        iptables \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR $APP_HOME
 
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
-ENV PATH="$JAVA_HOME/bin:$PATH"
-
 COPY build/libs/wg-control-plane-0.0.1-SNAPSHOT.jar $APP_HOME/app.jar
-# Align with baseHref /app/ and spring.web.resources static-locations file:/app/static/
-COPY static/dist/static/browser/ $APP_HOME/static/app/
 
 EXPOSE 8080
 
-RUN chown -R appuser:appuser $APP_HOME
-
-# WireGuard may need privileged mode or NET_ADMIN / SYS_MODULE and /dev/net/tun.
+RUN groupadd -r appuser && useradd -r -g appuser appuser && \
+    chown -R appuser:appuser $APP_HOME
 
 CMD ["java", "-jar", "app.jar", "--spring.profiles.active=docker-dev"]
