@@ -344,7 +344,7 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
     { key: 'allowedIPs', label: 'Allowed IPs', type: 'text' },
     { key: 'dataUsage', label: 'Data Usage', type: 'text' },
     { key: 'lastHandshake', label: 'Last Handshake', sortable: true, type: 'date' },
-    { key: 'actions', label: 'Actions', type: 'action', width: '120px' }
+    { key: 'actions', label: 'Actions', type: 'action', width: '200px' }
   ];
 
   clientsPrimaryAction = {
@@ -353,6 +353,12 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
   };
 
   clientRowActions: TableAction[] = [
+    {
+      label: 'Edit',
+      icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
+      action: 'edit',
+      variant: 'secondary'
+    },
     {
       label: 'Download Config',
       icon: 'M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z',
@@ -429,6 +435,11 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
     const { action, item } = event;
 
     switch (action) {
+      case 'edit':
+        if (this.serverId) {
+          this.router.navigate(['/servers', this.serverId, 'clients', item.id, 'edit']);
+        }
+        break;
       case 'download':
         this.downloadClientConfig(item.id);
         break;

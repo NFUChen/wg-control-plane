@@ -247,27 +247,3 @@ data class ClientResponse(
         }
     }
 }
-
-/**
- * Response DTO for client creation with private key
- */
-data class ClientCreationResponse(
-    val client: ClientResponse,
-    val privateKey: String
-)
-
-/**
- * Response DTO for server statistics
- */
-data class ServerStatsResponse(
-    val serverId: String,
-    val serverName: String,
-    val endpoint: String,
-    val listenPort: Int,
-    val totalClients: Int,
-    val onlineClients: Int,
-    val offlineClients: Int,
-    val totalDataReceived: Long,
-    val totalDataSent: Long,
-    val networkAddress: String
-)

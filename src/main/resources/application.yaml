@@ -1,24 +1,37 @@
 spring:
   datasource:
-    driver-class-name: 'org.h2.Driver'
-    username: 'sa'
-    password:
-    url: 'jdbc:h2:mem:my_app'
-  h2:
-    console:
-      enabled: true
-      path: '/h2'
+    driver-class-name: 'org.postgresql.Driver'
+    url: 'jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:wg_control_plane}'
+    username: '${DB_USERNAME:wguser}'
+    password: '${DB_PASSWORD:wgpassword}'
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+
   jpa:
+    database: postgresql
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     generate-ddl: false
     open-in-view: false
     hibernate:
       ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: false
+        jdbc:
+          time_zone: UTC
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
-  web:
-    resources:
-      static-locations:
-        - file:/app/static/
-        - classpath:/META-INF/resources/
-        - classpath:/resources/
-        - classpath:/static/
-        - classpath:/public/
+  h2:
+    console:
+      enabled: false
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  root: INFO
