@@ -234,7 +234,7 @@ export class WireguardService {
   }
 
   /**
-   * Preview client configuration (no private key) for safe UI display
+   * Preview client configuration (same generated text as download, including PrivateKey line).
    */
   getClientConfigurationPreview(
     clientId: string,

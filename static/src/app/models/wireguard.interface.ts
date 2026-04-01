@@ -119,7 +119,7 @@ export interface ClientInfo {
   };
 }
 
-/** GET /api/clients/{id}/preview — WireGuard config text without private key */
+/** GET /api/clients/{id}/preview — WireGuard config text (includes PrivateKey; same generation as download) */
 export interface ConfigurationMetadata {
   clientId: string;
   serverName: string;

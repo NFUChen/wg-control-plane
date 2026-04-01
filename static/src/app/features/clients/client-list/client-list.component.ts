@@ -182,7 +182,7 @@ import {
         </ng-template>
       </app-data-table>
 
-      <!-- Config preview modal (preview API = no private key; download = full config) -->
+      <!-- Config preview: same body as download; full .conf including PrivateKey -->
       <app-modal
         [isOpen]="configPreviewModalOpen"
         [title]="configPreviewTitle"
@@ -203,34 +203,26 @@ import {
           <app-alert type="error" title="Preview failed" [message]="configPreviewError" />
         } @else if (configPreview) {
           <div class="space-y-4">
-            <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+            <pre
+              class="max-h-[min(28rem,60vh)] overflow-auto whitespace-pre-wrap break-words rounded-md border border-gray-200 bg-gray-50 p-4 font-mono text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 sm:text-sm"
+            >{{ configPreview.content }}</pre>
+
+            <label class="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input
                 type="checkbox"
                 [checked]="configPreviewAllowAllTraffic"
                 (change)="onConfigPreviewAllowAllChange($any($event.target).checked)"
-                class="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
               />
               Route all traffic through VPN (AllowAllTraffic)
             </label>
 
-            @if (configPreview.metadata.validationErrors.length) {
-              <app-alert
-                type="error"
-                title="Validation warnings"
-                [message]="configPreviewValidationMessage"
-              />
-            }
-
-            <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+            <div class="space-y-1 text-xs text-gray-500 dark:text-gray-400">
               <div>Server: {{ configPreview.metadata.serverName }}</div>
-              <div class="font-mono truncate" title="{{ configPreview.metadata.configHash }}">
+              <div class="truncate font-mono" title="{{ configPreview.metadata.configHash }}">
                 Hash: {{ configPreview.metadata.configHash }}
               </div>
             </div>
-
-            <pre
-              class="text-xs sm:text-sm font-mono bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-md p-4 max-h-[min(28rem,60vh)] overflow-auto whitespace-pre-wrap break-words"
-            >{{ configPreview.content }}</pre>
           </div>
         }
 
@@ -286,11 +278,6 @@ export class ClientListComponent implements OnInit, OnDestroy {
     return this.configPreview?.fileName
       ? `Config preview — ${this.configPreview.fileName}`
       : 'Config preview';
-  }
-
-  get configPreviewValidationMessage(): string {
-    const errs = this.configPreview?.metadata?.validationErrors;
-    return errs?.length ? errs.join('\n') : '';
   }
 
   // Table configuration
@@ -477,7 +464,8 @@ export class ClientListComponent implements OnInit, OnDestroy {
     if (!this.configPreview) return;
     void navigator.clipboard.writeText(this.configPreview.content).then(
       () => {
-        this.successMessage = 'Preview copied to clipboard (preview does not include private key).';
+        this.successMessage =
+          'Preview copied to clipboard.';
       },
       () => {
         this.successMessage = '';

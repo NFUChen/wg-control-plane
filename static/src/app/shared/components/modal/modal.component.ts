@@ -37,8 +37,8 @@ import { CommonModule } from '@angular/common';
             }
           </div>
 
-          <!-- Modal Body -->
-          <div class="p-6" [class.pb-0]="hasFooter">
+          <!-- Modal Body (keep bottom padding when footer exists — avoids content flush against border-t) -->
+          <div class="p-6">
             <ng-content></ng-content>
           </div>
 

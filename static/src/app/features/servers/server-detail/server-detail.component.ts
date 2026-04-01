@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
@@ -8,11 +9,13 @@ import { DataTableComponent, TableAction } from '../../../shared/components/data
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { AlertComponent } from '../../../shared/components/alert/alert.component';
 import { StatusBadgeComponent, BadgeVariant } from '../../../shared/components/status-badge/status-badge.component';
+import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import {
   ServerDetailResponse,
   ClientResponse,
   TableColumn,
-  LoadingState
+  LoadingState,
+  ConfigurationPreview
 } from '../../../models/wireguard.interface';
 
 @Component({
@@ -24,7 +27,8 @@ import {
     DataTableComponent,
     LoadingSpinnerComponent,
     AlertComponent,
-    StatusBadgeComponent
+    StatusBadgeComponent,
+    ModalComponent
   ],
   template: `
     <div class="space-y-6">
@@ -209,6 +213,77 @@ import {
           </ng-template>
         </app-data-table>
       }
+
+      <!-- Config preview: same body as download; full .conf including PrivateKey -->
+      <app-modal
+        [isOpen]="configPreviewModalOpen"
+        [title]="configPreviewTitle"
+        size="xl"
+        [hasFooter]="true"
+        [hasCustomFooter]="true"
+        [showCloseButton]="true"
+        cancelLabel="Close"
+        [showCancelButton]="false"
+        [showConfirmButton]="false"
+        (closeModal)="closeConfigPreviewModal()"
+      >
+        @if (configPreviewLoading) {
+          <div class="flex justify-center py-12">
+            <app-loading-spinner [showText]="true" loadingText="Loading preview..." />
+          </div>
+        } @else if (configPreviewError) {
+          <app-alert type="error" title="Preview failed" [message]="configPreviewError" />
+        } @else if (configPreview) {
+          <div class="space-y-4">
+            <pre
+              class="max-h-[min(28rem,60vh)] overflow-auto whitespace-pre-wrap break-words rounded-md border border-gray-200 bg-gray-50 p-4 font-mono text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 sm:text-sm"
+            >{{ configPreview.content }}</pre>
+
+            <label class="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                [checked]="configPreviewAllowAllTraffic"
+                (change)="onConfigPreviewAllowAllChange($any($event.target).checked)"
+                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
+              />
+              Route all traffic through VPN (AllowAllTraffic)
+            </label>
+
+            <div class="space-y-1 text-xs text-gray-500 dark:text-gray-400">
+              <div>Server: {{ configPreview.metadata.serverName }}</div>
+              <div class="truncate font-mono" title="{{ configPreview.metadata.configHash }}">
+                Hash: {{ configPreview.metadata.configHash }}
+              </div>
+            </div>
+          </div>
+        }
+
+        <div slot="footer" class="flex w-full flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            (click)="copyConfigPreviewToClipboard()"
+            [disabled]="!configPreview || configPreviewLoading"
+            class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            Copy preview
+          </button>
+          <button
+            type="button"
+            (click)="downloadFullConfigFromPreview()"
+            [disabled]="!previewClientId || configPreviewLoading"
+            class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          >
+            Download full config
+          </button>
+          <button
+            type="button"
+            (click)="closeConfigPreviewModal()"
+            class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            Close
+          </button>
+        </div>
+      </app-modal>
     </div>
   `
 })
@@ -219,7 +294,21 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
   clientsLoading = false;
   successMessage = '';
 
+  /** WireGuard config preview modal (same behavior as client-list) */
+  configPreviewModalOpen = false;
+  configPreviewLoading = false;
+  configPreviewError: string | null = null;
+  configPreview: ConfigurationPreview | null = null;
+  previewClientId: string | null = null;
+  configPreviewAllowAllTraffic = false;
+
   private destroy$ = new Subject<void>();
+
+  get configPreviewTitle(): string {
+    return this.configPreview?.fileName
+      ? `Config preview — ${this.configPreview.fileName}`
+      : 'Config preview';
+  }
 
   // Client table configuration
   clientColumns: TableColumn[] = [
@@ -244,9 +333,9 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
       variant: 'primary'
     },
     {
-      label: 'View Info',
+      label: 'Preview Config',
       icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-      action: 'info',
+      action: 'preview',
       variant: 'secondary'
     },
     {
@@ -316,8 +405,8 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
       case 'download':
         this.downloadClientConfig(item.id);
         break;
-      case 'info':
-        this.viewClientInfo(item.id);
+      case 'preview':
+        this.openConfigPreview(item.id);
         break;
       case 'remove':
         this.removeClient(item);
@@ -325,8 +414,8 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  downloadClientConfig(clientId: string): void {
-    this.wireguardService.downloadClientConfig(clientId, false).subscribe({
+  downloadClientConfig(clientId: string, allowAllTraffic = false): void {
+    this.wireguardService.downloadClientConfig(clientId, allowAllTraffic).subscribe({
       next: ({ content, fileName }) => {
         const blob = new Blob([content], { type: 'text/plain' });
         const url = window.URL.createObjectURL(blob);
@@ -336,7 +425,8 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
         link.click();
         window.URL.revokeObjectURL(url);
 
-        this.successMessage = 'Configuration downloaded successfully';
+        const trafficType = allowAllTraffic ? ' (all traffic)' : '';
+        this.successMessage = `Configuration downloaded successfully${trafficType}`;
       },
       error: (error) => {
         console.error('Error downloading client config:', error);
@@ -344,17 +434,75 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  viewClientInfo(clientId: string): void {
-    this.wireguardService.getClientInfo(clientId).subscribe({
-      next: (clientInfo) => {
-        // For now, just log the info - could open a modal in a full implementation
-        console.log('Client Info:', clientInfo);
-        alert(`Client Info:\nName: ${clientInfo.name}\nPublic Key: ${clientInfo.publicKey}\nAllowed IPs: ${clientInfo.allowedIPs}\nEnabled: ${clientInfo.enabled}\nOnline: ${clientInfo.isOnline}`);
+  openConfigPreview(clientId: string): void {
+    this.previewClientId = clientId;
+    this.configPreviewAllowAllTraffic = false;
+    this.configPreviewModalOpen = true;
+    this.configPreviewError = null;
+    this.configPreview = null;
+    this.loadConfigPreview();
+  }
+
+  closeConfigPreviewModal(): void {
+    this.configPreviewModalOpen = false;
+    this.previewClientId = null;
+    this.configPreview = null;
+    this.configPreviewError = null;
+    this.configPreviewLoading = false;
+  }
+
+  loadConfigPreview(): void {
+    if (!this.previewClientId) return;
+    this.configPreviewLoading = true;
+    this.configPreviewError = null;
+    this.wireguardService
+      .getClientConfigurationPreview(this.previewClientId, this.configPreviewAllowAllTraffic)
+      .subscribe({
+        next: preview => {
+          this.configPreview = preview;
+          this.configPreviewLoading = false;
+        },
+        error: (error: HttpErrorResponse) => {
+          this.configPreviewLoading = false;
+          this.configPreviewError = this.previewHttpErrorMessage(error);
+        }
+      });
+  }
+
+  onConfigPreviewAllowAllChange(checked: boolean): void {
+    this.configPreviewAllowAllTraffic = checked;
+    if (this.configPreviewModalOpen && this.previewClientId) {
+      this.loadConfigPreview();
+    }
+  }
+
+  copyConfigPreviewToClipboard(): void {
+    if (!this.configPreview) return;
+    void navigator.clipboard.writeText(this.configPreview.content).then(
+      () => {
+        this.successMessage = 'Preview copied to clipboard.';
       },
-      error: (error) => {
-        console.error('Error getting client info:', error);
+      () => {
+        this.successMessage = '';
       }
-    });
+    );
+  }
+
+  downloadFullConfigFromPreview(): void {
+    if (!this.previewClientId) return;
+    this.downloadClientConfig(this.previewClientId, this.configPreviewAllowAllTraffic);
+  }
+
+  private previewHttpErrorMessage(error: HttpErrorResponse): string {
+    const body = error.error;
+    if (typeof body === 'string' && body.trim()) {
+      return body.length > 200 ? `${body.slice(0, 200)}…` : body;
+    }
+    if (body && typeof body === 'object' && 'message' in body) {
+      const m = (body as { message?: string }).message;
+      if (typeof m === 'string' && m.trim()) return m;
+    }
+    return error.message || 'Failed to load configuration preview';
   }
 
   removeClient(client: ClientResponse): void {
