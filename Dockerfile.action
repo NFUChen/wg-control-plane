@@ -1,4 +1,4 @@
-# Local-friendly image: build on the host (see Makefile local-build), then copy artifacts in.
+# CI / local image: build on the host (see Makefile local-build), then copy the JAR in.
 # Expects: ./gradlew bootJar after `npm run build` in static/ so the SPA is embedded in the JAR.
 # Optional: mount host static/dist over /app/static if you need file: overrides (see application.yaml).
 # Same slim runtime as Dockerfile stage 3 (JRE + wg stack), not the dev-base image.
