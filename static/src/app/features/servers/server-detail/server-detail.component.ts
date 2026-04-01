@@ -284,6 +284,30 @@ import {
           </button>
         </div>
       </app-modal>
+
+      <!-- Remove client confirmation -->
+      <app-modal
+        [isOpen]="removeClientModalOpen"
+        title="Remove client"
+        size="md"
+        [hasFooter]="true"
+        [hasCustomFooter]="false"
+        [showCloseButton]="true"
+        cancelLabel="Cancel"
+        confirmLabel="Remove"
+        [showCancelButton]="true"
+        [showConfirmButton]="true"
+        [confirmVariant]="'danger'"
+        (closeModal)="closeRemoveClientModal()"
+        (cancelAction)="closeRemoveClientModal()"
+        (confirmAction)="confirmRemoveClient()"
+      >
+        <p class="text-sm text-gray-600 dark:text-gray-300">
+          Are you sure you want to remove client
+          <strong class="font-medium text-gray-900 dark:text-gray-100">{{ clientPendingRemoval?.name }}</strong>?
+          This action cannot be undone.
+        </p>
+      </app-modal>
     </div>
   `
 })
@@ -293,6 +317,9 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
   loadingState: LoadingState = { isLoading: false };
   clientsLoading = false;
   successMessage = '';
+
+  removeClientModalOpen = false;
+  clientPendingRemoval: ClientResponse | null = null;
 
   /** WireGuard config preview modal (same behavior as client-list) */
   configPreviewModalOpen = false;
@@ -507,21 +534,36 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
 
   removeClient(client: ClientResponse): void {
     if (!this.serverId) return;
+    this.clientPendingRemoval = client;
+    this.removeClientModalOpen = true;
+  }
 
-    if (confirm(`Are you sure you want to remove client "${client.name}"? This action cannot be undone.`)) {
-      this.clientsLoading = true;
-      this.wireguardService.removeClientFromServer(this.serverId, client.id).subscribe({
-        next: () => {
-          this.successMessage = `Client "${client.name}" removed successfully`;
-          this.loadServerDetails(); // Refresh the data
-          this.clientsLoading = false;
-        },
-        error: (error) => {
-          console.error('Error removing client:', error);
-          this.clientsLoading = false;
-        }
-      });
+  closeRemoveClientModal(): void {
+    this.removeClientModalOpen = false;
+    this.clientPendingRemoval = null;
+  }
+
+  confirmRemoveClient(): void {
+    const client = this.clientPendingRemoval;
+    if (!client || !this.serverId) {
+      this.closeRemoveClientModal();
+      return;
     }
+
+    this.clientsLoading = true;
+    this.wireguardService.removeClientFromServer(this.serverId, client.id).subscribe({
+      next: () => {
+        this.successMessage = `Client "${client.name}" removed successfully`;
+        this.closeRemoveClientModal();
+        this.loadServerDetails();
+        this.clientsLoading = false;
+      },
+      error: (error) => {
+        console.error('Error removing client:', error);
+        this.clientsLoading = false;
+        this.closeRemoveClientModal();
+      }
+    });
   }
 
   clearError(): void {

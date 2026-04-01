@@ -60,7 +60,7 @@ import { AlertComponent } from '../../shared/components/alert/alert.component';
             Global settings
           </h2>
           <p class="mt-0.5 text-xs leading-snug text-gray-500 break-words [overflow-wrap:anywhere] dark:text-gray-400">
-            Endpoint and defaults for new clients (similar to WGDashboard global peers defaults).
+            Endpoint and defaults for new clients.
           </p>
         </div>
         <button

@@ -74,4 +74,9 @@ interface WireGuardManagementService {
     fun getServerStatistics(serverId: UUID): ServerStatisticsResponse?
 
     fun launchServer(serverId: UUID)
+
+    fun stopServer(serverId: UUID)
+
+    /** Whether the WireGuard interface for this server is currently up (wg is running). */
+    fun isServerInterfaceOnline(serverId: UUID): Boolean
 }

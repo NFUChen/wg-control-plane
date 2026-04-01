@@ -36,6 +36,8 @@ export interface ServerResponse {
   postUp?: string | null;
   postDown?: string | null;
   enabled: boolean;
+  /** WireGuard interface is up (same meaning as client isOnline — runtime connectivity). */
+  isOnline: boolean;
   totalClients: number;
   activeClients: number;
   createdAt: string;

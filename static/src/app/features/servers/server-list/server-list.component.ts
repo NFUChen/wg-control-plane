@@ -98,6 +98,30 @@ import {
                 {{ item.endpoint }}:{{ item.listenPort }}
               </div>
             </span>
+
+            <!-- Interface up/down: Stop — toggle — Start (uses API isOnline) -->
+            <span *ngSwitchCase="'interfaceUp'" class="inline-flex items-center gap-2">
+              <span class="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Stop</span>
+              <button
+                type="button"
+                role="switch"
+                [attr.aria-checked]="item.isOnline"
+                [disabled]="isServerPowerBusy(item.id) || (!item.enabled && !item.isOnline)"
+                [title]="getInterfaceToggleTitle(item)"
+                (click)="onServerInterfaceToggle(item)"
+                class="relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+                [class.bg-blue-600]="item.isOnline"
+                [class.bg-gray-300]="!item.isOnline"
+                [class.dark:bg-gray-600]="!item.isOnline"
+              >
+                <span
+                  class="pointer-events-none inline-block h-6 w-6 rounded-full bg-white shadow transition-transform"
+                  [class.translate-x-0.5]="!item.isOnline"
+                  [class.translate-x-5]="item.isOnline"
+                ></span>
+              </button>
+              <span class="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Start</span>
+            </span>
           </ng-container>
         </ng-template>
       </app-data-table>
@@ -109,6 +133,8 @@ export class ServerListComponent implements OnInit, OnDestroy {
   loadingState: LoadingState = { isLoading: false };
   searchQuery = '';
   successMessage = '';
+  /** Server IDs with interface start/stop request in flight */
+  private readonly serverPowerLoadingIds = new Set<string>();
 
   private destroy$ = new Subject<void>();
 
@@ -121,6 +147,7 @@ export class ServerListComponent implements OnInit, OnDestroy {
     { key: 'networkAddress', label: 'Network' },
     { key: 'clientCount', label: 'Clients', sortable: true, type: 'number' },
     { key: 'createdAt', label: 'Created', sortable: true, type: 'date' },
+    { key: 'interfaceUp', label: 'Interface' },
     { key: 'actions', label: 'Actions', type: 'action', width: '120px' }
   ];
 
@@ -141,12 +168,6 @@ export class ServerListComponent implements OnInit, OnDestroy {
       icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
       action: 'edit',
       variant: 'secondary'
-    },
-    {
-      label: 'Start',
-      icon: 'M14.828 14.828a4 4 0 01-5.656 0M9 10h1.5a1.5 1.5 0 011.5 1.5v1a1.5 1.5 0 01-1.5 1.5H9m0-4a1.5 1.5 0 011.5-1.5H12',
-      action: 'start',
-      variant: 'primary'
     },
     {
       label: 'Delete',
@@ -210,9 +231,6 @@ export class ServerListComponent implements OnInit, OnDestroy {
       case 'edit':
         this.editServer(item.id);
         break;
-      case 'start':
-        this.launchServer(item.id);
-        break;
       case 'delete':
         this.deleteServer(item);
         break;
@@ -231,14 +249,39 @@ export class ServerListComponent implements OnInit, OnDestroy {
     this.router.navigate(['/servers', serverId, 'edit']);
   }
 
-  launchServer(serverId: string): void {
-    this.wireguardService.launchServer(serverId).subscribe({
+  isServerPowerBusy(serverId: string): boolean {
+    return this.serverPowerLoadingIds.has(serverId);
+  }
+
+  getInterfaceToggleTitle(server: ServerResponse): string {
+    if (!server.enabled && !server.isOnline) {
+      return 'Enable the server before starting the interface';
+    }
+    return server.isOnline ? 'Interface running — click to stop' : 'Interface down — click to start';
+  }
+
+  onServerInterfaceToggle(server: ServerResponse): void {
+    if (this.isServerPowerBusy(server.id)) return;
+    const wantOn = !server.isOnline;
+    if (wantOn && !server.enabled) {
+      return;
+    }
+
+    this.serverPowerLoadingIds.add(server.id);
+    const req$ = wantOn
+      ? this.wireguardService.launchServer(server.id)
+      : this.wireguardService.stopServer(server.id);
+
+    req$.subscribe({
       next: () => {
-        this.successMessage = 'Server started successfully';
-        this.loadServers(); // Refresh the data
+        this.serverPowerLoadingIds.delete(server.id);
+        this.successMessage = wantOn ? 'Interface started' : 'Interface stopped';
+        this.loadServers();
       },
       error: (error) => {
-        console.error('Error starting server:', error);
+        console.error('Error changing interface state:', error);
+        this.serverPowerLoadingIds.delete(server.id);
+        this.loadServers();
       }
     });
   }

@@ -298,6 +298,21 @@ class DefaultWireGuardManagementService(
         }
     }
 
+    override fun stopServer(serverId: UUID) {
+        val server = serverRepository.findByIdWithClients(serverId)
+            ?: throw IllegalArgumentException("Server not found: $serverId")
+
+        safeCall("Cannot stop server: failed to execute WireGuard command") {
+            wireGuardCommandService.stopWireGuardInterface(server.interfaceName)
+            logger.info("Successfully stop WireGuard server: ${server.name}, interface name: ${server.interfaceName}, ID: ${server.id}")
+        }
+    }
+
+    override fun isServerInterfaceOnline(serverId: UUID): Boolean {
+        val server = serverRepository.findById(serverId).orElse(null) ?: return false
+        return wireGuardCommandService.isInterfaceRunning(server.interfaceName)
+    }
+
     /**
      * Write server configuration file to local filesystem
      */

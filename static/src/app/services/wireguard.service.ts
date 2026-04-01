@@ -157,6 +157,12 @@ export class WireguardService {
     );
   }
 
+  stopServer(serverId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/server-down/${serverId}`, {}).pipe(
+      catchError(error => this.handleError(error))
+    );
+  }
+
   // ==================== Client Operations ====================
 
   /**

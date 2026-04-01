@@ -8,6 +8,8 @@ import com.module.wgcontrolplane.model.WireGuardServer
 import jakarta.validation.constraints.*
 import java.time.LocalDateTime
 
+
+
 /**
  * Request DTO for creating a WireGuard server
  */
@@ -124,13 +126,15 @@ data class ServerResponse(
     val postUp: String?,
     val postDown: String?,
     val enabled: Boolean,
+    /** WireGuard interface is up (wg process running for this server). */
+    val isOnline: Boolean,
     val totalClients: Int,
     val activeClients: Int,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 ) {
     companion object {
-        fun from(server: WireGuardServer, globalConfig: GlobalConfig): ServerResponse {
+        fun from(server: WireGuardServer, globalConfig: GlobalConfig, isOnline: Boolean): ServerResponse {
             val activeClients = server.clients.count { it.enabled }
             return ServerResponse(
                 id = server.id.toString(),
@@ -144,6 +148,7 @@ data class ServerResponse(
                 postUp = server.postUp,
                 postDown = server.postDown,
                 enabled = server.enabled,
+                isOnline = isOnline,
                 totalClients = server.clients.size,
                 activeClients = activeClients,
                 createdAt = server.createdAt,
