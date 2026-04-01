@@ -78,7 +78,7 @@ probes:
       failureThreshold: 3
 
 persistence:
-  enabled: true
+  enabled: false
   storageClass: ""
   accessMode: ReadWriteOnce
   size: 2Gi
@@ -98,7 +98,7 @@ env:
 
 # Embedded PostgreSQL (Bitnami). Set postgresql.enabled: false to use an external database.
 postgresql:
-  enabled: true
+  enabled: false
   auth:
     username: wguser
     password: changeme
