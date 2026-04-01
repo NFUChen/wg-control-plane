@@ -1,22 +1,17 @@
-package com.app.service
+package com.app.service.wireguard
 
 import com.app.model.WireGuardClient
 import org.slf4j.LoggerFactory
-import org.springframework.stereotype.Service
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-/**
- * Service for executing WireGuard CLI commands dynamically
- */
-@Service
-class WireGuardCommandService {
+class LocalWireGuardCommandService: WireGuardCommandService {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(WireGuardCommandService::class.java)
+        private val logger = LoggerFactory.getLogger(LocalWireGuardCommandService::class.java)
     }
 
-    fun launchWireGuardInterface(interfaceName: String) {
+    override fun launchWireGuardInterface(interfaceName: String) {
         val command = listOf("wg-quick", "up", interfaceName)
 
         logger.info("Launching WireGuard interface $interfaceName")
@@ -31,7 +26,7 @@ class WireGuardCommandService {
     /**
      * Add peer to WireGuard interface dynamically
      */
-    fun addPeerToInterface(interfaceName: String, client: WireGuardClient) {
+    override fun addPeerToInterface(interfaceName: String, client: WireGuardClient) {
         val command = mutableListOf("wg", "set", interfaceName, "peer", client.publicKey)
 
         // Add allowed IPs
@@ -62,7 +57,7 @@ class WireGuardCommandService {
     /**
      * Remove peer from WireGuard interface dynamically
      */
-    fun removePeerFromInterface(interfaceName: String, publicKey: String) {
+    override fun removePeerFromInterface(interfaceName: String, publicKey: String) {
         val command = listOf("wg", "set", interfaceName, "peer", publicKey, "remove")
 
         val result = executeWgCommand(command)
@@ -77,7 +72,7 @@ class WireGuardCommandService {
     /**
      * Stop WireGuard interface
      */
-    fun stopWireGuardInterface(interfaceName: String) {
+    override fun stopWireGuardInterface(interfaceName: String) {
         val command = listOf("wg-quick", "down", interfaceName)
 
         logger.info("Stopping WireGuard interface $interfaceName")
@@ -92,7 +87,7 @@ class WireGuardCommandService {
     /**
      * Check if WireGuard interface is currently running
      */
-    fun isInterfaceRunning(interfaceName: String): Boolean {
+    override fun isInterfaceRunning(interfaceName: String): Boolean {
         return try {
             val command = listOf("wg", "show", interfaceName)
             val result = executeWgCommand(command)
