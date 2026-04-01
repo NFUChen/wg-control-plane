@@ -9,7 +9,7 @@ ENV PATH="$JAVA_HOME/bin:$PATH"
 ENV DEBIAN_FRONTEND=noninteractive
 ENV APP_HOME=/app
 
-# Install essential packages, Java 17, and WireGuard
+# Install essential packages, Java 17, WireGuard, and Ansible
 RUN apt-get update && \
     apt-get install -y \
         openjdk-17-jdk \
@@ -22,9 +22,21 @@ RUN apt-get update && \
         net-tools \
         iputils-ping \
         ca-certificates \
+        # Python and pip for Ansible
+        python3 \
+        python3-pip \
+        python3-venv \
+        # SSH client for Ansible connections
+        openssh-client \
         # Additional development tools that might be useful
         vim \
         git && \
+    # Install Ansible via pip
+    pip3 install --no-cache-dir \
+        ansible \
+        ansible-core \
+        paramiko \
+        sshpass && \
     # Clean up apt cache to reduce image size
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -34,6 +46,10 @@ RUN java -version
 
 # Verify WireGuard installation
 RUN wg --version
+
+# Verify Ansible installation
+RUN ansible --version && \
+    ansible-playbook --version
 
 # Create app directory
 WORKDIR $APP_HOME

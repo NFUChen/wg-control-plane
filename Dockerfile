@@ -42,7 +42,18 @@ RUN apt-get update && \
         wireguard-tools \
         iproute2 \
         iptables \
-    && rm -rf /var/lib/apt/lists/*
+        # Python and Ansible for remote management
+        python3 \
+        python3-pip \
+        openssh-client \
+        curl \
+    && pip3 install --no-cache-dir \
+        ansible \
+        ansible-core \
+        paramiko \
+        sshpass \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf ~/.cache/pip
 
 WORKDIR $APP_HOME
 
