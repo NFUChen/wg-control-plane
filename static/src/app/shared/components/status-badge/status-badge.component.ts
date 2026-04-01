@@ -9,7 +9,9 @@ export type BadgeVariant = 'success' | 'danger' | 'warning' | 'info' | 'gray';
   imports: [CommonModule],
   template: `
     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" [class]="badgeClasses">
-      <span *ngIf="showDot" class="w-2 h-2 rounded-full" [class]="dotClasses"></span>
+      @if (showDot) {
+        <span class="w-2 h-2 rounded-full" [class]="dotClasses"></span>
+      }
       {{ label }}
     </span>
   `

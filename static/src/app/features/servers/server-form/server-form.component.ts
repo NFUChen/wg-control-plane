@@ -26,24 +26,27 @@ import {
   template: `
     <div class="max-w-2xl mx-auto space-y-6">
       <!-- Loading Spinner -->
-      <app-loading-spinner
-        *ngIf="loadingState.isLoading && !serverForm"
-        [showText]="true"
-        loadingText="Loading server details..."
-        containerClass="py-8"
-      />
+      @if (loadingState.isLoading && !serverForm) {
+        <app-loading-spinner
+          [showText]="true"
+          loadingText="Loading server details..."
+          containerClass="py-8"
+        />
+      }
 
       <!-- Error Alert -->
-      <app-alert
-        *ngIf="loadingState.error"
-        type="error"
-        title="Error"
-        [message]="loadingState.error"
-        (dismissed)="clearError()"
-      />
+      @if (loadingState.error) {
+        <app-alert
+          type="error"
+          title="Error"
+          [message]="loadingState.error"
+          (dismissed)="clearError()"
+        />
+      }
 
       <!-- Form -->
-      <div *ngIf="serverForm" class="bg-white dark:bg-gray-900 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700">
+      @if (serverForm) {
+      <div class="bg-white dark:bg-gray-900 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
             {{ isEditMode ? 'Edit Server' : 'Create New Server' }}
@@ -69,11 +72,16 @@ import {
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="e.g., Main VPN Server"
               />
-              <div *ngIf="serverForm.get('name')?.invalid && serverForm.get('name')?.touched"
-                   class="mt-1 text-sm text-red-600">
-                <div *ngIf="serverForm.get('name')?.errors?.['required']">Server name is required</div>
-                <div *ngIf="serverForm.get('name')?.errors?.['minlength']">Server name must be at least 3 characters</div>
-              </div>
+              @if (serverForm.get('name')?.invalid && serverForm.get('name')?.touched) {
+                <div class="mt-1 text-sm text-red-600">
+                  @if (serverForm.get('name')?.errors?.['required']) {
+                    <div>Server name is required</div>
+                  }
+                  @if (serverForm.get('name')?.errors?.['minlength']) {
+                    <div>Server name must be at least 3 characters</div>
+                  }
+                </div>
+              }
             </div>
 
             <div>
@@ -87,10 +95,13 @@ import {
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="e.g., wg0"
               />
-              <div *ngIf="serverForm.get('interfaceName')?.invalid && serverForm.get('interfaceName')?.touched"
-                   class="mt-1 text-sm text-red-600">
-                <div *ngIf="serverForm.get('interfaceName')?.errors?.['required']">Interface name is required</div>
-              </div>
+              @if (serverForm.get('interfaceName')?.invalid && serverForm.get('interfaceName')?.touched) {
+                <div class="mt-1 text-sm text-red-600">
+                  @if (serverForm.get('interfaceName')?.errors?.['required']) {
+                    <div>Interface name is required</div>
+                  }
+                </div>
+              }
             </div>
           </div>
 
@@ -112,11 +123,16 @@ import {
               <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Specify the network range for this VPN (CIDR notation)
               </p>
-              <div *ngIf="serverForm.get('networkAddress')?.invalid && serverForm.get('networkAddress')?.touched"
-                   class="mt-1 text-sm text-red-600">
-                <div *ngIf="serverForm.get('networkAddress')?.errors?.['required']">Network address is required</div>
-                <div *ngIf="serverForm.get('networkAddress')?.errors?.['pattern']">Invalid network address format</div>
-              </div>
+              @if (serverForm.get('networkAddress')?.invalid && serverForm.get('networkAddress')?.touched) {
+                <div class="mt-1 text-sm text-red-600">
+                  @if (serverForm.get('networkAddress')?.errors?.['required']) {
+                    <div>Network address is required</div>
+                  }
+                  @if (serverForm.get('networkAddress')?.errors?.['pattern']) {
+                    <div>Invalid network address format</div>
+                  }
+                </div>
+              }
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -131,10 +147,13 @@ import {
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="e.g., vpn.example.com"
                 />
-                <div *ngIf="serverForm.get('endpoint')?.invalid && serverForm.get('endpoint')?.touched"
-                     class="mt-1 text-sm text-red-600">
-                  <div *ngIf="serverForm.get('endpoint')?.errors?.['required']">Endpoint is required</div>
-                </div>
+                @if (serverForm.get('endpoint')?.invalid && serverForm.get('endpoint')?.touched) {
+                  <div class="mt-1 text-sm text-red-600">
+                    @if (serverForm.get('endpoint')?.errors?.['required']) {
+                      <div>Endpoint is required</div>
+                    }
+                  </div>
+                }
               </div>
 
               <div>
@@ -150,13 +169,18 @@ import {
                   min="1"
                   max="65535"
                 />
-                <div *ngIf="serverForm.get('listenPort')?.invalid && serverForm.get('listenPort')?.touched"
-                     class="mt-1 text-sm text-red-600">
-                  <div *ngIf="serverForm.get('listenPort')?.errors?.['required']">Listen port is required</div>
-                  <div *ngIf="serverForm.get('listenPort')?.errors?.['min'] || serverForm.get('listenPort')?.errors?.['max']">
-                    Port must be between 1 and 65535
+                @if (serverForm.get('listenPort')?.invalid && serverForm.get('listenPort')?.touched) {
+                  <div class="mt-1 text-sm text-red-600">
+                    @if (serverForm.get('listenPort')?.errors?.['required']) {
+                      <div>Listen port is required</div>
+                    }
+                    @if (serverForm.get('listenPort')?.errors?.['min'] || serverForm.get('listenPort')?.errors?.['max']) {
+                      <div>
+                        Port must be between 1 and 65535
+                      </div>
+                    }
                   </div>
-                </div>
+                }
               </div>
             </div>
           </div>
@@ -214,28 +238,34 @@ import {
             </div>
 
             <div formArrayName="dnsServers" class="space-y-3">
-              <div *ngFor="let dns of dnsServers.controls; let i = index" class="flex items-center gap-3">
-                <div class="flex-1">
-                  <input
-                    type="text"
-                    [formControlName]="i"
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., 1.1.1.1"
-                  />
-                  <div *ngIf="dns.invalid && dns.touched" class="mt-1 text-sm text-red-600">
-                    <div *ngIf="dns.errors?.['pattern']">Invalid IP address format</div>
+              @for (dns of dnsServers.controls; track $index; let i = $index) {
+                <div class="flex items-center gap-3">
+                  <div class="flex-1">
+                    <input
+                      type="text"
+                      [formControlName]="i"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="e.g., 1.1.1.1"
+                    />
+                    @if (dns.invalid && dns.touched) {
+                      <div class="mt-1 text-sm text-red-600">
+                        @if (dns.errors?.['pattern']) {
+                          <div>Invalid IP address format</div>
+                        }
+                      </div>
+                    }
                   </div>
+                  <button
+                    type="button"
+                    (click)="removeDnsServer(i)"
+                    class="flex-shrink-0 text-red-600 hover:text-red-800"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  (click)="removeDnsServer(i)"
-                  class="flex-shrink-0 text-red-600 hover:text-red-800"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
+              }
             </div>
 
             <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -257,20 +287,25 @@ import {
               [disabled]="serverForm.invalid || submitting"
               class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span *ngIf="submitting" class="flex items-center">
-                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {{ isEditMode ? 'Updating...' : 'Creating...' }}
-              </span>
-              <span *ngIf="!submitting">
-                {{ isEditMode ? 'Update Server' : 'Create Server' }}
-              </span>
+              @if (submitting) {
+                <span class="flex items-center">
+                  <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {{ isEditMode ? 'Updating...' : 'Creating...' }}
+                </span>
+              }
+              @if (!submitting) {
+                <span>
+                  {{ isEditMode ? 'Update Server' : 'Create Server' }}
+                </span>
+              }
             </button>
           </div>
         </form>
       </div>
+      }
     </div>
   `
 })

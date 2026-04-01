@@ -22,34 +22,41 @@ export interface TableAction {
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ title }}</h2>
-            <p *ngIf="subtitle" class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ subtitle }}</p>
+            @if (subtitle) {
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ subtitle }}</p>
+            }
           </div>
           <div class="flex flex-col sm:flex-row gap-3">
             <!-- Search -->
-            <div *ngIf="searchable" class="relative">
-              <input
-                type="text"
-                [(ngModel)]="searchQuery"
-                (ngModelChange)="onSearchChange($event)"
-                placeholder="Search..."
-                class="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-              <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
+            @if (searchable) {
+              <div class="relative">
+                <input
+                  type="text"
+                  [(ngModel)]="searchQuery"
+                  (ngModelChange)="onSearchChange($event)"
+                  placeholder="Search..."
+                  class="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                <svg class="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            }
 
             <!-- Primary Action -->
-            <button
-              *ngIf="primaryAction"
-              (click)="onPrimaryAction()"
-              class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-            >
-              <svg *ngIf="primaryAction.icon" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="primaryAction.icon" />
-              </svg>
-              {{ primaryAction.label }}
-            </button>
+            @if (primaryAction) {
+              <button
+                (click)="onPrimaryAction()"
+                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+              >
+                @if (primaryAction.icon) {
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="primaryAction.icon" />
+                  </svg>
+                }
+                {{ primaryAction.label }}
+              </button>
+            }
           </div>
         </div>
       </div>
@@ -59,57 +66,64 @@ export interface TableAction {
         <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-800/80">
             <tr>
-              <th
-                *ngFor="let column of columns"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
-                [class.w-20]="column.type === 'action'"
-                (click)="onSort(column)"
-              >
-                <div class="flex items-center gap-2">
-                  {{ column.label }}
-                  <svg
-                    *ngIf="column.sortable && sortColumn === column.key"
-                    class="w-4 h-4 text-gray-400 dark:text-gray-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      [attr.d]="sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'"
-                    />
-                  </svg>
-                </div>
-              </th>
+              @for (column of columns; track column.key) {
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                  [class.w-20]="column.type === 'action'"
+                  (click)="onSort(column)"
+                >
+                  <div class="flex items-center gap-2">
+                    {{ column.label }}
+                    @if (column.sortable && sortColumn === column.key) {
+                      <svg
+                        class="w-4 h-4 text-gray-400 dark:text-gray-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          [attr.d]="sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'"
+                        />
+                      </svg>
+                    }
+                  </div>
+                </th>
+              }
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
             <!-- Loading State -->
-            <tr *ngIf="loading">
-              <td [attr.colspan]="columns.length" class="px-6 py-12">
-                <app-loading-spinner [showText]="true" loadingText="Loading data..." />
-              </td>
-            </tr>
+            @if (loading) {
+              <tr>
+                <td [attr.colspan]="columns.length" class="px-6 py-12">
+                  <app-loading-spinner [showText]="true" loadingText="Loading data..." />
+                </td>
+              </tr>
+            }
 
             <!-- Empty State -->
-            <tr *ngIf="!loading && data.length === 0">
-              <td [attr.colspan]="columns.length" class="px-6 py-12 text-center">
-                <div class="text-gray-500 dark:text-gray-400">
-                  <svg class="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m12 0a1 1 0 100-2 1 1 0 000 2z" />
-                  </svg>
-                  <p class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">{{ emptyMessage || 'No data found' }}</p>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ emptySubMessage || 'Get started by creating your first item.' }}</p>
-                </div>
-              </td>
-            </tr>
+            @if (!loading && data.length === 0) {
+              <tr>
+                <td [attr.colspan]="columns.length" class="px-6 py-12 text-center">
+                  <div class="text-gray-500 dark:text-gray-400">
+                    <svg class="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m12 0a1 1 0 100-2 1 1 0 000 2z" />
+                    </svg>
+                    <p class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">{{ emptyMessage || 'No data found' }}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ emptySubMessage || 'Get started by creating your first item.' }}</p>
+                  </div>
+                </td>
+              </tr>
+            }
 
             <!-- Data Rows -->
-            <tr *ngFor="let item of data; trackBy: trackByFn" class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+            @for (item of data; track trackByFn($index, item)) {
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+              @for (column of columns; track column.key) {
               <td
-                *ngFor="let column of columns"
                 class="px-6 py-4 whitespace-nowrap"
                 [class]="getCellClass(column)"
               >
@@ -141,62 +155,67 @@ export interface TableAction {
 
                   <!-- Actions -->
                   <div *ngSwitchCase="'action'" class="flex items-center gap-2">
-                    <button
-                      *ngFor="let action of rowActions"
-                      (click)="onRowAction(action.action, item)"
-                      class="text-sm font-medium rounded px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800"
-                      [class]="getActionClass(action.variant)"
-                      [title]="action.label"
-                    >
-                      <svg *ngIf="action.icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="action.icon" />
-                      </svg>
-                      <span *ngIf="!action.icon">{{ action.label }}</span>
-                    </button>
+                    @for (action of rowActions; track $index) {
+                      <button
+                        (click)="onRowAction(action.action, item)"
+                        class="text-sm font-medium rounded px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        [class]="getActionClass(action.variant)"
+                        [title]="action.label"
+                      >
+                        @if (action.icon) {
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="action.icon" />
+                          </svg>
+                        }
+                        @if (!action.icon) {
+                          <span>{{ action.label }}</span>
+                        }
+                      </button>
+                    }
                   </div>
 
                   <!-- Custom template -->
                   <div *ngSwitchDefault>
-                    <ng-container *ngIf="customTemplate; then customTpl; else defaultTpl">
-                    </ng-container>
-                    <ng-template #customTpl>
-                      <ng-container *ngTemplateOutlet="customTemplate; context: { $implicit: item, column: column }">
-                      </ng-container>
-                    </ng-template>
-                    <ng-template #defaultTpl>
+                    @if (customTemplate) {
+                      <ng-container *ngTemplateOutlet="customTemplate; context: { $implicit: item, column: column }" />
+                    } @else {
                       <span class="text-sm text-gray-900 dark:text-gray-100">{{ getColumnValue(item, column.key) }}</span>
-                    </ng-template>
+                    }
                   </div>
                 </ng-container>
               </td>
-            </tr>
+              }
+              </tr>
+            }
           </tbody>
         </table>
       </div>
 
       <!-- Pagination -->
-      <div *ngIf="showPagination" class="bg-gray-50 dark:bg-gray-800/80 px-6 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
-        <div class="text-sm text-gray-700 dark:text-gray-300">
-          Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ Math.min(currentPage * pageSize, totalItems) }} of {{ totalItems }} results
+      @if (showPagination) {
+        <div class="bg-gray-50 dark:bg-gray-800/80 px-6 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
+          <div class="text-sm text-gray-700 dark:text-gray-300">
+            Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ Math.min(currentPage * pageSize, totalItems) }} of {{ totalItems }} results
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              (click)="onPageChange(currentPage - 1)"
+              [disabled]="currentPage === 1"
+              class="px-3 py-1 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span class="px-3 py-1 text-sm text-gray-700 dark:text-gray-300">{{ currentPage }} of {{ totalPages }}</span>
+            <button
+              (click)="onPageChange(currentPage + 1)"
+              [disabled]="currentPage === totalPages"
+              class="px-3 py-1 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button
-            (click)="onPageChange(currentPage - 1)"
-            [disabled]="currentPage === 1"
-            class="px-3 py-1 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-          <span class="px-3 py-1 text-sm text-gray-700 dark:text-gray-300">{{ currentPage }} of {{ totalPages }}</span>
-          <button
-            (click)="onPageChange(currentPage + 1)"
-            [disabled]="currentPage === totalPages"
-            class="px-3 py-1 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
-        </div>
-      </div>
+      }
     </div>
   `
 })

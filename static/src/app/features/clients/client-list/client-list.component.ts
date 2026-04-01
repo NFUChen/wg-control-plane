@@ -29,32 +29,36 @@ import {
   template: `
     <div class="space-y-6">
       <!-- Loading Spinner -->
-      <app-loading-spinner
-        *ngIf="loadingState.isLoading && !server"
-        [showText]="true"
-        loadingText="Loading server and clients..."
-        containerClass="py-8"
-      />
+      @if (loadingState.isLoading && !server) {
+        <app-loading-spinner
+          [showText]="true"
+          loadingText="Loading server and clients..."
+          containerClass="py-8"
+        />
+      }
 
       <!-- Error Alert -->
-      <app-alert
-        *ngIf="loadingState.error"
-        type="error"
-        title="Error"
-        [message]="loadingState.error"
-        (dismissed)="clearError()"
-      />
+      @if (loadingState.error) {
+        <app-alert
+          type="error"
+          title="Error"
+          [message]="loadingState.error"
+          (dismissed)="clearError()"
+        />
+      }
 
       <!-- Success Alert -->
-      <app-alert
-        *ngIf="successMessage"
-        type="success"
-        [message]="successMessage"
-        (dismissed)="clearSuccessMessage()"
-      />
+      @if (successMessage) {
+        <app-alert
+          type="success"
+          [message]="successMessage"
+          (dismissed)="clearSuccessMessage()"
+        />
+      }
 
       <!-- Server Info -->
-      <div *ngIf="server" class="bg-white dark:bg-gray-900 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+      @if (server) {
+      <div class="bg-white dark:bg-gray-900 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <div class="flex items-center justify-between">
           <div>
             <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{{ server.name }}</h2>
@@ -74,6 +78,7 @@ import {
           </div>
         </div>
       </div>
+      }
 
       <!-- Clients Table -->
       <app-data-table
@@ -114,12 +119,16 @@ import {
             <!-- Allowed IPs -->
             <span *ngSwitchCase="'allowedIPs'">
               <div class="space-y-1">
-                <div *ngFor="let ip of item.allowedIPs" class="text-sm font-mono bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1 rounded">
-                  {{ ip }}
-                </div>
-                <div *ngIf="item.allowedIPs.length === 0" class="text-sm text-gray-500 dark:text-gray-400 italic">
-                  No IPs configured
-                </div>
+                @for (ip of item.allowedIPs; track $index) {
+                  <div class="text-sm font-mono bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1 rounded">
+                    {{ ip }}
+                  </div>
+                }
+                @if (item.allowedIPs.length === 0) {
+                  <div class="text-sm text-gray-500 dark:text-gray-400 italic">
+                    No IPs configured
+                  </div>
+                }
               </div>
             </span>
 
@@ -139,23 +148,31 @@ import {
 
             <!-- Last Handshake -->
             <span *ngSwitchCase="'lastHandshake'">
-              <div *ngIf="item.lastHandshake" class="text-sm text-gray-900 dark:text-gray-100">
-                <div>{{ item.lastHandshake | date:'short' }}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">{{ getTimeAgo(item.lastHandshake) }}</div>
-              </div>
-              <span *ngIf="!item.lastHandshake" class="text-sm text-gray-500 dark:text-gray-400 italic">
-                Never connected
-              </span>
+              @if (item.lastHandshake) {
+                <div class="text-sm text-gray-900 dark:text-gray-100">
+                  <div>{{ item.lastHandshake | date:'short' }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400">{{ getTimeAgo(item.lastHandshake) }}</div>
+                </div>
+              }
+              @if (!item.lastHandshake) {
+                <span class="text-sm text-gray-500 dark:text-gray-400 italic">
+                  Never connected
+                </span>
+              }
             </span>
 
             <!-- Keepalive -->
             <span *ngSwitchCase="'keepalive'">
-              <span *ngIf="item.persistentKeepalive > 0" class="text-sm text-gray-900 dark:text-gray-100">
-                {{ item.persistentKeepalive }}s
-              </span>
-              <span *ngIf="item.persistentKeepalive === 0" class="text-sm text-gray-500 dark:text-gray-400">
-                Disabled
-              </span>
+              @if (item.persistentKeepalive > 0) {
+                <span class="text-sm text-gray-900 dark:text-gray-100">
+                  {{ item.persistentKeepalive }}s
+                </span>
+              }
+              @if (item.persistentKeepalive === 0) {
+                <span class="text-sm text-gray-500 dark:text-gray-400">
+                  Disabled
+                </span>
+              }
             </span>
           </ng-container>
         </ng-template>

@@ -14,9 +14,11 @@ import { CommonModule } from '@angular/common';
       <div class="animate-spin rounded-full border-4 border-gray-300 dark:border-gray-600 border-t-blue-600 dark:border-t-blue-500"
            [class]="spinnerSize">
       </div>
-      <span *ngIf="showText" class="ml-3 text-gray-600 dark:text-gray-300 font-medium">
-        {{ loadingText }}
-      </span>
+      @if (showText) {
+        <span class="ml-3 text-gray-600 dark:text-gray-300 font-medium">
+          {{ loadingText }}
+        </span>
+      }
     </div>
   `
 })

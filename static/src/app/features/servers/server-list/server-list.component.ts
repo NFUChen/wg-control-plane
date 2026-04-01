@@ -26,21 +26,23 @@ import {
   template: `
     <div class="space-y-6">
       <!-- Error Alert -->
-      <app-alert
-        *ngIf="loadingState.error"
-        type="error"
-        title="Error loading servers"
-        [message]="loadingState.error"
-        (dismissed)="clearError()"
-      />
+      @if (loadingState.error) {
+        <app-alert
+          type="error"
+          title="Error loading servers"
+          [message]="loadingState.error"
+          (dismissed)="clearError()"
+        />
+      }
 
       <!-- Success Alert -->
-      <app-alert
-        *ngIf="successMessage"
-        type="success"
-        [message]="successMessage"
-        (dismissed)="clearSuccessMessage()"
-      />
+      @if (successMessage) {
+        <app-alert
+          type="success"
+          [message]="successMessage"
+          (dismissed)="clearSuccessMessage()"
+        />
+      }
 
       <!-- Server Table -->
       <app-data-table
@@ -75,9 +77,11 @@ import {
               <div class="flex items-center gap-2">
                 <span class="font-medium text-gray-900 dark:text-gray-100">{{ item.totalClients }}</span>
                 <span class="text-gray-500 dark:text-gray-400">total</span>
-                <span *ngIf="item.activeClients !== undefined" class="text-green-600 dark:text-green-400 text-sm">
-                  ({{ item.activeClients }} online)
-                </span>
+                @if (item.activeClients !== undefined) {
+                  <span class="text-green-600 dark:text-green-400 text-sm">
+                    ({{ item.activeClients }} online)
+                  </span>
+                }
               </div>
             </span>
 

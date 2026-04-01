@@ -29,32 +29,36 @@ import {
   template: `
     <div class="space-y-6">
       <!-- Loading Spinner -->
-      <app-loading-spinner
-        *ngIf="loadingState.isLoading && !server"
-        [showText]="true"
-        loadingText="Loading server details..."
-        containerClass="py-8"
-      />
+      @if (loadingState.isLoading && !server) {
+        <app-loading-spinner
+          [showText]="true"
+          loadingText="Loading server details..."
+          containerClass="py-8"
+        />
+      }
 
       <!-- Error Alert -->
-      <app-alert
-        *ngIf="loadingState.error"
-        type="error"
-        title="Error loading server"
-        [message]="loadingState.error"
-        (dismissed)="clearError()"
-      />
+      @if (loadingState.error) {
+        <app-alert
+          type="error"
+          title="Error loading server"
+          [message]="loadingState.error"
+          (dismissed)="clearError()"
+        />
+      }
 
       <!-- Success Alert -->
-      <app-alert
-        *ngIf="successMessage"
-        type="success"
-        [message]="successMessage"
-        (dismissed)="clearSuccessMessage()"
-      />
+      @if (successMessage) {
+        <app-alert
+          type="success"
+          [message]="successMessage"
+          (dismissed)="clearSuccessMessage()"
+        />
+      }
 
       <!-- Server Details -->
-      <div *ngIf="server && !loadingState.isLoading" class="bg-white dark:bg-gray-900 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700">
+      @if (server && !loadingState.isLoading) {
+      <div class="bg-white dark:bg-gray-900 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div class="flex items-center justify-between">
             <div>
@@ -123,20 +127,25 @@ import {
             <div>
               <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">DNS Servers</h3>
               <div class="space-y-1">
-                <div *ngFor="let dns of server.dnsServers" class="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-gray-100">
-                  {{ getDnsAddress(dns) }}
-                </div>
-                <div *ngIf="server.dnsServers.length === 0" class="text-sm text-gray-500 dark:text-gray-400 italic">
-                  No DNS servers configured
-                </div>
+                @for (dns of server.dnsServers; track $index) {
+                  <div class="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-gray-100">
+                    {{ getDnsAddress(dns) }}
+                  </div>
+                }
+                @if (server.dnsServers.length === 0) {
+                  <div class="text-sm text-gray-500 dark:text-gray-400 italic">
+                    No DNS servers configured
+                  </div>
+                }
               </div>
             </div>
           </div>
         </div>
       </div>
+      }
 
       <!-- Clients Table -->
-      <div *ngIf="server">
+      @if (server) {
         <app-data-table
           title="Connected Clients"
           [subtitle]="getClientsSubtitle()"
@@ -167,9 +176,11 @@ import {
               <!-- Allowed IPs -->
               <span *ngSwitchCase="'allowedIPs'">
                 <div class="space-y-1">
-                  <div *ngFor="let ip of item.allowedIPs" class="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-gray-100">
-                    {{ ip }}
-                  </div>
+                  @for (ip of item.allowedIPs; track $index) {
+                    <div class="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-gray-100">
+                      {{ ip }}
+                    </div>
+                  }
                 </div>
               </span>
 
@@ -183,17 +194,21 @@ import {
 
               <!-- Last Handshake -->
               <span *ngSwitchCase="'lastHandshake'">
-                <span *ngIf="item.lastHandshake" class="text-sm text-gray-900 dark:text-gray-100">
-                  {{ item.lastHandshake | date:'short' }}
-                </span>
-                <span *ngIf="!item.lastHandshake" class="text-sm text-gray-500 dark:text-gray-400 italic">
-                  Never
-                </span>
+                @if (item.lastHandshake) {
+                  <span class="text-sm text-gray-900 dark:text-gray-100">
+                    {{ item.lastHandshake | date:'short' }}
+                  </span>
+                }
+                @if (!item.lastHandshake) {
+                  <span class="text-sm text-gray-500 dark:text-gray-400 italic">
+                    Never
+                  </span>
+                }
               </span>
             </ng-container>
           </ng-template>
         </app-data-table>
-      </div>
+      }
     </div>
   `
 })
