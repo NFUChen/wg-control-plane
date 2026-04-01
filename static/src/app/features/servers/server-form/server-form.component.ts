@@ -135,27 +135,11 @@ import {
               }
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label for="endpoint" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Public Endpoint *
-                </label>
-                <input
-                  type="text"
-                  id="endpoint"
-                  formControlName="endpoint"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="e.g., vpn.example.com"
-                />
-                @if (serverForm.get('endpoint')?.invalid && serverForm.get('endpoint')?.touched) {
-                  <div class="mt-1 text-sm text-red-600">
-                    @if (serverForm.get('endpoint')?.errors?.['required']) {
-                      <div>Endpoint is required</div>
-                    }
-                  </div>
-                }
-              </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 -mt-2">
+              Public endpoint (host:port for clients) is configured in <strong class="font-medium text-gray-700 dark:text-gray-300">Global settings</strong> (gear icon in the header).
+            </p>
 
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label for="listenPort" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Listen Port *
@@ -355,7 +339,6 @@ export class ServerFormComponent implements OnInit, OnDestroy {
       name: ['', [Validators.required, Validators.minLength(3)]],
       interfaceName: ['', [Validators.required]],
       networkAddress: ['', [Validators.required, Validators.pattern(/^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/)]],
-      endpoint: ['', [Validators.required]],
       listenPort: [51820, [Validators.required, Validators.min(1), Validators.max(65535)]],
       postUp: ['', [Validators.maxLength(8192)]],
       postDown: ['', [Validators.maxLength(8192)]],
@@ -388,7 +371,6 @@ export class ServerFormComponent implements OnInit, OnDestroy {
       name: server.name,
       interfaceName: server.interfaceName,
       networkAddress: this.getNetworkAddress(server),
-      endpoint: server.endpoint,
       listenPort: server.listenPort,
       postUp: server.postUp ?? '',
       postDown: server.postDown ?? ''
@@ -448,7 +430,6 @@ export class ServerFormComponent implements OnInit, OnDestroy {
       interfaceName: formValue.interfaceName,
       networkAddress: formValue.networkAddress,
       listenPort: formValue.listenPort,
-      endpoint: formValue.endpoint,
       dnsServers: dnsServers,
       postUp: (() => {
         const t = (formValue.postUp ?? '').trim();
@@ -479,7 +460,6 @@ export class ServerFormComponent implements OnInit, OnDestroy {
       interfaceName: formValue.interfaceName,
       networkAddress: formValue.networkAddress,
       listenPort: formValue.listenPort,
-      endpoint: formValue.endpoint,
       dnsServers: dnsServers,
       postUp: (formValue.postUp ?? '').trim(),
       postDown: (formValue.postDown ?? '').trim()

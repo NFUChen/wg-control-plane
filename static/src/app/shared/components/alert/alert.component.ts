@@ -9,8 +9,8 @@ export type AlertType = 'success' | 'error' | 'warning' | 'info';
   imports: [CommonModule],
   template: `
     @if (show) {
-    <div class="rounded-md p-4 mb-4" [class]="alertClasses">
-      <div class="flex">
+    <div class="rounded-md p-4 mb-4 max-w-full min-w-0" [class]="alertClasses">
+      <div class="flex min-w-0 items-start gap-0">
         <!-- Icon -->
         <div class="flex-shrink-0">
           <svg class="h-5 w-5" [class]="iconClasses" fill="currentColor" viewBox="0 0 20 20">
@@ -29,17 +29,21 @@ export type AlertType = 'success' | 'error' | 'warning' | 'info';
           </svg>
         </div>
 
-        <!-- Content -->
-        <div class="ml-3 flex-1">
+        <!-- Content: min-w-0 lets long text wrap inside flex rows (RWD) -->
+        <div class="ml-3 min-w-0 flex-1">
           @if (title) {
-            <p class="text-sm font-medium" [class]="titleClasses">
+            <p class="text-sm font-medium break-words" [class]="titleClasses">
               {{ title }}
             </p>
           }
-          <div class="text-sm" [class]="messageClasses" [class.mt-1]="title">
+          <div
+            class="text-sm break-words [overflow-wrap:anywhere] [word-break:break-word]"
+            [class]="messageClasses"
+            [class.mt-1]="title"
+          >
             <ng-content>
               @if (message) {
-                <span>{{ message }}</span>
+                <span class="block max-w-full">{{ message }}</span>
               }
             </ng-content>
           </div>
@@ -47,7 +51,7 @@ export type AlertType = 'success' | 'error' | 'warning' | 'info';
 
         <!-- Dismiss button -->
         @if (dismissible) {
-        <div class="ml-auto pl-3">
+        <div class="ml-auto shrink-0 pl-3">
           <div class="-mx-1.5 -my-1.5">
             <button
               type="button"

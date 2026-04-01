@@ -9,7 +9,6 @@ export interface CreateServerRequest {
   interfaceName: string;
   networkAddress: string;
   listenPort: number;
-  endpoint: string;
   dnsServers: string[];
   postUp?: string | null;
   postDown?: string | null;
@@ -20,7 +19,6 @@ export interface UpdateServerRequest {
   interfaceName?: string;
   networkAddress?: string;
   listenPort?: number;
-  endpoint?: string;
   dnsServers?: string[];
   postUp?: string | null;
   postDown?: string | null;

@@ -98,7 +98,7 @@ import {
                   <dd class="text-sm text-gray-900 dark:text-gray-100">{{ server.listenPort }}</dd>
                 </div>
                 <div>
-                  <dt class="text-xs text-gray-500 dark:text-gray-400">Endpoint</dt>
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">Public endpoint (global)</dt>
                   <dd class="text-sm font-mono text-gray-900 dark:text-gray-100">{{ server.endpoint }}</dd>
                 </div>
               </dl>
