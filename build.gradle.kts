@@ -50,7 +50,7 @@ dependencies {
     implementation("redis.clients:jedis")
 
     // Email dependencies
-    implementation("software.amazon.awssdk:ses:2.28.29")
+    implementation("org.springframework.boot:spring-boot-starter-mail")
 
     // Configuration properties
     implementation("org.springframework.boot:spring-boot-configuration-processor")

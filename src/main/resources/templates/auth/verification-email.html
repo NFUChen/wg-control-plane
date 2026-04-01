@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>帳戶驗證 - ${serviceName}</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f8fafc; /* bg-background */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+            Roboto, "Noto Sans TC", Helvetica, Arial, sans-serif;
+            color: #0f172a; /* text-foreground */
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 560px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb; /* border */
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 24px 28px;
+            border-bottom: 1px solid #e5e7eb;
+            background-color: #ffffff;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .header p {
+            margin: 4px 0 0;
+            font-size: 14px;
+            color: #64748b; /* text-muted */
+        }
+
+        .content {
+            padding: 28px;
+        }
+
+        .content h2 {
+            margin-top: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .card {
+            margin: 20px 0;
+            padding: 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            background-color: #f9fafb; /* muted background */
+        }
+
+        .verify-button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #3b82f6;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+
+        .verify-button:hover {
+            background-color: #2563eb;
+        }
+
+        .alternative {
+            margin: 24px 0;
+            padding: 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background-color: #f8fafc;
+        }
+
+        .alternative p {
+            margin: 0 0 8px 0;
+        }
+
+        .url-box {
+            margin-top: 8px;
+            padding: 10px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 12px;
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            word-break: break-all;
+            color: #64748b;
+        }
+
+        .notice {
+            margin-top: 20px;
+            padding: 14px 16px;
+            border-left: 4px solid #3b82f6; /* primary */
+            background-color: #eff6ff;
+            font-size: 14px;
+        }
+
+        .notice ul {
+            margin: 8px 0 0;
+            padding-left: 18px;
+        }
+
+        .footer {
+            padding: 20px 28px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 13px;
+            color: #64748b;
+            text-align: center;
+            background-color: #ffffff;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <div class="header">
+        <h1>帳戶驗證</h1>
+        <p>${serviceName}</p>
+    </div>
+
+    <div class="content">
+        <h2>您好，${username}</h2>
+
+        <p>
+            感謝您註冊 ${serviceName}。請點擊下方連結完成帳戶驗證。
+        </p>
+
+        <div class="card">
+            <strong>驗證您的帳戶</strong><br/>
+            <p style="margin: 12px 0 16px 0; color: #64748b; font-size: 14px;">
+                點擊下方按鈕即可完成驗證
+            </p>
+            <a href="${verificationUrl}" class="verify-button">立即驗證帳戶</a>
+        </div>
+
+        <div class="alternative">
+            <p><strong>無法點擊按鈕？</strong></p>
+            <p style="font-size: 14px; color: #64748b; margin: 8px 0;">
+                請複製以下連結到瀏覽器中開啟：
+            </p>
+            <div class="url-box">
+                ${verificationUrl}
+            </div>
+        </div>
+
+        <div class="notice">
+            <strong>注意事項</strong>
+            <ul>
+                <li>驗證連結將於 5 分鐘後失效</li>
+                <li>每個驗證連結僅能使用一次</li>
+                <li>請勿將驗證連結提供給他人</li>
+            </ul>
+        </div>
+
+        <p style="margin-top: 24px;">
+            若您並未進行註冊，請忽略此封郵件。
+        </p>
+    </div>
+
+    <div class="footer">
+        <p>此郵件由系統自動發送，請勿回覆</p>
+        <p>&copy; 2024 ${serviceName}</p>
+    </div>
+</div>
+</body>
+</html>

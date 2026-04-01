@@ -147,19 +147,19 @@ class DefaultPasswordResetService(
         val variables = mapOf(
             "username" to user.username,
             "resetUrl" to resetUrl,
-            "serviceName" to emailProperties.serviceName,
+            "serviceName" to emailProperties.fromName,
             "expirationMinutes" to "15" // 令牌有效期
         )
 
         val htmlContent = templateService.processTemplate(
-            "templates/password-reset-email.html",
+            "auth/password-reset-email.html",
             variables
         )
 
         return Email(
-            from = EmailAddress(emailProperties.emailAddress, emailProperties.serviceName),
+            from = EmailAddress(emailProperties.from, emailProperties.fromName),
             to = listOf(EmailAddress(user.mustGetEmail(), user.username)),
-            subject = "[${emailProperties.serviceName}] 密碼重置請求",
+            subject = "[${emailProperties.fromName}] 密碼重置請求",
             content = EmailContent(
                 html = htmlContent
             )

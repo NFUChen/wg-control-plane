@@ -107,18 +107,18 @@ class DefaultUserVerificationService(
         val variables = mapOf(
             "username" to user.username,
             "verificationUrl" to verificationUrl,
-            "serviceName" to emailProperties.serviceName
+            "serviceName" to emailProperties.fromName
         )
 
         val htmlContent = templateService.processTemplate(
-            "templates/verification-email.html",
+            "auth/verification-email.html",
             variables
         )
 
         return Email(
-            from = EmailAddress(emailProperties.emailAddress, emailProperties.serviceName),
+            from = EmailAddress(emailProperties.from, emailProperties.fromName),
             to = listOf(EmailAddress(user.mustGetEmail(), user.username)),
-            subject = "[${emailProperties.serviceName}] 請完成您的帳戶驗證",
+            subject = "[${emailProperties.fromName}] 請完成您的帳戶驗證",
             content = EmailContent(
                 html = htmlContent
             )

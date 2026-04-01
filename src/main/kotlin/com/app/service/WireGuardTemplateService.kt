@@ -1,14 +1,12 @@
 package com.app.service
 
 import com.app.model.*
-import freemarker.template.Configuration
-import org.springframework.beans.factory.annotation.Qualifier
+import com.app.security.service.template.TemplateService
 import org.springframework.stereotype.Service
-import java.io.StringWriter
 
 @Service
 class WireGuardTemplateService(
-    @Qualifier("templateConfiguration") private val freemarkerConfig: Configuration,
+    private val templateService: TemplateService,
     private val globalConfigurationService: GlobalConfigurationService
 ) {
 
@@ -27,7 +25,7 @@ class WireGuardTemplateService(
             "clients" to server.clients.filter { it.enabled }.map { it.toTemplateMap() }
         )
 
-        return renderTemplate("server-config.ftl", dataModel)
+        return templateService.processTemplate("wg/server-config.ftl", dataModel)
     }
 
     /**
@@ -60,7 +58,7 @@ class WireGuardTemplateService(
             dataModel["mtu"] = server.mtu!!
         }
 
-        return renderTemplate("client-config.ftl", dataModel)
+        return templateService.processTemplate("wg/client-config.ftl", dataModel)
     }
 
     /**
@@ -94,17 +92,7 @@ class WireGuardTemplateService(
             dataModel["mtu"] = server.mtu!!
         }
 
-        return renderTemplate("client-config.ftl", dataModel)
-    }
-
-    /**
-     * Render specified template
-     */
-    private fun renderTemplate(templateName: String, dataModel: Map<String, Any>): String {
-        val template = freemarkerConfig.getTemplate(templateName)
-        val out = StringWriter()
-        template.process(dataModel, out)
-        return out.toString()
+        return templateService.processTemplate("wg/client-config.ftl", dataModel)
     }
 
     /**
