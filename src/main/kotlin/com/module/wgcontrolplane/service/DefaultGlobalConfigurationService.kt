@@ -85,6 +85,8 @@ class DefaultGlobalConfigurationService(
         updatedBy: String?,
         changeDescription: String?
     ): GlobalConfiguration {
+        // Always create a new configuration version instead of updating existing entity
+        // This prevents detached instance issues since we never update existing entities
         return createConfiguration(config, updatedBy, changeDescription)
     }
 
@@ -105,7 +107,7 @@ class DefaultGlobalConfigurationService(
             ?: throw IllegalArgumentException("Configuration version $targetVersion not found")
 
         return createConfiguration(
-            config = targetConfig.config,
+            config = targetConfig.config.copy(),
             createdBy = rolledBackBy,
             changeDescription = "Rolled back to version $targetVersion"
         )

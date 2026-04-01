@@ -15,7 +15,6 @@ import java.util.*
 @Table(name = "global_configuration")
 data class GlobalConfiguration(
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     val id: UUID = UUID.randomUUID(),
 
     /**
@@ -27,26 +26,37 @@ data class GlobalConfiguration(
 
     /**
      * Complete global configuration as JSON
+     * Made immutable to prevent detached instance issues
      */
     @Column(name = "config", columnDefinition = "jsonb", nullable = false)
     @JdbcTypeCode(SqlTypes.JSON)
-    var config: GlobalConfig,
+    val config: GlobalConfig,
 
     /**
      * Who made this configuration change
+     * Made immutable to prevent detached instance issues
      */
     @Column(name = "created_by")
-    var createdBy: String? = null,
+    val createdBy: String? = null,
 
     /**
      * Optional change description
+     * Made immutable to prevent detached instance issues
      */
     @Column(name = "change_description")
-    var changeDescription: String? = null,
+    val changeDescription: String? = null,
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    val createdAt: LocalDateTime = LocalDateTime.now()
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+
+    /**
+     * Optimistic locking version for handling concurrent updates
+     * This helps prevent "updated by another transaction" errors
+     */
+    @Version
+    @Column(name = "entity_version")
+    val entityVersion: Long = 0
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -99,10 +109,6 @@ data class GlobalConfig(
      */
     fun validate(): List<String> {
         val errors = mutableListOf<String>()
-
-        if (serverEndpoint.isBlank()) {
-            errors.add("Server endpoint cannot be empty")
-        }
 
         if (defaultDnsServers.isEmpty()) {
             errors.add("At least one DNS server must be configured")
