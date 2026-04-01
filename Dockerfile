@@ -24,7 +24,8 @@ COPY --from=frontend /frontend/dist/static/browser/ $APP_HOME/src/main/resources
 
 RUN chmod +x gradlew
 
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
+ARG TARGETARCH
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-${TARGETARCH}
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
 RUN ./gradlew bootJar --no-daemon

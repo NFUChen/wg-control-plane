@@ -102,14 +102,14 @@ dev-build: ## Quick rebuild for development (uses cache)
 	docker build -f Dockerfile -t $(APP_IMAGE_NAME):$(APP_IMAGE_TAG) .
 	@echo -e "$(GREEN)✓ Development build completed$(NC)"
 
-local-build: ## Build Angular dist, bootJar, then wg-control-plane:dev (Dockerfile.dev)
+local-build: ## Build Angular dist, bootJar, then wg-control-plane:dev (Dockerfile.action)
 	@echo -e "$(BLUE)Building frontend (static/dist)...$(NC)"
 
 	cd static && rm -rf dist/ && npm ci && npm run build
 	@echo -e "$(BLUE)Building application JAR...$(NC)"
 	./gradlew bootJar
 	@echo -e "$(BLUE)Building dev Docker image...$(NC)"
-	docker build -f Dockerfile.dev -t wg-control-plane:dev .
+	docker build -f Dockerfile.action -t wg-control-plane:dev .
 	@echo -e "$(GREEN)✓ local-build done: wg-control-plane:dev$(NC)"
 
 local-run: local-build
