@@ -67,6 +67,72 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/profile/user-profile.component').then(c => c.UserProfileComponent),
         title: 'Profile'
+      },
+      {
+        path: 'ansible',
+        loadComponent: () =>
+          import('./features/ansible/ansible-hub/ansible-hub.component').then(c => c.AnsibleHubComponent),
+        title: 'Ansible'
+      },
+      {
+        path: 'ansible/keys',
+        loadComponent: () =>
+          import('./features/ansible/private-keys/private-key-list.component').then(c => c.PrivateKeyListComponent),
+        title: 'SSH keys'
+      },
+      {
+        path: 'ansible/keys/new',
+        loadComponent: () =>
+          import('./features/ansible/private-keys/private-key-form.component').then(c => c.PrivateKeyFormComponent),
+        title: 'Add SSH key'
+      },
+      {
+        path: 'ansible/keys/:id/edit',
+        loadComponent: () =>
+          import('./features/ansible/private-keys/private-key-form.component').then(c => c.PrivateKeyFormComponent),
+        title: 'Edit SSH key'
+      },
+      {
+        path: 'ansible/groups',
+        loadComponent: () =>
+          import('./features/ansible/groups/ansible-group-list.component').then(c => c.AnsibleGroupListComponent),
+        title: 'Inventory groups'
+      },
+      {
+        path: 'ansible/groups/new',
+        loadComponent: () =>
+          import('./features/ansible/groups/ansible-group-form.component').then(c => c.AnsibleGroupFormComponent),
+        title: 'New group'
+      },
+      {
+        path: 'ansible/groups/:id/edit',
+        loadComponent: () =>
+          import('./features/ansible/groups/ansible-group-form.component').then(c => c.AnsibleGroupFormComponent),
+        title: 'Edit group'
+      },
+      {
+        path: 'ansible/hosts',
+        loadComponent: () =>
+          import('./features/ansible/hosts/ansible-host-list.component').then(c => c.AnsibleHostListComponent),
+        title: 'Ansible hosts'
+      },
+      {
+        path: 'ansible/hosts/new',
+        loadComponent: () =>
+          import('./features/ansible/hosts/ansible-host-form.component').then(c => c.AnsibleHostFormComponent),
+        title: 'Add host'
+      },
+      {
+        path: 'ansible/hosts/:id/edit',
+        loadComponent: () =>
+          import('./features/ansible/hosts/ansible-host-form.component').then(c => c.AnsibleHostFormComponent),
+        title: 'Edit host'
+      },
+      {
+        path: 'ansible/inventory',
+        loadComponent: () =>
+          import('./features/ansible/inventory/ansible-inventory.component').then(c => c.AnsibleInventoryComponent),
+        title: 'Inventory files'
       }
     ]
   },

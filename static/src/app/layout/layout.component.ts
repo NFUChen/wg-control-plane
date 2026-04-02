@@ -33,6 +33,13 @@ import { UserAccountMenuComponent } from './user-account-menu/user-account-menu.
                     Servers
                   </a>
                   <a
+                    routerLink="/ansible"
+                    routerLinkActive="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+                    class="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                  >
+                    Ansible
+                  </a>
+                  <a
                     routerLink="/profile"
                     routerLinkActive="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
                     class="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
@@ -117,6 +124,13 @@ import { UserAccountMenuComponent } from './user-account-menu/user-account-menu.
               Servers
             </a>
             <a
+              routerLink="/ansible"
+              routerLinkActive="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
+              class="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+            >
+              Ansible
+            </a>
+            <a
               routerLink="/profile"
               routerLinkActive="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300"
               class="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white block px-3 py-2 rounded-md text-base font-medium"
@@ -181,6 +195,17 @@ export class LayoutComponent {
 
   getCurrentPageTitle(): string {
     const url = this.router.url;
+    if (url.includes('/ansible/inventory')) return 'Inventory files';
+    if (url.includes('/ansible/keys') && url.includes('/edit')) return 'Edit SSH key';
+    if (url.includes('/ansible/keys/new')) return 'Add SSH key';
+    if (url.includes('/ansible/keys')) return 'SSH keys';
+    if (url.includes('/ansible/groups') && url.includes('/edit')) return 'Edit group';
+    if (url.includes('/ansible/groups/new')) return 'New group';
+    if (url.includes('/ansible/groups')) return 'Inventory groups';
+    if (url.includes('/ansible/hosts') && url.includes('/edit')) return 'Edit host';
+    if (url.includes('/ansible/hosts/new')) return 'Add host';
+    if (url.includes('/ansible/hosts')) return 'Ansible hosts';
+    if (url.includes('/ansible')) return 'Ansible';
     if (url.includes('/profile')) return 'Profile';
     if (url.includes('/servers/new')) return 'Create Server';
     if (url.includes('/edit')) return 'Edit Server';
