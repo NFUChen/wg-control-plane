@@ -4,15 +4,21 @@ import com.app.model.AnsibleHost
 import com.app.model.AnsibleInventoryGroup
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
+import java.nio.file.Path
 
 /**
  * Service responsible for generating Ansible inventory files in INI format.
  * This class follows the single responsibility principle by only handling inventory generation logic.
+ *
+ * [sshPrivateKeyMaterializationDir]: directory used in `ansible_ssh_private_key_file=`;
+ * [DefaultAnsiblePlaybookExecutor] writes vault key material to these paths before each run.
  */
 @Component
 class AnsibleInventoryGenerator(
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    @Value("\${ansible.ssh-private-key-materialization-dir:/tmp/keys}") private val sshPrivateKeyMaterializationDir: String,
 ) {
 
     /**
@@ -81,11 +87,11 @@ class AnsibleInventoryGenerator(
         }
         hostVars["ansible_user"] = host.sshUsername
 
-        // SSH key configuration
+        // SSH key configuration — path must match what [DefaultAnsiblePlaybookExecutor] materializes
         host.sshPrivateKey.let { key ->
             if (key.enabled) {
-                // In practice, the private key file path would be managed by the ansible service
-                hostVars["ansible_ssh_private_key_file"] = "/tmp/keys/${key.id}.pem"
+                val pemPath = Path.of(sshPrivateKeyMaterializationDir.trimEnd('/', '\\'), "${key.id}.pem")
+                hostVars["ansible_ssh_private_key_file"] = pemPath.toString()
             }
         }
 

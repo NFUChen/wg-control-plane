@@ -20,7 +20,7 @@ class AnsibleInventoryGeneratorTest {
     @BeforeEach
     fun setUp() {
         objectMapper = ObjectMapper()
-        generator = AnsibleInventoryGenerator(objectMapper)
+        generator = AnsibleInventoryGenerator(objectMapper, "/tmp/keys")
     }
 
     @Test

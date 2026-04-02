@@ -13,6 +13,7 @@ import com.app.model.WireGuardServer
 import com.app.model.isValidWireGuardInterfaceName
 import com.app.repository.WireGuardClientRepository
 import com.app.repository.WireGuardServerRepository
+import com.app.service.ansible.AnsibleInventoryGenerator
 import com.app.service.ansible.AnsiblePlaybookExecutor
 import com.app.service.ansible.AnsibleService
 import com.app.utils.WireGuardKeyGenerator
@@ -34,6 +35,7 @@ class AnsibleWireGuardManagementService(
     private val clientRepository: WireGuardClientRepository,
     private val keyGenerator: WireGuardKeyGenerator,
     private val ansiblePlaybookExecutor: AnsiblePlaybookExecutor,
+    private val ansibleInventoryGenerator: AnsibleInventoryGenerator,
     private val ansibleService: AnsibleService,
     private val wireGuardTemplateService: WireGuardTemplateService,
     private val ipConflictDetectionService: IPConflictDetectionService,
@@ -43,7 +45,7 @@ class AnsibleWireGuardManagementService(
     companion object {
         private val logger = LoggerFactory.getLogger(AnsibleWireGuardManagementService::class.java)
 
-        /** Must match the group name in [generateInventoryForHost]. */
+        /** Must match the group name in [AnsibleInventoryGenerator.inventoryForSinglePlaybookTarget]. */
         private const val ANSIBLE_INVENTORY_GROUP = "wireguard_servers"
     }
 
@@ -101,7 +103,7 @@ class AnsibleWireGuardManagementService(
         val targetHost = validateAndGetAnsibleHost(server.hostId!!)
 
         // Generate Ansible inventory (target host only)
-        val inventoryContent = generateInventoryForHost(targetHost)
+        val inventoryContent = ansibleInventoryGenerator.inventoryForSinglePlaybookTarget(targetHost, ANSIBLE_INVENTORY_GROUP)
 
         // Generate WireGuard configuration variables
         val extraVars = generateServerDeploymentVars(server)
@@ -125,7 +127,7 @@ class AnsibleWireGuardManagementService(
         val server = getServerWithAnsibleHost(serverId)
         val targetHost = validateAndGetAnsibleHost(server.hostId!!)
 
-        val inventoryContent = generateInventoryForHost(targetHost)
+        val inventoryContent = ansibleInventoryGenerator.inventoryForSinglePlaybookTarget(targetHost, ANSIBLE_INVENTORY_GROUP)
         val extraVars = mapOf(
             "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
             "wg_interface_name" to server.interfaceName,
@@ -149,7 +151,7 @@ class AnsibleWireGuardManagementService(
         val server = getServerWithAnsibleHost(serverId)
         val targetHost = validateAndGetAnsibleHost(server.hostId!!)
 
-        val inventoryContent = generateInventoryForHost(targetHost)
+        val inventoryContent = ansibleInventoryGenerator.inventoryForSinglePlaybookTarget(targetHost, ANSIBLE_INVENTORY_GROUP)
         val extraVars = mapOf(
             "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
             "wg_interface_name" to server.interfaceName,
@@ -515,23 +517,6 @@ class AnsibleWireGuardManagementService(
         return server
     }
 
-    private fun generateInventoryForHost(host: AnsibleHost): String {
-        val inventory = StringBuilder()
-        inventory.appendLine("[wireguard_servers]")
-        inventory.append(host.hostname)
-        inventory.append(" ansible_host=").append(host.ipAddress)
-
-        if (host.sshPort != 22) {
-            inventory.append(" ansible_port=").append(host.sshPort)
-        }
-        if (host.sshUsername.isNotBlank()) {
-            inventory.append(" ansible_user=").append(host.sshUsername)
-        }
-
-        inventory.appendLine()
-        return inventory.toString()
-    }
-
     private fun generateServerDeploymentVars(server: WireGuardServer): Map<String, Any> {
         val configContent = wireGuardTemplateService.generateServerConfig(server)
         return mapOf(
@@ -554,7 +539,7 @@ class AnsibleWireGuardManagementService(
         client: WireGuardClient
     ) {
         val configContent = wireGuardTemplateService.generateServerConfig(server)
-        val inventoryContent = generateInventoryForHost(targetHost)
+        val inventoryContent = ansibleInventoryGenerator.inventoryForSinglePlaybookTarget(targetHost, ANSIBLE_INVENTORY_GROUP)
         val extraVars = mapOf(
             "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
             "wg_interface_name" to server.interfaceName,
@@ -596,7 +581,7 @@ class AnsibleWireGuardManagementService(
         }
 
         val configContent = wireGuardTemplateService.generateServerConfig(server)
-        val inventoryContent = generateInventoryForHost(targetHost)
+        val inventoryContent = ansibleInventoryGenerator.inventoryForSinglePlaybookTarget(targetHost, ANSIBLE_INVENTORY_GROUP)
         val extraVars = mapOf(
             "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
             "wg_interface_name" to server.interfaceName,
@@ -640,7 +625,7 @@ class AnsibleWireGuardManagementService(
         clientTargetHost: AnsibleHost,
         cleanupInterfaceName: String = client.interfaceName,
     ) {
-        val inventoryContent = generateInventoryForHost(clientTargetHost)
+        val inventoryContent = ansibleInventoryGenerator.inventoryForSinglePlaybookTarget(clientTargetHost, ANSIBLE_INVENTORY_GROUP)
 
         val extraVars = mapOf(
             "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
@@ -671,7 +656,7 @@ class AnsibleWireGuardManagementService(
         clientTargetHost: AnsibleHost,
         server: WireGuardServer
     ) {
-        val inventoryContent = generateInventoryForHost(clientTargetHost)
+        val inventoryContent = ansibleInventoryGenerator.inventoryForSinglePlaybookTarget(clientTargetHost, ANSIBLE_INVENTORY_GROUP)
 
         // Generate client configuration content
         val clientConfig = wireGuardTemplateService.generateClientConfigWithPrivateKey(

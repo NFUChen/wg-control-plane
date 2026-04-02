@@ -2,6 +2,7 @@ package com.app.service.ansible
 
 import com.app.model.*
 import com.app.repository.AnsibleExecutionJobRepository
+import com.app.repository.PrivateKeyRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -14,6 +15,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.nio.file.attribute.PosixFilePermission
 import java.time.LocalDateTime
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -28,6 +30,7 @@ import kotlin.io.path.exists
 @Transactional
 class DefaultAnsiblePlaybookExecutor(
     private val executionJobRepository: AnsibleExecutionJobRepository,
+    private val privateKeyRepository: PrivateKeyRepository,
     private val objectMapper: ObjectMapper,
     private val resourceLoader: ResourceLoader,
     @Value("\${ansible.working-directory:#{null}}") private val ansibleWorkingDirectory: String?,
@@ -40,6 +43,11 @@ class DefaultAnsiblePlaybookExecutor(
 
     companion object {
         private const val DEFAULT_ANSIBLE_DIR = "ansible"
+
+        /** ansible_ssh_private_key_file=... in INI inventory */
+        private val ANSIBLE_SSH_KEY_FILE_PATTERN = Regex(
+            """ansible_ssh_private_key_file\s*=\s*("([^"]+)"|(\S+))"""
+        )
     }
 
     // ========== Core Execution Methods ==========
@@ -265,6 +273,19 @@ class DefaultAnsiblePlaybookExecutor(
         job.markAsStarted()
         executionJobRepository.save(job)
 
+        // Not a full INI validator — we only react to `ansible_ssh_private_key_file=` paths: for each path we either
+        // skip (non-.pem or non-UUID basename, with a warning) or require a matching [PrivateKey] in the DB and a
+        // successful write. Missing key / I/O failure throws → job fails here before ansible runs.
+        val materializedKeyFiles = try {
+            materializePrivateKeyFilesFromInventory(job.inventoryContent)
+        } catch (e: Exception) {
+            logger.error("Failed to materialize SSH private keys for job ${job.id}", e)
+            job.markAsCompleted(AnsibleExecutionStatus.FAILED)
+            job.executionErrors = listOf(e.message ?: "Failed to write SSH private key files")
+            executionJobRepository.save(job)
+            return
+        }
+
         val tempInventoryFile = createTempInventoryFile(job.inventoryContent)
 
         try {
@@ -283,9 +304,81 @@ class DefaultAnsiblePlaybookExecutor(
 
         } finally {
             tempInventoryFile.delete()
+            materializedKeyFiles.forEach { f ->
+                try {
+                    if (f.exists()) f.delete()
+                } catch (e: Exception) {
+                    logger.warn("Could not delete materialized key file ${f.absolutePath}: ${e.message}")
+                }
+            }
             runningProcesses.remove(job.id)
             executionJobRepository.save(job)
         }
+    }
+
+    /**
+     * Materializes SSH private key **files on disk** so `ansible-playbook` can use paths already declared in the
+     * inventory string. Ansible only reads PEM paths from the inventory; it does not load secrets from our DB.
+     *
+     * **Input — [inventoryContent]:**
+     * A fragment of Ansible INI inventory (what we persist on [AnsibleExecutionJob] and pass to `ansible-playbook -i`).
+     * We scan for host vars `ansible_ssh_private_key_file=...` (quoted or unquoted). Those paths must match what
+     * [AnsibleInventoryGenerator] writes: materialization directory + key id + `.pem` (see `ansible.ssh-private-key-materialization-dir`).
+     *
+     * **Output — return value:**
+     * Every [File] we **created or overwrote** in this call, so the outer `finally` can delete them after the run
+     * (keys must not linger on disk). Returns an empty list when the inventory contains no such variables.
+     *
+     * **Why parse the inventory string (instead of passing key IDs separately):**
+     * - **Same snapshot as Ansible:** The job stores the exact inventory text used for the run; retries and logs
+     *   replay that string. Deriving paths from it keeps one contract and avoids a parallel parameter (e.g. a
+     *   separate collection of key IDs) that could disagree with the persisted inventory.
+     * - **Several hosts / several keys:** Distinct paths in one inventory are all materialized.
+     * - **Filename convention:** The basename is `privateKeyId.pem`, matching [PrivateKey.id], so we load
+     *   [PrivateKey.content] without extra fields on the executor.
+     *
+     * Paths that are not `*.pem` or whose basename is not a UUID are skipped with a warning.
+     */
+    private fun materializePrivateKeyFilesFromInventory(inventoryContent: String): List<File> {
+        val paths = LinkedHashSet<String>()
+        ANSIBLE_SSH_KEY_FILE_PATTERN.findAll(inventoryContent).forEach { m ->
+            val raw = m.groupValues[2].ifEmpty { m.groupValues[3] }.trim()
+            if (raw.isNotEmpty()) paths.add(raw)
+        }
+        if (paths.isEmpty()) return emptyList()
+
+        val written = mutableListOf<File>()
+        for (pathStr in paths) {
+            val fileName = Path.of(pathStr).fileName.toString()
+            if (!fileName.endsWith(".pem")) {
+                logger.warn("Skipping non-.pem ansible_ssh_private_key_file: $pathStr")
+                continue
+            }
+            val idStr = fileName.removeSuffix(".pem")
+            val keyId = try {
+                UUID.fromString(idStr)
+            } catch (_: IllegalArgumentException) {
+                logger.warn("Skipping ansible_ssh_private_key_file without UUID file name: $pathStr")
+                continue
+            }
+            val key = privateKeyRepository.findById(keyId).orElseThrow {
+                IllegalStateException("Private key $keyId not found (inventory references $pathStr)")
+            }
+            val file = File(pathStr)
+            file.parentFile?.mkdirs()
+            file.writeText(key.content)
+            try {
+                Files.setPosixFilePermissions(
+                    file.toPath(),
+                    setOf(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)
+                )
+            } catch (_: Exception) {
+                // non-POSIX FS
+            }
+            written.add(file)
+            logger.debug("Materialized SSH private key for job to {}", file.absolutePath)
+        }
+        return written
     }
 
     private fun buildCommand(job: AnsibleExecutionJob, inventoryFile: String): List<String> {
