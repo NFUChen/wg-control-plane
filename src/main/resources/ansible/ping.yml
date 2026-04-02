@@ -1,0 +1,19 @@
+---
+# Connectivity check: run ansible.builtin.ping against inventory hosts (not ICMP; requires SSH
+# and Python on the remote). Same default target as other playbooks: wg_target_hosts from
+# group_vars/all.yml (overridable).
+#
+# Machine-readable JSON output — pick one:
+#   ANSIBLE_STDOUT_CALLBACK=json ansible-playbook ping.yml
+#   ansible-playbook ping.yml -e ansible_stdout_callback=json
+# If your Ansible build has no built-in json callback, install ansible.posix and use
+# ansible.posix.json, or use the yaml callback / parse default output.
+#
+# Single host only: ansible-playbook ping.yml --limit myhost
+#
+- name: Ping — check whether target hosts are reachable
+  hosts: "{{ wg_target_hosts }}"
+  gather_facts: false
+  tasks:
+    - name: Ping (returns pong on success)
+      ansible.builtin.ping:
