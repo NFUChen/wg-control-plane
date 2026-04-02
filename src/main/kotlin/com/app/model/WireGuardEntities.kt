@@ -158,6 +158,10 @@ class WireGuardClient(
     @Column(name = "created_at")
     val createdAt: LocalDateTime = LocalDateTime.now(),
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "deployment_status", nullable = false)
+    var deploymentStatus: ClientDeploymentStatus = ClientDeploymentStatus.NONE,
+
     @UpdateTimestamp
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime = LocalDateTime.now(),
@@ -177,5 +181,24 @@ class WireGuardClient(
      */
     val isOnline: Boolean
         get() = lastHandshake?.isAfter(LocalDateTime.now().minusMinutes(3)) == true
+
+    val needsRetryDeploy: Boolean
+        get() = deploymentStatus in listOf(ClientDeploymentStatus.DEPLOY_FAILED, ClientDeploymentStatus.PENDING_REMOVAL)
+}
+
+/**
+ * Tracks the remote deployment state of a client's WireGuard config on its Ansible host.
+ *
+ * - [NONE]              — no remote host assigned (`hostId` is null); config-file-only client.
+ * - [DEPLOYED]          — config successfully deployed (or cleaned up) on the remote host.
+ * - [DEPLOY_FAILED]     — last deploy/update attempt failed (e.g. host was offline). Retryable.
+ * - [PENDING_REMOVAL]   — client removed from the server peer list, but cleanup on the remote
+ *                          host failed. The DB record is kept so the operator can retry cleanup.
+ */
+enum class ClientDeploymentStatus {
+    NONE,
+    DEPLOYED,
+    DEPLOY_FAILED,
+    PENDING_REMOVAL
 }
 

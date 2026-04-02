@@ -168,4 +168,22 @@ class WireGuardController(
         wireGuardService.removeClientFromServer(serverId, clientId)
         return ResponseEntity.noContent().build()
     }
+
+    /**
+     * Retry a failed client deployment or removal cleanup.
+     * Returns the updated client on successful re-deploy, or 204 if the client was
+     * successfully cleaned up and deleted (PENDING_REMOVAL case).
+     */
+    @PostMapping("/servers/{serverId}/clients/{clientId}/retry-deploy")
+    fun retryClientDeployment(
+        @PathVariable serverId: UUID,
+        @PathVariable clientId: UUID
+    ): ResponseEntity<ClientResponse> {
+        val client = wireGuardService.retryClientDeployment(serverId, clientId)
+        return if (client != null) {
+            ResponseEntity.ok(ClientResponse.from(client))
+        } else {
+            ResponseEntity.noContent().build()
+        }
+    }
 }

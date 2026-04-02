@@ -84,4 +84,13 @@ interface WireGuardManagementService {
 
     /** Whether the WireGuard interface for this server is currently up (wg is running). */
     fun isServerInterfaceOnline(serverId: UUID): Boolean
+
+    /**
+     * Retry a failed client deployment or a failed removal cleanup.
+     * Only applicable for Ansible-managed clients whose [WireGuardClient.deploymentStatus]
+     * is [ClientDeploymentStatus.DEPLOY_FAILED] or [ClientDeploymentStatus.PENDING_REMOVAL].
+     *
+     * @return the updated client, or `null` if the client was deleted after successful cleanup.
+     */
+    fun retryClientDeployment(serverId: UUID, clientId: UUID): WireGuardClient?
 }

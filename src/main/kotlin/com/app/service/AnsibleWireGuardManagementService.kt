@@ -6,6 +6,7 @@ import com.app.view.UpdateClientRequest
 import com.app.view.UpdateServerRequest
 import com.app.view.ServerStatisticsResponse
 import com.app.model.AnsibleHost
+import com.app.model.ClientDeploymentStatus
 import com.app.model.IPAddress
 import com.app.model.WireGuardClient
 import com.app.model.WireGuardServer
@@ -222,10 +223,13 @@ class AnsibleWireGuardManagementService(
                 try {
                     val clientTargetHost = validateAndGetAnsibleHost(savedClient.hostId!!)
                     deployRemoteClientConfiguration(savedClient, clientTargetHost, updatedServer)
+                    savedClient.deploymentStatus = ClientDeploymentStatus.DEPLOYED
+                    clientRepository.save(savedClient)
                     logger.info("Successfully deployed remote client configuration for '${savedClient.name}'")
                 } catch (e: Exception) {
                     logger.error("Failed to deploy remote client configuration: ${e.message}")
-                    // Server config is updated; client deploy failure does not block saving the record
+                    savedClient.deploymentStatus = ClientDeploymentStatus.DEPLOY_FAILED
+                    clientRepository.save(savedClient)
                 }
             }
         }
@@ -273,10 +277,13 @@ class AnsibleWireGuardManagementService(
                 try {
                     val clientTargetHost = validateAndGetAnsibleHost(savedClient.hostId!!)
                     deployRemoteClientConfiguration(savedClient, clientTargetHost, updatedServer)
+                    savedClient.deploymentStatus = ClientDeploymentStatus.DEPLOYED
+                    clientRepository.save(savedClient)
                     logger.info("Successfully deployed updated client configuration to '${clientTargetHost.name}'")
                 } catch (e: Exception) {
                     logger.error("Failed to deploy updated client configuration: ${e.message}")
-                    // Server config is updated; client deploy failure does not block record update
+                    savedClient.deploymentStatus = ClientDeploymentStatus.DEPLOY_FAILED
+                    clientRepository.save(savedClient)
                 }
             }
         }
@@ -295,13 +302,24 @@ class AnsibleWireGuardManagementService(
         val server = getServerWithAnsibleHost(serverId)
         val serverTargetHost = validateAndGetAnsibleHost(server.hostId!!)
 
-        // If server is offline, delete DB record only
+        // If server is offline, delete DB record only (no remote config to clean up either)
         if (!isServerInterfaceOnline(serverId)) {
-            clientRepository.delete(client)
+            if (client.hostId != null) {
+                client.enabled = false
+                client.deploymentStatus = ClientDeploymentStatus.PENDING_REMOVAL
+                clientRepository.save(client)
+                logger.warn("Server offline — marked client '${client.name}' as PENDING_REMOVAL for later cleanup")
+            } else {
+                clientRepository.delete(client)
+            }
             return
         }
 
-        // Step 1: if client is on a remote host, clean up client config first
+        // Step 1: update server config, remove client peer
+        removeClientFromRemoteServerConfiguration(server, serverTargetHost, client)
+
+        // Step 2: if client is on a remote host, clean up client config
+        var clientCleanupFailed = false
         if (client.hostId != null) {
             try {
                 val clientTargetHost = validateAndGetAnsibleHost(client.hostId!!)
@@ -309,15 +327,65 @@ class AnsibleWireGuardManagementService(
                 logger.info("Successfully cleaned up remote client configuration for '${client.name}'")
             } catch (e: Exception) {
                 logger.error("Failed to clean up remote client configuration: ${e.message}")
-                // Continue; server-side cleanup must still run at minimum
+                clientCleanupFailed = true
             }
         }
 
-        // Step 2: update server config, remove client peer
-        removeClientFromRemoteServerConfiguration(server, serverTargetHost, client)
+        // Step 3: persist — keep record as PENDING_REMOVAL if cleanup failed
+        if (clientCleanupFailed) {
+            server.clients.add(client)
+            client.enabled = false
+            client.deploymentStatus = ClientDeploymentStatus.PENDING_REMOVAL
+            serverRepository.save(server)
+            logger.warn("Client '${client.name}' marked as PENDING_REMOVAL — retry later to finish cleanup")
+        } else {
+            serverRepository.save(server)
+        }
+    }
 
-        // Step 3: persist server (orphanRemoval deletes client record)
+    override fun retryClientDeployment(serverId: UUID, clientId: UUID): WireGuardClient? {
+        val client = clientRepository.findById(clientId).orElseThrow {
+            IllegalArgumentException("Client not found: $clientId")
+        }
+        require(client.server.id == serverId) { "Client does not belong to server $serverId" }
+        require(client.hostId != null) { "Client '${client.name}' has no remote host — nothing to retry" }
+
+        return when (client.deploymentStatus) {
+            ClientDeploymentStatus.DEPLOY_FAILED -> retryDeploy(client)
+            ClientDeploymentStatus.PENDING_REMOVAL -> retryRemovalCleanup(client)
+            else -> throw IllegalStateException(
+                "Client '${client.name}' deployment status is ${client.deploymentStatus} — nothing to retry"
+            )
+        }
+    }
+
+    private fun retryDeploy(client: WireGuardClient): WireGuardClient {
+        val server = getServerWithAnsibleHost(client.server.id)
+        val clientTargetHost = validateAndGetAnsibleHost(client.hostId!!)
+
+        logger.info("Retrying deployment of client '${client.name}' to host '${clientTargetHost.name}'")
+        deployRemoteClientConfiguration(client, clientTargetHost, server)
+
+        client.deploymentStatus = ClientDeploymentStatus.DEPLOYED
+        return clientRepository.save(client)
+    }
+
+    /**
+     * Retry cleanup of a client whose remote config was not removed.
+     * On success the DB record is deleted and `null` is returned.
+     */
+    private fun retryRemovalCleanup(client: WireGuardClient): WireGuardClient? {
+        val clientTargetHost = validateAndGetAnsibleHost(client.hostId!!)
+
+        logger.info("Retrying removal cleanup of client '${client.name}' on host '${clientTargetHost.name}'")
+        removeRemoteClientConfiguration(client, clientTargetHost)
+
+        val server = serverRepository.findByIdWithClients(client.server.id)
+            ?: throw IllegalStateException("Server not found: ${client.server.id}")
+        server.clients.remove(client)
         serverRepository.save(server)
+        logger.info("Client '${client.name}' cleanup succeeded — record deleted")
+        return null
     }
 
     // ========== Query Methods (same implementation) ==========

@@ -1,5 +1,6 @@
 package com.app.view
 
+import com.app.model.ClientDeploymentStatus
 import com.app.model.GOOGLE_DNS
 import com.app.model.IPAddress
 import com.app.model.WireGuardClient
@@ -237,6 +238,7 @@ data class ClientResponse(
     val dataSent: Long,
     /** When set, client config is (or was) deployed to this Ansible host. Immutable after create. */
     val hostId: String?,
+    val deploymentStatus: ClientDeploymentStatus,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 ) {
@@ -254,6 +256,7 @@ data class ClientResponse(
                 dataReceived = client.dataReceived,
                 dataSent = client.dataSent,
                 hostId = client.hostId?.toString(),
+                deploymentStatus = client.deploymentStatus,
                 createdAt = client.createdAt,
                 updatedAt = client.updatedAt
             )

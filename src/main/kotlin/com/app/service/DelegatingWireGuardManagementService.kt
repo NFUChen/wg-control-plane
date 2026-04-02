@@ -134,4 +134,9 @@ class DelegatingWireGuardManagementService(
             defaultWireGuardManagementService.isServerInterfaceOnline(serverId)
         }
     }
+
+    override fun retryClientDeployment(serverId: UUID, clientId: UUID): WireGuardClient? {
+        val (impl, _) = implForServer(serverId)
+        return impl.retryClientDeployment(serverId, clientId)
+    }
 }

@@ -420,6 +420,10 @@ class DefaultWireGuardManagementService(
         return wireGuardCommandService.isInterfaceRunning(server.interfaceName)
     }
 
+    override fun retryClientDeployment(serverId: UUID, clientId: UUID): WireGuardClient? {
+        throw UnsupportedOperationException("Retry deploy is only supported for Ansible-managed servers")
+    }
+
     /**
      * Write server configuration file to local filesystem
      */
