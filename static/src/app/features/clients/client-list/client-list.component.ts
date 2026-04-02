@@ -107,39 +107,36 @@ import {
           <ng-container [ngSwitch]="column.key">
             <!-- Client Status -->
             <span *ngSwitchCase="'status'">
-              <div class="flex flex-col gap-1.5">
+              <div class="flex flex-col gap-1 whitespace-nowrap">
                 <app-status-badge
                   [variant]="getClientStatusVariant(item.enabled, item.isOnline)"
                   [label]="getClientStatusLabel(item.enabled, item.isOnline)"
                 />
                 @if (item.deploymentStatus === 'DEPLOY_FAILED' || item.deploymentStatus === 'PENDING_REMOVAL') {
-                  <div class="flex items-center gap-1.5">
-                    <app-status-badge
-                      [variant]="'danger'"
-                      [label]="item.deploymentStatus === 'DEPLOY_FAILED' ? 'Deploy Failed' : 'Removal Pending'"
-                      [showDot]="false"
-                    />
+                  <div
+                    class="flex flex-nowrap items-center justify-between gap-2 rounded-md border border-gray-200/90 bg-gray-50/90 px-2 py-1.5 dark:border-gray-600/80 dark:bg-gray-800/50"
+                    [title]="item.deploymentStatus === 'DEPLOY_FAILED' ? 'Retry deploying client config to remote host' : 'Retry cleaning up client config on remote host'"
+                  >
+                    <span class="text-[11px] leading-snug text-red-600 dark:text-red-400 whitespace-nowrap">
+                      {{ item.deploymentStatus === 'DEPLOY_FAILED' ? 'Remote deploy failed' : 'Removal pending on host' }}
+                    </span>
                     <button
+                      type="button"
                       (click)="retryClientDeployment(item)"
                       [disabled]="retryingClientIds.has(item.id)"
-                      class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded hover:bg-amber-100 dark:hover:bg-amber-900/50 disabled:opacity-50 disabled:cursor-wait"
-                      [title]="item.deploymentStatus === 'DEPLOY_FAILED' ? 'Retry deploying client config to remote host' : 'Retry cleaning up client config on remote host'"
+                      class="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium text-gray-700 hover:bg-gray-200/90 disabled:cursor-wait disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-700/80"
                     >
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                            [class.animate-spin]="retryingClientIds.has(item.id)">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
-                      {{ retryingClientIds.has(item.id) ? 'Retrying...' : 'Retry' }}
+                      {{ retryingClientIds.has(item.id) ? 'Retrying' : 'Retry' }}
                     </button>
                   </div>
                 }
                 @if (item.deploymentStatus === 'DEPLOYED') {
-                  <app-status-badge
-                    [variant]="'info'"
-                    [label]="'Deployed'"
-                    [showDot]="false"
-                  />
+                  <span class="text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap">Remote config deployed</span>
                 }
               </div>
             </span>

@@ -127,6 +127,30 @@ export interface TableAction {
                 class="px-6 py-4 whitespace-nowrap"
                 [class]="getCellClass(column)"
               >
+                @if (column.type === 'action') {
+                  <div class="flex items-center gap-2">
+                    @for (action of rowActions; track $index) {
+                      <button
+                        (click)="onRowAction(action.action, item)"
+                        class="text-sm font-medium rounded px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        [class]="getActionClass(action.variant)"
+                        [title]="action.label"
+                      >
+                        @if (action.icon) {
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="action.icon" />
+                          </svg>
+                        }
+                        @if (!action.icon) {
+                          <span>{{ action.label }}</span>
+                        }
+                      </button>
+                    }
+                  </div>
+                } @else if (customTemplate) {
+                  <!-- Parent #customTemplate uses ngSwitch on column.key; must not be gated on column.type (e.g. boolean would skip this). -->
+                  <ng-container *ngTemplateOutlet="customTemplate; context: { $implicit: item, column: column }" />
+                } @else {
                 <ng-container [ngSwitch]="column.type">
                   <!-- Text -->
                   <span *ngSwitchCase="'text'" class="text-sm text-gray-900 dark:text-gray-100">
@@ -153,36 +177,12 @@ export interface TableAction {
                     {{ getColumnValue(item, column.key) | date:'short' }}
                   </span>
 
-                  <!-- Actions -->
-                  <div *ngSwitchCase="'action'" class="flex items-center gap-2">
-                    @for (action of rowActions; track $index) {
-                      <button
-                        (click)="onRowAction(action.action, item)"
-                        class="text-sm font-medium rounded px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        [class]="getActionClass(action.variant)"
-                        [title]="action.label"
-                      >
-                        @if (action.icon) {
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="action.icon" />
-                          </svg>
-                        }
-                        @if (!action.icon) {
-                          <span>{{ action.label }}</span>
-                        }
-                      </button>
-                    }
-                  </div>
-
-                  <!-- Custom template -->
+                  <!-- Fallback when no column.type matches -->
                   <div *ngSwitchDefault>
-                    @if (customTemplate) {
-                      <ng-container *ngTemplateOutlet="customTemplate; context: { $implicit: item, column: column }" />
-                    } @else {
-                      <span class="text-sm text-gray-900 dark:text-gray-100">{{ getColumnValue(item, column.key) }}</span>
-                    }
+                    <span class="text-sm text-gray-900 dark:text-gray-100">{{ getColumnValue(item, column.key) }}</span>
                   </div>
                 </ng-container>
+                }
               </td>
               }
               </tr>

@@ -172,13 +172,39 @@ import {
           <!-- Custom templates for client columns -->
           <ng-template #customTemplate let-item="$implicit" let-column="column">
             <ng-container [ngSwitch]="column.key">
-              <!-- Client Status -->
+              <!-- Client Status (WG + Ansible deploy; avoid stacked loud pills) -->
               <span *ngSwitchCase="'status'">
-                <div class="flex items-center gap-2">
+                <div class="flex flex-col gap-1 whitespace-nowrap">
                   <app-status-badge
                     [variant]="getClientStatusVariant(item.enabled, item.isOnline)"
                     [label]="getClientStatusLabel(item.enabled, item.isOnline)"
                   />
+                  @if (item.deploymentStatus === 'DEPLOY_FAILED' || item.deploymentStatus === 'PENDING_REMOVAL') {
+                    <div
+                      class="flex flex-nowrap items-center justify-between gap-2 rounded-md border border-gray-200/90 bg-gray-50/90 px-2 py-1.5 dark:border-gray-600/80 dark:bg-gray-800/50"
+                      [title]="item.deploymentStatus === 'DEPLOY_FAILED' ? 'Retry deploying client config to remote host' : 'Retry cleaning up client config on remote host'"
+                    >
+                      <span class="text-[11px] leading-snug text-red-600 dark:text-red-400 whitespace-nowrap">
+                        {{ item.deploymentStatus === 'DEPLOY_FAILED' ? 'Remote deploy failed' : 'Removal pending on host' }}
+                      </span>
+                      <button
+                        type="button"
+                        (click)="retryClientDeployment(item)"
+                        [disabled]="retryingClientIds.has(item.id)"
+                        class="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded px-1.5 py-0.5 text-[11px] font-medium text-gray-700 hover:bg-gray-200/90 disabled:cursor-wait disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-700/80"
+                      >
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                             [class.animate-spin]="retryingClientIds.has(item.id)">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {{ retryingClientIds.has(item.id) ? 'Retrying' : 'Retry' }}
+                      </button>
+                    </div>
+                  }
+                  @if (item.deploymentStatus === 'DEPLOYED') {
+                    <span class="text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap">Remote config deployed</span>
+                  }
                 </div>
               </span>
 
@@ -326,6 +352,9 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
 
   removeClientModalOpen = false;
   clientPendingRemoval: ClientResponse | null = null;
+
+  /** In-flight retry-deploy requests (Ansible client deploy / removal cleanup). */
+  retryingClientIds = new Set<string>();
 
   /** WireGuard config preview modal (same behavior as client-list) */
   configPreviewModalOpen = false;
@@ -579,6 +608,32 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
   closeRemoveClientModal(): void {
     this.removeClientModalOpen = false;
     this.clientPendingRemoval = null;
+  }
+
+  retryClientDeployment(client: ClientResponse): void {
+    if (!this.serverId || this.retryingClientIds.has(client.id)) return;
+
+    this.retryingClientIds.add(client.id);
+    this.clearError();
+
+    this.wireguardService.retryClientDeployment(this.serverId, client.id).subscribe({
+      next: (updatedClient) => {
+        this.retryingClientIds.delete(client.id);
+        if (updatedClient) {
+          this.successMessage = `Deployment retry succeeded for "${client.name}"`;
+        } else {
+          this.successMessage = `Cleanup completed — client "${client.name}" removed`;
+        }
+        this.loadServerDetails();
+      },
+      error: (error) => {
+        this.retryingClientIds.delete(client.id);
+        this.loadingState = {
+          isLoading: false,
+          error: `Retry failed for "${client.name}": ${this.wireguardService.getApiErrorMessage(error)}`
+        };
+      }
+    });
   }
 
   confirmRemoveClient(): void {
