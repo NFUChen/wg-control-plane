@@ -7,7 +7,7 @@ import com.app.model.WireGuardClient
 import com.app.model.WireGuardServer
 import jakarta.validation.constraints.*
 import java.time.LocalDateTime
-
+import java.util.UUID
 
 
 /**
@@ -77,7 +77,9 @@ data class CreateServerRequest(
     val postUp: String? = null,
 
     @field:Size(max = 8192, message = "PostDown must be at most 8192 characters")
-    val postDown: String? = null
+    val postDown: String? = null,
+
+    val hostId: UUID? = null // null 表示在当前主机上创建服务器
 )
 
 
@@ -247,3 +249,16 @@ data class ClientResponse(
         }
     }
 }
+
+/**
+ * Response DTO for server statistics
+ */
+data class ServerStatisticsResponse(
+    val serverId: UUID,
+    val serverName: String,
+    val totalClients: Int,
+    val activeClients: Int,
+    val isOnline: Boolean,
+    val totalDataReceived: Long,
+    val totalDataSent: Long
+)

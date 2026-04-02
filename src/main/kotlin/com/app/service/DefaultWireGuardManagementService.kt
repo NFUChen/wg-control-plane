@@ -353,17 +353,13 @@ class DefaultWireGuardManagementService(
 
         val activeClients = server.clients.filter { it.enabled }
         val onlineClients = activeClients.filter { it.isOnline }
-        val globalConfig = globalConfigurationService.getCurrentConfig()
 
         return ServerStatisticsResponse(
             serverId = server.id,
             serverName = server.name,
-            endpoint = globalConfig.serverEndpoint,
-            listenPort = server.listenPort,
-            networkAddress = server.primaryAddress.address,
             totalClients = activeClients.size,
-            onlineClients = onlineClients.size,
-            offlineClients = activeClients.size - onlineClients.size,
+            activeClients = onlineClients.size,
+            isOnline = isServerInterfaceOnline(server.id),
             totalDataReceived = activeClients.sumOf { it.dataReceived },
             totalDataSent = activeClients.sumOf { it.dataSent }
         )

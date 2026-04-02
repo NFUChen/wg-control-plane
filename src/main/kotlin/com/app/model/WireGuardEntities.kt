@@ -57,6 +57,9 @@ class WireGuardServer(
     @Column(name = "enabled", nullable = false)
     var enabled: Boolean = true,
 
+    @Column(name = "host_id")
+    var hostId: UUID? = null, // null = 本地部署, 有值 = 遠程Ansible部署
+
     @OneToMany(mappedBy = "server", cascade = [CascadeType.ALL], fetch = FetchType.EAGER, orphanRemoval = true)
     val clients: MutableList<WireGuardClient> = mutableListOf(),
 
