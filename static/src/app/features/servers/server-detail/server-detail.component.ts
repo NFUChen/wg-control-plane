@@ -437,7 +437,7 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
       next: hosts => {
         const h = hosts.find(x => x.id === server.hostId);
         this.deploymentLabel = h
-          ? `Ansible — ${h.name} (${h.ipAddress})`
+          ? `Ansible — ${h.hostname} (${h.ipAddress})`
           : `Ansible host (${server.hostId})`;
       },
       error: () => {

@@ -34,7 +34,7 @@ interface AnsibleService {
     /**
      * Get host by name
      */
-    fun getHostByName(name: String): AnsibleHost
+    fun getHostByHostname(hostname: String): AnsibleHost
 
     /**
      * Get all hosts

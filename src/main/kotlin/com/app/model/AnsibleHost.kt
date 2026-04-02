@@ -17,10 +17,7 @@ data class AnsibleHost(
     @Id
     val id: UUID = UUID.randomUUID(),
 
-    @Column(name = "name", nullable = false, unique = true)
-    val name: String,
-
-    @Column(name = "hostname", nullable = false)
+    @Column(name = "hostname", nullable = false, unique = true)
     val hostname: String,
 
     @Column(name = "ip_address", nullable = false)
@@ -76,10 +73,6 @@ data class AnsibleHost(
      */
     fun validate(): List<String> {
         val errors = mutableListOf<String>()
-
-        if (name.isBlank()) {
-            errors.add("Instance name cannot be blank")
-        }
 
         if (hostname.isBlank()) {
             errors.add("Hostname cannot be blank")

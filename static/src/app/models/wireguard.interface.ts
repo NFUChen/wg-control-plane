@@ -1,5 +1,7 @@
 // WireGuard-related TypeScript interfaces
 
+export type ClientDeploymentStatus = 'NONE' | 'DEPLOYED' | 'DEPLOY_FAILED' | 'PENDING_REMOVAL';
+
 export interface IPAddress {
   address: string; // e.g., "10.0.0.1/24"
 }
@@ -120,6 +122,7 @@ export interface ClientResponse {
   dataSent: number;
   /** When set, client config is deployed to this Ansible host. */
   hostId: string | null;
+  deploymentStatus: ClientDeploymentStatus;
   createdAt: string;
   updatedAt: string;
 }

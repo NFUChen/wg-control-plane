@@ -37,7 +37,7 @@ class DefaultAnsibleManagementService(
         ansibleService.deleteHost(id)
 
         // Optionally cleanup host-specific inventory files
-        cleanupHostInventoryFiles(host.name)
+        cleanupHostInventoryFiles(host.hostname)
 
     }
 
@@ -264,7 +264,7 @@ class DefaultAnsibleManagementService(
     // ========== Delegation Methods for Common Operations ==========
 
     override fun getHost(id: UUID): AnsibleHost = ansibleService.getHost(id)
-    override fun getHostByName(name: String): AnsibleHost = ansibleService.getHostByName(name)
+    override fun getHostByHostname(hostname: String): AnsibleHost = ansibleService.getHostByHostname(hostname)
     override fun getAllHosts(): List<AnsibleHost> = ansibleService.getAllHosts()
     override fun getEnabledHosts(): List<AnsibleHost> = ansibleService.getEnabledHosts()
     override fun getUngroupedHosts(): List<AnsibleHost> = ansibleService.getUngroupedHosts()

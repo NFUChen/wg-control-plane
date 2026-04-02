@@ -6,7 +6,6 @@ import java.util.*
  * Request DTO for updating an existing Ansible host
  */
 data class UpdateAnsibleHostRequest(
-    val name: String,
     val hostname: String,
     val ipAddress: String,
     val sshPort: Int = 22,

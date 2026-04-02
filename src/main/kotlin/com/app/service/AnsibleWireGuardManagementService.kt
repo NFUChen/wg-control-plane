@@ -112,7 +112,7 @@ class AnsibleWireGuardManagementService(
             playbook = "wireguard-server-launch.yml",
             extraVars = extraVars,
             triggeredBy = "AnsibleWireGuardManagementService",
-            notes = "Deploy WireGuard server '${server.name}' to host '${targetHost.name}'"
+            notes = "Deploy WireGuard server '${server.name}' to host '${targetHost.hostname}'"
         )
 
 
@@ -137,7 +137,7 @@ class AnsibleWireGuardManagementService(
             playbook = "wireguard-stop.yml",
             extraVars = extraVars,
             triggeredBy = "AnsibleWireGuardManagementService",
-            notes = "Stop WireGuard server '${server.name}' on host '${targetHost.name}'"
+            notes = "Stop WireGuard server '${server.name}' on host '${targetHost.hostname}'"
         )
 
     }
@@ -162,7 +162,7 @@ class AnsibleWireGuardManagementService(
             playbook = "wireguard-verify.yml",
             extraVars = extraVars,
             triggeredBy = "AnsibleWireGuardManagementService",
-            notes = "Check status of WireGuard server '${server.name}' on host '${targetHost.name}'"
+            notes = "Check status of WireGuard server '${server.name}' on host '${targetHost.hostname}'"
         )
 
         return job.isSuccessful() && job.exitCode == 0
@@ -279,7 +279,7 @@ class AnsibleWireGuardManagementService(
                     deployRemoteClientConfiguration(savedClient, clientTargetHost, updatedServer)
                     savedClient.deploymentStatus = ClientDeploymentStatus.DEPLOYED
                     clientRepository.save(savedClient)
-                    logger.info("Successfully deployed updated client configuration to '${clientTargetHost.name}'")
+                    logger.info("Successfully deployed updated client configuration to '${clientTargetHost.hostname}'")
                 } catch (e: Exception) {
                     logger.error("Failed to deploy updated client configuration: ${e.message}")
                     savedClient.deploymentStatus = ClientDeploymentStatus.DEPLOY_FAILED
@@ -363,7 +363,7 @@ class AnsibleWireGuardManagementService(
         val server = getServerWithAnsibleHost(client.server.id)
         val clientTargetHost = validateAndGetAnsibleHost(client.hostId!!)
 
-        logger.info("Retrying deployment of client '${client.name}' to host '${clientTargetHost.name}'")
+        logger.info("Retrying deployment of client '${client.name}' to host '${clientTargetHost.hostname}'")
         deployRemoteClientConfiguration(client, clientTargetHost, server)
 
         client.deploymentStatus = ClientDeploymentStatus.DEPLOYED
@@ -377,7 +377,7 @@ class AnsibleWireGuardManagementService(
     private fun retryRemovalCleanup(client: WireGuardClient): WireGuardClient? {
         val clientTargetHost = validateAndGetAnsibleHost(client.hostId!!)
 
-        logger.info("Retrying removal cleanup of client '${client.name}' on host '${clientTargetHost.name}'")
+        logger.info("Retrying removal cleanup of client '${client.name}' on host '${clientTargetHost.hostname}'")
         removeRemoteClientConfiguration(client, clientTargetHost)
 
         val server = serverRepository.findByIdWithClients(client.server.id)
@@ -461,7 +461,7 @@ class AnsibleWireGuardManagementService(
 
         val host = ansibleService.getHost(hostId)
         if (!host.enabled) {
-            throw IllegalStateException("AnsibleHost is disabled: ${host.name}")
+            throw IllegalStateException("AnsibleHost is disabled: ${host.hostname}")
         }
 
         return host
@@ -478,7 +478,7 @@ class AnsibleWireGuardManagementService(
     private fun generateInventoryForHost(host: AnsibleHost): String {
         val inventory = StringBuilder()
         inventory.appendLine("[wireguard_servers]")
-        inventory.append(host.name)
+        inventory.append(host.hostname)
         inventory.append(" ansible_host=").append(host.ipAddress)
 
         if (host.sshPort != 22) {
@@ -529,7 +529,7 @@ class AnsibleWireGuardManagementService(
             playbook = "wireguard-deploy-config.yml",
             extraVars = extraVars,
             triggeredBy = "AnsibleWireGuardManagementService",
-            notes = "Deploy updated configuration with client '${client.name}' to server '${server.name}' on host '${targetHost.name}'"
+            notes = "Deploy updated configuration with client '${client.name}' to server '${server.name}' on host '${targetHost.hostname}'"
         )
 
         if (!job.isSuccessful()) {
@@ -573,7 +573,7 @@ class AnsibleWireGuardManagementService(
                 playbook = "wireguard-deploy-config.yml",
                 extraVars = extraVars,
                 triggeredBy = "AnsibleWireGuardManagementService",
-                notes = "Deploy updated configuration after removing client '${client.name}' from server '${server.name}' on host '${targetHost.name}'"
+                notes = "Deploy updated configuration after removing client '${client.name}' from server '${server.name}' on host '${targetHost.hostname}'"
             )
 
             // 3. Check deploy result
@@ -613,14 +613,14 @@ class AnsibleWireGuardManagementService(
             playbook = "wireguard-client-cleanup.yml",
             extraVars = extraVars,
             triggeredBy = "AnsibleWireGuardManagementService",
-            notes = "Cleanup WireGuard client '${client.name}' configuration on host '${clientTargetHost.name}'"
+            notes = "Cleanup WireGuard client '${client.name}' configuration on host '${clientTargetHost.hostname}'"
         )
 
         if (!job.isSuccessful()) {
             throw RuntimeException("Failed to cleanup remote client configuration: exit code ${job.exitCode}")
         }
 
-        logger.info("Successfully cleaned up remote client configuration for '${client.name}' on host '${clientTargetHost.name}'")
+        logger.info("Successfully cleaned up remote client configuration for '${client.name}' on host '${clientTargetHost.hostname}'")
     }
 
     /**
@@ -657,13 +657,13 @@ class AnsibleWireGuardManagementService(
             playbook = "wireguard-client-deploy.yml",
             extraVars = extraVars,
             triggeredBy = "AnsibleWireGuardManagementService",
-            notes = "Deploy WireGuard client '${client.name}' configuration to host '${clientTargetHost.name}'"
+            notes = "Deploy WireGuard client '${client.name}' configuration to host '${clientTargetHost.hostname}'"
         )
 
         if (!job.isSuccessful()) {
             throw RuntimeException("Failed to deploy remote client configuration: exit code ${job.exitCode}")
         }
 
-        logger.info("Successfully deployed remote client configuration for '${client.name}' on host '${clientTargetHost.name}'")
+        logger.info("Successfully deployed remote client configuration for '${client.name}' on host '${clientTargetHost.hostname}'")
     }
 }

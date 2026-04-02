@@ -20,14 +20,14 @@ interface AnsibleHostRepository : JpaRepository<AnsibleHost, UUID> {
     fun findByEnabledTrue(): List<AnsibleHost>
 
     /**
-     * Find instance by name
+     * Find instance by hostname (inventory alias)
      */
-    fun findByName(name: String): AnsibleHost?
+    fun findByHostname(hostname: String): AnsibleHost?
 
     /**
-     * Check if instance with name exists
+     * Check if instance with hostname exists
      */
-    fun existsByName(name: String): Boolean
+    fun existsByHostname(hostname: String): Boolean
 
     /**
      * Check if instance with IP address exists

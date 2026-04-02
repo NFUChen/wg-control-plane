@@ -46,9 +46,9 @@ class AnsibleController(
         }
     }
 
-    @GetMapping("/hosts/by-name/{name}")
-    fun getHostByName(@PathVariable name: String): ResponseEntity<AnsibleHost> {
-        val host = ansibleManagementService.getHostByName(name)
+    @GetMapping("/hosts/by-hostname/{hostname}")
+    fun getHostByHostname(@PathVariable hostname: String): ResponseEntity<AnsibleHost> {
+        val host = ansibleManagementService.getHostByHostname(hostname)
         return ResponseEntity.ok(host)
     }
 

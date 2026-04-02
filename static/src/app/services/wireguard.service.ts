@@ -241,6 +241,25 @@ export class WireguardService {
   }
 
   /**
+   * Retry a failed client deployment or removal cleanup.
+   * Returns the updated client on re-deploy success, or null (204) if
+   * the client was cleaned up and deleted (PENDING_REMOVAL case).
+   */
+  retryClientDeployment(serverId: string, clientId: string): Observable<ClientResponse | null> {
+    return this.http
+      .post<ClientResponse | null>(
+        `${this.baseUrl}/servers/${serverId}/clients/${clientId}/retry-deploy`,
+        {}
+      )
+      .pipe(
+        map(body => body ?? null),
+        catchError(error => {
+          return throwError(() => error);
+        })
+      );
+  }
+
+  /**
    * Remove client from server
    */
   removeClientFromServer(serverId: string, clientId: string): Observable<void> {

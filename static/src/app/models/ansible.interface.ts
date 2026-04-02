@@ -59,7 +59,6 @@ export interface PrivateKeyRef {
 
 export interface AnsibleHost {
   id: string;
-  name: string;
   hostname: string;
   ipAddress: string;
   sshPort: number;
@@ -78,7 +77,6 @@ export interface AnsibleHost {
 }
 
 export interface CreateAnsibleHostRequest {
-  name: string;
   hostname: string;
   ipAddress: string;
   sshPort: number;
@@ -95,7 +93,6 @@ export interface CreateAnsibleHostRequest {
 }
 
 export interface UpdateAnsibleHostRequest {
-  name: string;
   hostname: string;
   ipAddress: string;
   sshPort: number;

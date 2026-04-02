@@ -34,14 +34,12 @@ class AnsibleInventoryGeneratorTest {
 
         val hosts = listOf(
             AnsibleHost(
-                name = "server1",
                 hostname = "server1.example.com",
                 ipAddress = "192.168.1.10",
                 sshUsername = "ubuntu",
                 sshPrivateKey = privateKey
             ),
             AnsibleHost(
-                name = "server2",
                 hostname = "server2.example.com",
                 ipAddress = "192.168.1.11",
                 sshUsername = "admin",
@@ -77,7 +75,6 @@ class AnsibleInventoryGeneratorTest {
 
         val hosts = listOf(
             AnsibleHost(
-                name = "web1",
                 hostname = "web1.example.com",
                 ipAddress = "192.168.1.20",
                 sshUsername = "ubuntu",
@@ -106,7 +103,6 @@ class AnsibleInventoryGeneratorTest {
 
         val hosts = listOf(
             AnsibleHost(
-                name = "secure-server",
                 hostname = "secure.example.com",
                 ipAddress = "192.168.1.30",
                 sshUsername = "admin",
@@ -134,7 +130,6 @@ class AnsibleInventoryGeneratorTest {
 
         val hosts = listOf(
             AnsibleHost(
-                name = "enabled-server",
                 hostname = "enabled.example.com",
                 ipAddress = "192.168.1.50",
                 sshUsername = "ubuntu",
@@ -142,7 +137,6 @@ class AnsibleInventoryGeneratorTest {
                 enabled = true
             ),
             AnsibleHost(
-                name = "disabled-server",
                 hostname = "disabled.example.com",
                 ipAddress = "192.168.1.51",
                 sshUsername = "ubuntu",

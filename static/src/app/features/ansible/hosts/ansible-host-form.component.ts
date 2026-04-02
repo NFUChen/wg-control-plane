@@ -40,10 +40,6 @@ import {
           </div>
           <form [formGroup]="form" (ngSubmit)="submit()" class="p-6 space-y-4">
             <div class="grid sm:grid-cols-2 gap-4">
-              <div class="sm:col-span-2">
-                <label class="block text-sm font-medium mb-1">Name *</label>
-                <input formControlName="name" class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600" />
-              </div>
               <div>
                 <label class="block text-sm font-medium mb-1">Hostname *</label>
                 <input formControlName="hostname" class="w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600" />
@@ -142,7 +138,6 @@ import {
 export class AnsibleHostFormComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   form = this.fb.group({
-    name: ['', Validators.required],
     hostname: ['', Validators.required],
     ipAddress: ['', Validators.required],
     sshPort: [22, [Validators.required, Validators.min(1), Validators.max(65535)]],
@@ -215,7 +210,6 @@ export class AnsibleHostFormComponent implements OnInit {
 
   private patchHost(h: AnsibleHost): void {
     this.form.patchValue({
-      name: h.name,
       hostname: h.hostname,
       ipAddress: h.ipAddress,
       sshPort: h.sshPort,
@@ -286,7 +280,6 @@ export class AnsibleHostFormComponent implements OnInit {
 
     const groupId = this.form.value.ansibleInventoryGroupId?.trim();
     const body = {
-      name: this.form.value.name!.trim(),
       hostname: this.form.value.hostname!.trim(),
       ipAddress: this.form.value.ipAddress!.trim(),
       sshPort: Number(this.form.value.sshPort),

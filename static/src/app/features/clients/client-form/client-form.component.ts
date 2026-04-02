@@ -253,7 +253,7 @@ import { AnsibleHost } from '../../../models/ansible.interface';
                 >
                   <option value="">Configuration only (no remote deploy)</option>
                   @for (h of ansibleHosts; track h.id) {
-                    <option [value]="h.id">{{ h.name }} — {{ h.ipAddress }}</option>
+                    <option [value]="h.id">{{ h.hostname }} — {{ h.ipAddress }}</option>
                   }
                 </select>
               </div>
@@ -507,7 +507,7 @@ export class ClientFormComponent implements OnInit, OnDestroy {
             next: hosts => {
               const h = hosts.find(x => x.id === details.hostId);
               this.clientDeployHostSummary = h
-                ? `${h.name} (${h.ipAddress})`
+                ? `${h.hostname} (${h.ipAddress})`
                 : details.hostId ?? '';
             },
             error: () => {

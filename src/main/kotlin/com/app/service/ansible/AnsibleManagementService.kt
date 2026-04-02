@@ -102,7 +102,7 @@ interface AnsibleManagementService {
     // ========== Delegation Methods for Common Operations ==========
 
     fun getHost(id: UUID): AnsibleHost?
-    fun getHostByName(name: String): AnsibleHost
+    fun getHostByHostname(hostname: String): AnsibleHost
     fun getAllHosts(): List<AnsibleHost>
     fun getEnabledHosts(): List<AnsibleHost>
     fun getUngroupedHosts(): List<AnsibleHost>

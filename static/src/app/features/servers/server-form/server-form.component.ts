@@ -77,7 +77,7 @@ import { AnsibleHost } from '../../../models/ansible.interface';
                 >
                   <option [ngValue]="null">This control plane — local WireGuard</option>
                   @for (h of ansibleHosts; track h.id) {
-                    <option [ngValue]="h.id">{{ h.name }} — {{ h.ipAddress }}</option>
+                    <option [ngValue]="h.id">{{ h.hostname }} — {{ h.ipAddress }}</option>
                   }
                 </select>
                 @if (ansibleHostsLoadError) {
@@ -420,7 +420,7 @@ export class ServerFormComponent implements OnInit, OnDestroy {
         next: hosts => {
           const h = hosts.find(x => x.id === server.hostId);
           this.editDeploymentSummary = h
-            ? `Ansible — ${h.name} (${h.ipAddress})`
+            ? `Ansible — ${h.hostname} (${h.ipAddress})`
             : `Ansible host (${server.hostId})`;
         },
         error: () => {

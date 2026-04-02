@@ -6,7 +6,6 @@ import java.util.*
  * Request DTO for creating a new Ansible host
  */
 data class CreateAnsibleHostRequest(
-    val name: String,
     val hostname: String,
     val ipAddress: String,
     val sshPort: Int = 22,

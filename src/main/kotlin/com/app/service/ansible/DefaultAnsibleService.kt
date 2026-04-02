@@ -39,9 +39,9 @@ class DefaultAnsibleService(
             throw IllegalArgumentException("Host validation failed: ${validationErrors.joinToString(", ")}")
         }
 
-        // Check for duplicate names and IPs
-        if (ansibleHostRepository.existsByName(request.name)) {
-            throw IllegalArgumentException("Host with name '${request.name}' already exists")
+        // Check for duplicate hostnames and IPs
+        if (ansibleHostRepository.existsByHostname(request.hostname.trim())) {
+            throw IllegalArgumentException("Host with hostname '${request.hostname.trim()}' already exists")
         }
 
         if (ansibleHostRepository.existsByIpAddress(request.ipAddress)) {
@@ -60,7 +60,6 @@ class DefaultAnsibleService(
 
         // Convert request to entity
         val host = AnsibleHost(
-            name = request.name.trim(),
             hostname = request.hostname.trim(),
             ipAddress = request.ipAddress.trim(),
             sshPort = request.sshPort,
@@ -89,9 +88,10 @@ class DefaultAnsibleService(
             throw IllegalArgumentException("Host validation failed: ${validationErrors.joinToString(", ")}")
         }
 
-        // Check for duplicate names and IPs (excluding current host)
-        if (request.name != existingHost.name && ansibleHostRepository.existsByName(request.name)) {
-            throw IllegalArgumentException("Host with name '${request.name}' already exists")
+        // Check for duplicate hostnames and IPs (excluding current host)
+        val trimmedHostname = request.hostname.trim()
+        if (trimmedHostname != existingHost.hostname && ansibleHostRepository.existsByHostname(trimmedHostname)) {
+            throw IllegalArgumentException("Host with hostname '$trimmedHostname' already exists")
         }
 
         if (request.ipAddress != existingHost.ipAddress && ansibleHostRepository.existsByIpAddress(request.ipAddress)) {
@@ -110,7 +110,6 @@ class DefaultAnsibleService(
 
         // Convert request to entity, preserving ID and creation time
         val hostToUpdate = existingHost.copy(
-            name = request.name.trim(),
             hostname = request.hostname.trim(),
             ipAddress = request.ipAddress.trim(),
             sshPort = request.sshPort,
@@ -133,8 +132,9 @@ class DefaultAnsibleService(
         return ansibleHostRepository.findById(id).getOrNull() ?: throw IllegalArgumentException("Host with ID $id not found")
     }
 
-    override fun getHostByName(name: String): AnsibleHost {
-        return ansibleHostRepository.findByName(name) ?: throw IllegalArgumentException("Host with name '$name' not found")
+    override fun getHostByHostname(hostname: String): AnsibleHost {
+        return ansibleHostRepository.findByHostname(hostname)
+            ?: throw IllegalArgumentException("Host with hostname '$hostname' not found")
     }
 
     override fun getAllHosts(): List<AnsibleHost> {
@@ -309,10 +309,6 @@ class DefaultAnsibleService(
     private fun validateCreateHostRequest(request: CreateAnsibleHostRequest): List<String> {
         val errors = mutableListOf<String>()
 
-        if (request.name.isBlank()) {
-            errors.add("Host name cannot be blank")
-        }
-
         if (request.hostname.isBlank()) {
             errors.add("Hostname cannot be blank")
         }
@@ -342,10 +338,6 @@ class DefaultAnsibleService(
      */
     private fun validateUpdateHostRequest(request: UpdateAnsibleHostRequest): List<String> {
         val errors = mutableListOf<String>()
-
-        if (request.name.isBlank()) {
-            errors.add("Host name cannot be blank")
-        }
 
         if (request.hostname.isBlank()) {
             errors.add("Hostname cannot be blank")

@@ -64,9 +64,8 @@ export class AnsibleHostListComponent implements OnInit, OnDestroy {
   searchQuery = '';
 
   columns: TableColumn[] = [
-    { key: 'name', label: 'Name', sortable: true, type: 'text' },
+    { key: 'hostname', label: 'Hostname', sortable: true, type: 'text' },
     { key: 'ipAddress', label: 'IP', type: 'text' },
-    { key: 'hostname', label: 'Hostname', type: 'text' },
     { key: 'sshUsername', label: 'SSH user', type: 'text' },
     { key: 'group', label: 'Group' },
     { key: 'enabled', label: 'Status' },
@@ -132,7 +131,6 @@ export class AnsibleHostListComponent implements OnInit, OnDestroy {
     }
     this.filtered = this.all.filter(
       h =>
-        h.name.toLowerCase().includes(q) ||
         h.ipAddress.toLowerCase().includes(q) ||
         h.hostname.toLowerCase().includes(q) ||
         h.sshUsername.toLowerCase().includes(q)
@@ -157,7 +155,7 @@ export class AnsibleHostListComponent implements OnInit, OnDestroy {
       this.router.navigate(['/ansible/hosts', ev.item.id, 'edit']);
     }
     if (ev.action === 'delete') {
-      if (confirm(`Delete host "${ev.item.name}"?`)) {
+      if (confirm(`Delete host "${ev.item.hostname}"?`)) {
         this.ansible.deleteHost(ev.item.id).subscribe({
           next: () => {
             this.successMessage = 'Host deleted';
