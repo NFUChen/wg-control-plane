@@ -1,0 +1,22 @@
+---
+- name: Install WireGuard packages (Debian family)
+  ansible.builtin.apt:
+    name: "{{ wg_install_packages_debian }}"
+    state: present
+    update_cache: false
+  when: ansible_os_family == "Debian"
+  become: true
+
+- name: Install WireGuard packages (RedHat family)
+  ansible.builtin.dnf:
+    name: "{{ wg_install_packages_redhat }}"
+    state: present
+  when: ansible_os_family == "RedHat"
+  become: true
+
+- name: Verify wg-quick exists
+  ansible.builtin.command:
+    cmd: wg-quick --version
+  register: wg_quick_version
+  changed_when: false
+  become: false

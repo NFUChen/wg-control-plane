@@ -1,0 +1,23 @@
+---
+# Example WireGuard node variables — align with control-plane WireGuardServer / inventory
+wg_interface_name: wg0
+wg_listen_port: 51820
+wg_config_dir: /etc/wireguard
+
+# Firewall: auto | ufw | firewalld | iptables | skip
+wg_firewall_backend: auto
+
+# Sysctl
+wg_ipv4_forward: true
+wg_ipv6_forward: false
+
+# Deploy: inline | file | url (see role wg_deploy)
+wg_config_source: inline
+wg_config_content: |
+  [Interface]
+  PrivateKey = REPLACE_ME
+  Address = 10.0.0.1/24
+  ListenPort = 51820
+
+wg_config_fetch_url: ""
+wg_config_fetch_validate_certs: true

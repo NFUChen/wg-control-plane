@@ -1,0 +1,40 @@
+---
+- name: Run wg show
+  ansible.builtin.command:
+    cmd: "wg show {{ wg_interface_name }}"
+  register: wg_verify_show
+  changed_when: false
+  failed_when: false
+
+- name: Expect interface up — wg show succeeds
+  ansible.builtin.assert:
+    that:
+      - wg_verify_show.rc == 0
+      - wg_verify_show.stdout | length > 0
+    fail_msg: "wg show failed or empty for {{ wg_interface_name }} (expected up)."
+  when: wg_expected_state == 'up'
+
+- name: Expect interface down — wg show fails
+  ansible.builtin.assert:
+    that:
+      - wg_verify_show.rc != 0
+    fail_msg: "wg show unexpectedly succeeded for {{ wg_interface_name }} (expected down)."
+  when: wg_expected_state == 'down'
+
+- name: Check listening UDP port (ss)
+  ansible.builtin.command:
+    cmd: "ss -ulnp"
+  register: wg_verify_ss
+  changed_when: false
+  when:
+    - wg_expected_state == 'up'
+    - wg_verify_check_listen | bool
+
+- name: Assert UDP listen port is present in ss output
+  ansible.builtin.assert:
+    that:
+      - "':' ~ (wg_listen_port | string) in wg_verify_ss.stdout"
+    fail_msg: "UDP port {{ wg_listen_port }} not found in ss -ulnp output."
+  when:
+    - wg_expected_state == 'up'
+    - wg_verify_check_listen | bool

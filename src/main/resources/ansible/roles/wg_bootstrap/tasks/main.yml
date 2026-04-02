@@ -1,0 +1,21 @@
+---
+- name: Refresh apt cache (Debian family)
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+  become: true
+
+- name: Install Python and helpers for Ansible (Debian family)
+  ansible.builtin.apt:
+    name: "{{ wg_bootstrap_install_packages_debian }}"
+    state: present
+  when: ansible_os_family == "Debian"
+  become: true
+
+- name: Install Python and helpers for Ansible (RedHat family)
+  ansible.builtin.dnf:
+    name: "{{ wg_bootstrap_install_packages_redhat }}"
+    state: present
+  when: ansible_os_family == "RedHat"
+  become: true

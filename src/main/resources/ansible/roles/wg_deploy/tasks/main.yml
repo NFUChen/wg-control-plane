@@ -1,0 +1,94 @@
+---
+- name: Require wg_config_fetch_url when source is url
+  ansible.builtin.assert:
+    that:
+      - wg_config_fetch_url | default('') | length > 0
+    fail_msg: Set wg_config_fetch_url when wg_config_source is 'url'.
+  when: wg_config_source == 'url'
+
+- name: Require wg_config_local_file when source is file
+  ansible.builtin.assert:
+    that:
+      - wg_config_local_file | default('') | length > 0
+    fail_msg: Set wg_config_local_file when wg_config_source is 'file'.
+  when: wg_config_source == 'file'
+
+- name: Compute WireGuard config path
+  ansible.builtin.set_fact:
+    wg_deploy_config_path: "{{ wg_config_dir | trim | regex_replace('/$', '') }}/{{ wg_interface_name }}.conf"
+
+- name: Ensure WireGuard config directory exists
+  ansible.builtin.file:
+    path: "{{ wg_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  become: true
+
+- name: Stat existing WireGuard config
+  ansible.builtin.stat:
+    path: "{{ wg_deploy_config_path }}"
+  register: wg_deploy_stat
+  become: true
+
+- name: Backup existing WireGuard config
+  ansible.builtin.copy:
+    remote_src: true
+    src: "{{ wg_deploy_config_path }}"
+    dest: "{{ wg_deploy_config_path }}{{ wg_backup_suffix }}"
+    mode: preserve
+  when:
+    - wg_backup_existing_config | bool
+    - wg_deploy_stat.stat.exists | default(false)
+  become: true
+
+- name: Fetch WireGuard config from URL
+  ansible.builtin.uri:
+    url: "{{ wg_config_fetch_url }}"
+    headers: "{{ wg_config_fetch_headers }}"
+    validate_certs: "{{ wg_config_fetch_validate_certs | bool }}"
+    return_content: true
+    status_code: [200]
+  register: wg_deploy_uri
+  when: wg_config_source == 'url'
+  delegate_to: localhost
+
+- name: Write WireGuard config (from URL)
+  ansible.builtin.copy:
+    content: "{{ wg_deploy_uri.content }}"
+    dest: "{{ wg_deploy_config_path }}"
+    owner: root
+    group: root
+    mode: "{{ wg_config_mode }}"
+  when: wg_config_source == 'url'
+  notify: Restart wg-quick
+  become: true
+
+- name: Copy WireGuard config from controller path
+  ansible.builtin.copy:
+    src: "{{ wg_config_local_file }}"
+    dest: "{{ wg_deploy_config_path }}"
+    owner: root
+    group: root
+    mode: "{{ wg_config_mode }}"
+  when:
+    - wg_config_source == 'file'
+    - wg_config_local_file | length > 0
+  notify: Restart wg-quick
+  become: true
+
+- name: Write WireGuard config (inline content)
+  ansible.builtin.copy:
+    content: "{{ wg_config_content }}"
+    dest: "{{ wg_deploy_config_path }}"
+    owner: root
+    group: root
+    mode: "{{ wg_config_mode }}"
+  when: wg_config_source == 'inline'
+  notify: Restart wg-quick
+  become: true
+
+- name: Flush handlers to apply config before verify (optional ordering)
+  ansible.builtin.meta: flush_handlers
+  when: wg_restart_after_deploy | bool

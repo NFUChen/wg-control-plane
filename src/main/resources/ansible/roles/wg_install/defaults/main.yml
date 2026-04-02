@@ -1,0 +1,6 @@
+---
+wg_install_packages_debian:
+  - wireguard
+  - wireguard-tools
+wg_install_packages_redhat:
+  - wireguard-tools

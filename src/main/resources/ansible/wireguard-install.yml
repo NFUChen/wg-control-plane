@@ -1,0 +1,7 @@
+---
+- name: Install WireGuard tools on targets
+  hosts: "{{ wg_target_hosts }}"
+  gather_facts: true
+  become: true
+  roles:
+    - role: wg_install

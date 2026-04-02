@@ -1,0 +1,4 @@
+---
+wg_sysctl_file: /etc/sysctl.d/99-wireguard-ansible.conf
+wg_ipv4_forward: true
+wg_ipv6_forward: false

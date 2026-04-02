@@ -1,0 +1,6 @@
+---
+# up | down
+wg_expected_state: up
+wg_verify_check_listen: true
+wg_listen_port: 51820
+wg_interface_name: wg0

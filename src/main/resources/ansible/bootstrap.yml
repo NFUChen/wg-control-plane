@@ -1,0 +1,7 @@
+---
+- name: Bootstrap managed hosts for Ansible
+  hosts: "{{ wg_target_hosts }}"
+  gather_facts: true
+  become: true
+  roles:
+    - role: wg_bootstrap

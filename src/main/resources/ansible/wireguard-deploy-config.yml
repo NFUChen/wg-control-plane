@@ -1,0 +1,7 @@
+---
+- name: Deploy WireGuard configuration and reload interface
+  hosts: "{{ wg_target_hosts }}"
+  gather_facts: false
+  become: true
+  roles:
+    - role: wg_deploy

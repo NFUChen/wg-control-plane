@@ -1,0 +1,8 @@
+---
+# Greenfield full node setup: bootstrap → install → sysctl → firewall → deploy → verify
+- import_playbook: bootstrap.yml
+- import_playbook: wireguard-install.yml
+- import_playbook: wireguard-sysctl.yml
+- import_playbook: wireguard-firewall.yml
+- import_playbook: wireguard-deploy-config.yml
+- import_playbook: wireguard-verify.yml

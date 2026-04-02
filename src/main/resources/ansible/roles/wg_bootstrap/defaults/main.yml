@@ -1,0 +1,8 @@
+---
+wg_bootstrap_update_cache: true
+wg_bootstrap_install_packages_debian:
+  - python3
+  - python3-apt
+wg_bootstrap_install_packages_redhat:
+  - python3
+  - python3-libselinux

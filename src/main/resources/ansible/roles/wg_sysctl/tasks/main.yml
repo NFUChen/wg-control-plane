@@ -1,0 +1,18 @@
+---
+- name: Configure IPv4 forwarding for routing/NAT
+  ansible.builtin.sysctl:
+    name: net.ipv4.ip_forward
+    value: "{{ 1 if wg_ipv4_forward | bool else 0 }}"
+    sysctl_file: "{{ wg_sysctl_file }}"
+    sysctl_set: true
+    reload: true
+  become: true
+
+- name: Configure IPv6 forwarding
+  ansible.builtin.sysctl:
+    name: net.ipv6.conf.all.forwarding
+    value: "{{ 1 if wg_ipv6_forward | bool else 0 }}"
+    sysctl_file: "{{ wg_sysctl_file }}"
+    sysctl_set: true
+    reload: true
+  become: true

@@ -1,0 +1,17 @@
+---
+# wg_config_source: inline | file | url
+wg_interface_name: wg0
+wg_config_dir: /etc/wireguard
+wg_config_source: inline
+wg_config_content: ""
+wg_config_local_file: ""
+wg_config_fetch_url: ""
+wg_config_fetch_headers: {}
+wg_config_fetch_validate_certs: true
+wg_config_mode: "0600"
+
+wg_enable_on_boot: true
+wg_restart_after_deploy: true
+
+wg_backup_existing_config: true
+wg_backup_suffix: ".bak.ansible"

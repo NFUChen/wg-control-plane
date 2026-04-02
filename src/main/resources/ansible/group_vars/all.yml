@@ -1,0 +1,3 @@
+---
+# Shared defaults; override via inventory, group_vars, or -e
+wg_target_hosts: wg_servers

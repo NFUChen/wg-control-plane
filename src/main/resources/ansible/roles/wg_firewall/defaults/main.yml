@@ -1,0 +1,4 @@
+---
+# wg_firewall_backend: auto | ufw | firewalld | iptables | skip
+wg_firewall_manage: true
+wg_listen_port: 51820

@@ -1,0 +1,4 @@
+---
+wg_stop_remove_config: false
+wg_config_dir: /etc/wireguard
+wg_interface_name: wg0

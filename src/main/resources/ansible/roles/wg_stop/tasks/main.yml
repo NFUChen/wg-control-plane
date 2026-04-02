@@ -1,0 +1,26 @@
+---
+- name: Compute WireGuard config path
+  ansible.builtin.set_fact:
+    wg_stop_config_path: "{{ wg_config_dir | trim | regex_replace('/$', '') }}/{{ wg_interface_name }}.conf"
+
+- name: Stop WireGuard interface (systemd)
+  ansible.builtin.systemd:
+    name: "wg-quick@{{ wg_interface_name }}"
+    state: stopped
+  register: wg_stop_systemd
+  ignore_errors: true
+  become: true
+
+- name: Fall back to wg-quick down when systemd stop failed
+  ansible.builtin.command:
+    cmd: "wg-quick down {{ wg_interface_name }}"
+  when: wg_stop_systemd is failed
+  ignore_errors: true
+  become: true
+
+- name: Remove WireGuard config from disk
+  ansible.builtin.file:
+    path: "{{ wg_stop_config_path }}"
+    state: absent
+  when: wg_stop_remove_config | bool
+  become: true

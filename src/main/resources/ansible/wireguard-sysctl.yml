@@ -1,0 +1,7 @@
+---
+- name: Apply sysctl for WireGuard routing or NAT
+  hosts: "{{ wg_target_hosts }}"
+  gather_facts: false
+  become: true
+  roles:
+    - role: wg_sysctl
