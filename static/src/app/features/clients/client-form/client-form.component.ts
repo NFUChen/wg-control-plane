@@ -115,6 +115,32 @@ import { AnsibleHost } from '../../../models/ansible.interface';
               }
             </div>
 
+            <div>
+              <label for="interfaceName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Interface name (wg0–wg99) *
+              </label>
+              <input
+                type="text"
+                id="interfaceName"
+                formControlName="interfaceName"
+                class="w-full max-w-xs px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="e.g., wg0"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Used for the <code class="text-xs">wg-quick</code> systemd unit on the client host (Ansible deploy). Independent of the display name above.
+              </p>
+              @if (clientForm.get('interfaceName')?.invalid && clientForm.get('interfaceName')?.touched) {
+                <div class="mt-1 text-sm text-red-600">
+                  @if (clientForm.get('interfaceName')?.errors?.['required']) {
+                    <div>Interface name is required</div>
+                  }
+                  @if (clientForm.get('interfaceName')?.errors?.['pattern']) {
+                    <div>Must be wg0 through wg99 (e.g. wg0, wg12)</div>
+                  }
+                </div>
+              }
+            </div>
+
             @if (isEditMode) {
               <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
@@ -440,6 +466,10 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   createForm(): void {
     this.clientForm = this.fb.group({
       clientName: ['', [Validators.required, Validators.minLength(2)]],
+      interfaceName: [
+        'wg0',
+        [Validators.required, Validators.pattern(/^wg[0-9]{1,2}$/)]
+      ],
       clientPublicKey: [''], // Optional (add client only)
       presharedKey: [''], // Optional
       removePresharedKey: [false],
@@ -493,6 +523,7 @@ export class ClientFormComponent implements OnInit, OnDestroy {
         details.allowedIPs.forEach(ip => this.addIPAddress(ip));
         this.clientForm.patchValue({
           clientName: details.name,
+          interfaceName: details.interfaceName,
           persistentKeepalive: details.persistentKeepalive,
           enabled: details.enabled,
           clientPublicKey: '',
@@ -568,6 +599,7 @@ export class ClientFormComponent implements OnInit, OnDestroy {
     if (this.isEditMode && this.clientId) {
       const body: UpdateClientRequest = {
         clientName: formValue.clientName.trim(),
+        interfaceName: (formValue.interfaceName as string).trim(),
         addresses: formValue.addresses.map((addr: { address: string }) => ({
           address: addr.address.trim()
         })),
@@ -598,6 +630,7 @@ export class ClientFormComponent implements OnInit, OnDestroy {
     // Create the request object
     const addClientRequest: AddClientRequest = {
       clientName: formValue.clientName,
+      interfaceName: (formValue.interfaceName as string).trim(),
       addresses: formValue.addresses.map((addr: any) => ({ address: addr.address }))
     };
 

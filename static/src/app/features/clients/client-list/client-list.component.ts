@@ -105,6 +105,14 @@ import {
         <!-- Custom templates for special columns -->
         <ng-template #customTemplate let-item="$implicit" let-column="column">
           <ng-container [ngSwitch]="column.key">
+            <span *ngSwitchCase="'name'">
+              <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ item.name }}</span>
+            </span>
+
+            <span *ngSwitchCase="'interfaceName'">
+              <span class="text-sm font-mono text-gray-900 dark:text-gray-100">{{ item.interfaceName }}</span>
+            </span>
+
             <!-- Client Status -->
             <span *ngSwitchCase="'status'">
               <div class="flex flex-col gap-1 whitespace-nowrap">
@@ -315,6 +323,7 @@ export class ClientListComponent implements OnInit, OnDestroy {
   // Table configuration
   tableColumns: TableColumn[] = [
     { key: 'name', label: 'Client Name', sortable: true, type: 'text' },
+    { key: 'interfaceName', label: 'Interface', sortable: true, type: 'text' },
     { key: 'status', label: 'Status', type: 'boolean' },
     { key: 'publicKey', label: 'Public Key', type: 'text' },
     { key: 'allowedIPs', label: 'Allowed IPs', type: 'text' },
@@ -661,6 +670,7 @@ Endpoint: ${clientInfo.server.endpoint}
     const query = this.searchQuery.toLowerCase();
     return clients.filter(client =>
       client.name.toLowerCase().includes(query) ||
+      client.interfaceName.toLowerCase().includes(query) ||
       client.publicKey.toLowerCase().includes(query) ||
       client.allowedIPs.some(ip => ip.toLowerCase().includes(query))
     );

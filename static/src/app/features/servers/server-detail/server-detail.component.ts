@@ -172,6 +172,14 @@ import {
           <!-- Custom templates for client columns -->
           <ng-template #customTemplate let-item="$implicit" let-column="column">
             <ng-container [ngSwitch]="column.key">
+              <span *ngSwitchCase="'name'">
+                <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ item.name }}</span>
+              </span>
+
+              <span *ngSwitchCase="'interfaceName'">
+                <span class="text-sm font-mono text-gray-900 dark:text-gray-100">{{ item.interfaceName }}</span>
+              </span>
+
               <!-- Client Status (WG + Ansible deploy; avoid stacked loud pills) -->
               <span *ngSwitchCase="'status'">
                 <div class="flex flex-col gap-1 whitespace-nowrap">
@@ -375,6 +383,7 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
   // Client table configuration
   clientColumns: TableColumn[] = [
     { key: 'name', label: 'Client Name', sortable: true, type: 'text' },
+    { key: 'interfaceName', label: 'Interface', sortable: true, type: 'text' },
     { key: 'status', label: 'Status', type: 'boolean' },
     { key: 'allowedIPs', label: 'Allowed IPs', type: 'text' },
     { key: 'dataUsage', label: 'Data Usage', type: 'text' },

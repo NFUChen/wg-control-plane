@@ -9,6 +9,7 @@ import java.util.*
 data class ClientConfigurationResponse(
     val id: UUID,
     val name: String,
+    val interfaceName: String,
     val publicKey: String,
     val allowedIPs: List<String>,
     val enabled: Boolean,

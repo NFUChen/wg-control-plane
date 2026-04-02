@@ -28,7 +28,6 @@ interface WireGuardServerRepository : JpaRepository<WireGuardServer, UUID> {
 
     fun existsByInterfaceName(interfaceName: String): Boolean
 
-
     @Query("SELECT s FROM WireGuardServer s LEFT JOIN FETCH s.clients WHERE s.id = :id")
     fun findByIdWithClients(@Param("id") id: UUID): WireGuardServer?
 }
@@ -57,5 +56,9 @@ interface WireGuardClientRepository : JpaRepository<WireGuardClient, UUID> {
     fun countActiveClientsByServerId(@Param("serverId") serverId: UUID): Long
 
     fun deleteByServerId(serverId: UUID)
+
+    fun existsByHostIdAndInterfaceName(hostId: UUID, interfaceName: String): Boolean
+
+    fun existsByHostIdAndInterfaceNameAndIdNot(hostId: UUID, interfaceName: String, id: UUID): Boolean
 }
 

@@ -8,6 +8,7 @@ import com.app.view.ServerStatisticsResponse
 import com.app.model.IPAddress
 import com.app.model.WireGuardClient
 import com.app.model.WireGuardServer
+import com.app.model.isValidWireGuardInterfaceName
 import com.app.repository.WireGuardClientRepository
 import com.app.repository.WireGuardServerRepository
 import com.app.security.config.WireGuardProperties
@@ -115,11 +116,17 @@ class DefaultWireGuardManagementService(
         // Check for IP conflicts before creating the client
         ipConflictDetectionService.validateNewClientIPs(server, request.addresses.toMutableList())
 
+        val interfaceName = request.interfaceName.trim()
+        require(interfaceName.isValidWireGuardInterfaceName()) {
+            "Client interface name must be wg0 through wg99"
+        }
+
         val (privateKey, publicKey) = keyGenerator.generateKeyPair()
         val globalConfig = globalConfigurationService.getCurrentConfig()
 
         val client = WireGuardClient(
             name = request.clientName,
+            interfaceName = interfaceName,
             privateKey = privateKey,
             publicKey = publicKey,
             allowedIPs = request.addresses.toMutableList(),
@@ -163,6 +170,7 @@ class DefaultWireGuardManagementService(
 
         val hadNoChanges =
             request.clientName == null &&
+                request.interfaceName == null &&
                 request.addresses == null &&
                 request.presharedKey == null &&
                 request.persistentKeepalive == null &&
@@ -178,6 +186,14 @@ class DefaultWireGuardManagementService(
             val trimmed = name.trim()
             require(trimmed.length >= 2) { "Client name must be at least 2 characters" }
             client.name = trimmed
+        }
+
+        request.interfaceName?.let { raw ->
+            val trimmed = raw.trim()
+            require(trimmed.isValidWireGuardInterfaceName()) {
+                "Client interface name must be wg0 through wg99"
+            }
+            client.interfaceName = trimmed
         }
 
         request.addresses?.let { addrs ->

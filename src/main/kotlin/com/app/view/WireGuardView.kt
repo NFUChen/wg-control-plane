@@ -90,6 +90,13 @@ data class AddClientRequest(
     @field:NotBlank(message = "Client name cannot be blank")
     val clientName: String,
 
+    @field:NotBlank(message = "Interface name cannot be blank")
+    @field:Pattern(
+        regexp = "^wg[0-9]{1,2}$",
+        message = "Interface name must be in the format 'wg0' to 'wg99'",
+    )
+    val interfaceName: String = "wg0",
+
     val clientPublicKey: String? = null,
 
     val presharedKey: String? = null,
@@ -105,6 +112,9 @@ data class AddClientRequest(
  */
 data class UpdateClientRequest(
     val clientName: String? = null,
+
+    val interfaceName: String? = null,
+
     val addresses: List<IPAddress>? = null,
     val presharedKey: String? = null,
     val persistentKeepalive: Int? = null,
@@ -228,6 +238,7 @@ data class ServerDetailResponse(
 data class ClientResponse(
     val id: String,
     val name: String,
+    val interfaceName: String,
     val publicKey: String,
     val allowedIPs: List<String>,
     val persistentKeepalive: Int,
@@ -247,6 +258,7 @@ data class ClientResponse(
             return ClientResponse(
                 id = client.id.toString(),
                 name = client.name,
+                interfaceName = client.interfaceName,
                 publicKey = client.publicKey,
                 allowedIPs = client.allowedIPs.map { it.address },
                 persistentKeepalive = client.persistentKeepalive,

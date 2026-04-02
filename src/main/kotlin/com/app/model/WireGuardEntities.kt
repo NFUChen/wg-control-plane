@@ -109,13 +109,25 @@ class WireGuardServer(
  * WireGuard Client entity - represents a client connected to a server
  */
 @Entity
-@Table(name = "wg_clients")
+@Table(
+    name = "wg_clients",
+    uniqueConstraints = [
+        UniqueConstraint(
+            name = "uk_wg_clients_host_interface",
+            columnNames = ["host_id", "interface_name"],
+        ),
+    ],
+)
 class WireGuardClient(
     @Id
     val id: UUID = UUID.randomUUID(),
 
     @Column(name = "name", nullable = false)
     var name: String,
+
+    /** Local interface name when the client config is deployed (e.g. Ansible); must be wg0–wg99, independent of [name]. */
+    @Column(name = "interface_name", nullable = false)
+    var interfaceName: String = "wg0",
 
     @Column(name = "private_key", nullable = false, length = 44)
     @JsonIgnore
@@ -202,3 +214,9 @@ enum class ClientDeploymentStatus {
     PENDING_REMOVAL
 }
 
+/** Same allowed form as [WireGuardServer.interfaceName]: `wg0` … `wg99`. */
+fun String.isValidWireGuardInterfaceName(): Boolean {
+    if (!matches(Regex("^wg[0-9]{1,2}$"))) return false
+    val n = removePrefix("wg").toIntOrNull() ?: return false
+    return n in 0..99
+}

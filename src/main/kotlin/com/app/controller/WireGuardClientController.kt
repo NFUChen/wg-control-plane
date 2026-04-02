@@ -35,6 +35,7 @@ class WireGuardClientController(
         val response = ClientConfigurationResponse(
             id = client.id,
             name = client.name,
+            interfaceName = client.interfaceName,
             publicKey = client.publicKey,
             allowedIPs = client.allowedIPs.map { it.address },
             enabled = client.enabled,

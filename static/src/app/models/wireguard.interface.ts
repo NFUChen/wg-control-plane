@@ -71,6 +71,8 @@ export interface ServerDetailResponse {
 
 export interface AddClientRequest {
   clientName: string;
+  /** Local WG interface on the client host (Ansible deploy); wg0–wg99, same rules as server. */
+  interfaceName: string;
   clientPublicKey?: string;
   presharedKey?: string;
   addresses: IPAddress[];
@@ -81,6 +83,7 @@ export interface AddClientRequest {
 /** PUT /api/private/wireguard/servers/{serverId}/clients/{clientId} — omitted fields unchanged; presharedKey: '' clears PSK */
 export interface UpdateClientRequest {
   clientName?: string;
+  interfaceName?: string;
   addresses?: IPAddress[];
   presharedKey?: string;
   persistentKeepalive?: number;
@@ -91,6 +94,7 @@ export interface UpdateClientRequest {
 export interface ClientDetailResponse {
   id: string;
   name: string;
+  interfaceName: string;
   publicKey: string;
   allowedIPs: string[];
   enabled: boolean;
@@ -112,6 +116,7 @@ export interface ClientDetailResponse {
 export interface ClientResponse {
   id: string;
   name: string;
+  interfaceName: string;
   publicKey: string;
   allowedIPs: string[];
   persistentKeepalive: number;

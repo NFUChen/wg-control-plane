@@ -10,6 +10,7 @@ import com.app.model.ClientDeploymentStatus
 import com.app.model.IPAddress
 import com.app.model.WireGuardClient
 import com.app.model.WireGuardServer
+import com.app.model.isValidWireGuardInterfaceName
 import com.app.repository.WireGuardClientRepository
 import com.app.repository.WireGuardServerRepository
 import com.app.service.ansible.AnsiblePlaybookExecutor
@@ -182,6 +183,16 @@ class AnsibleWireGuardManagementService(
 
         ipConflictDetectionService.validateNewClientIPs(server, request.addresses.toMutableList())
 
+        val interfaceName = request.interfaceName.trim()
+        require(interfaceName.isValidWireGuardInterfaceName()) {
+            "Client interface name must be wg0 through wg99"
+        }
+        if (request.hostId != null) {
+            require(!clientRepository.existsByHostIdAndInterfaceName(request.hostId, interfaceName)) {
+                "Interface '$interfaceName' is already in use on the selected Ansible host"
+            }
+        }
+
         val trimmedPublic = request.clientPublicKey?.trim()?.takeIf { it.isNotEmpty() }
         val (privateKey, publicKey) = if (trimmedPublic == null) {
             keyGenerator.generateKeyPair()
@@ -194,6 +205,7 @@ class AnsibleWireGuardManagementService(
         val globalConfig = globalConfigurationService.getCurrentConfig()
         val client = WireGuardClient(
             name = request.clientName,
+            interfaceName = interfaceName,
             publicKey = publicKey,
             privateKey = privateKey,
             allowedIPs = request.addresses.toMutableList(),
@@ -252,8 +264,36 @@ class AnsibleWireGuardManagementService(
             throw IllegalArgumentException("Client Ansible host cannot be changed after the client is created")
         }
 
+        val oldInterfaceName = client.interfaceName
+        val newInterfaceName = request.interfaceName?.trim()?.takeIf { it.isNotEmpty() } ?: client.interfaceName
+        if (request.interfaceName != null) {
+            require(newInterfaceName.isValidWireGuardInterfaceName()) {
+                "Client interface name must be wg0 through wg99"
+            }
+            if (client.hostId != null) {
+                require(
+                    !clientRepository.existsByHostIdAndInterfaceNameAndIdNot(
+                        client.hostId!!,
+                        newInterfaceName,
+                        clientId,
+                    )
+                ) {
+                    "Interface '$newInterfaceName' is already in use on this client's Ansible host"
+                }
+            }
+        }
+
+        val interfaceChanging =
+            request.interfaceName != null && newInterfaceName != oldInterfaceName
+
+        if (interfaceChanging && client.hostId != null) {
+            val clientTargetHost = validateAndGetAnsibleHost(client.hostId!!)
+            removeRemoteClientConfiguration(client, clientTargetHost, cleanupInterfaceName = oldInterfaceName)
+        }
+
         // Update client properties (hostId is set only when adding the client)
         request.clientName?.let { client.name = it }
+        request.interfaceName?.let { client.interfaceName = newInterfaceName }
         request.addresses?.let { addrs ->
             ipConflictDetectionService.validateUpdatedClientIPs(server, clientId, addrs)
             client.allowedIPs = addrs.toMutableList()
@@ -597,14 +637,14 @@ class AnsibleWireGuardManagementService(
      */
     private fun removeRemoteClientConfiguration(
         client: WireGuardClient,
-        clientTargetHost: AnsibleHost
+        clientTargetHost: AnsibleHost,
+        cleanupInterfaceName: String = client.interfaceName,
     ) {
         val inventoryContent = generateInventoryForHost(clientTargetHost)
-        val clientInterfaceName = "wg-${client.name.lowercase().replace(" ", "-")}"
 
         val extraVars = mapOf(
             "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
-            "wg_client_interface_name" to clientInterfaceName,
+            "wg_client_interface_name" to cleanupInterfaceName,
             "wg_client_name" to client.name
         )
 
@@ -632,7 +672,6 @@ class AnsibleWireGuardManagementService(
         server: WireGuardServer
     ) {
         val inventoryContent = generateInventoryForHost(clientTargetHost)
-        val clientInterfaceName = "wg-${client.name.lowercase().replace(" ", "-")}"
 
         // Generate client configuration content
         val clientConfig = wireGuardTemplateService.generateClientConfigWithPrivateKey(
@@ -644,7 +683,7 @@ class AnsibleWireGuardManagementService(
 
         val extraVars = mapOf(
             "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
-            "wg_client_interface_name" to clientInterfaceName,
+            "wg_client_interface_name" to client.interfaceName,
             "wg_client_name" to client.name,
             "wg_config_content" to clientConfig,
             "wg_config_source" to "inline",
