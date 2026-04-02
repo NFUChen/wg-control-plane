@@ -1,12 +1,18 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { EMPTY, Subject, switchMap, takeUntil } from 'rxjs';
 
 import { AnsibleExecutionJobDetail, AnsibleExecutionStatus } from '../../../models/ansible.interface';
+import { ansiStringToHtml } from '../../../shared/utils/ansi-to-html';
 import { AnsibleService } from '../../../services/ansible.service';
 import { AlertComponent } from '../../../shared/components/alert/alert.component';
 import { StatusBadgeComponent, BadgeVariant } from '../../../shared/components/status-badge/status-badge.component';
+
+function filterNonEmptyExecutionErrors(raw: string[] | null | undefined): string[] {
+  return (raw ?? []).map(e => (e ?? '').trim()).filter((e): e is string => e.length > 0);
+}
 
 @Component({
   selector: 'app-ansible-execution-job-detail',
@@ -91,11 +97,11 @@ import { StatusBadgeComponent, BadgeVariant } from '../../../shared/components/s
             >
           </section>
 
-          @if (job.executionErrors?.length) {
+          @if (executionErrorsFiltered.length > 0) {
             <section>
               <h3 class="mb-2 text-sm font-semibold text-red-700 dark:text-red-400">Execution errors</h3>
               <ul class="list-inside list-disc space-y-1 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
-                @for (e of job.executionErrors; track $index) {
+                @for (e of executionErrorsFiltered; track $index) {
                   <li>{{ e }}</li>
                 }
               </ul>
@@ -104,18 +110,18 @@ import { StatusBadgeComponent, BadgeVariant } from '../../../shared/components/s
 
           <section>
             <h3 class="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">Stdout</h3>
-            <pre
-              class="max-h-96 overflow-auto rounded-lg border border-gray-200 bg-white p-4 font-mono text-xs text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-              >{{ job.stdout || '—' }}</pre
-            >
+            <div
+              class="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-gray-200 bg-white p-4 font-mono text-xs leading-relaxed text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+              [innerHTML]="stdoutHtml"
+            ></div>
           </section>
 
           <section>
             <h3 class="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">Stderr</h3>
-            <pre
-              class="max-h-96 overflow-auto rounded-lg border border-gray-200 bg-white p-4 font-mono text-xs text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-              >{{ job.stderr || '—' }}</pre
-            >
+            <div
+              class="max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-gray-200 bg-white p-4 font-mono text-xs leading-relaxed text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+              [innerHTML]="stderrHtml"
+            ></div>
           </section>
         </div>
       }
@@ -124,15 +130,20 @@ import { StatusBadgeComponent, BadgeVariant } from '../../../shared/components/s
 })
 export class AnsibleExecutionJobDetailComponent implements OnInit, OnDestroy {
   job: AnsibleExecutionJobDetail | null = null;
+  /** Non-empty strings only — API may send [""] when there is no stderr message. */
+  executionErrorsFiltered: string[] = [];
   loading = true;
   error = '';
   extraVarsJson = '';
+  stdoutHtml: SafeHtml | null = null;
+  stderrHtml: SafeHtml | null = null;
 
   private destroy$ = new Subject<void>();
 
   constructor(
     private route: ActivatedRoute,
-    private ansible: AnsibleService
+    private ansible: AnsibleService,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
@@ -154,6 +165,9 @@ export class AnsibleExecutionJobDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: j => {
           this.job = j;
+          this.executionErrorsFiltered = filterNonEmptyExecutionErrors(j.executionErrors);
+          this.stdoutHtml = this.toAnsiSafeHtml(j.stdout);
+          this.stderrHtml = this.toAnsiSafeHtml(j.stderr);
           try {
             this.extraVarsJson = JSON.stringify(j.extraVars ?? {}, null, 2);
           } catch {
@@ -196,5 +210,13 @@ export class AnsibleExecutionJobDetailComponent implements OnInit, OnDestroy {
       default:
         return 'gray';
     }
+  }
+
+  private toAnsiSafeHtml(raw: string | null | undefined): SafeHtml {
+    const text = raw ?? '';
+    if (!text.trim()) {
+      return this.sanitizer.bypassSecurityTrustHtml('<span class="text-gray-400 dark:text-gray-500">—</span>');
+    }
+    return this.sanitizer.bypassSecurityTrustHtml(ansiStringToHtml(text));
   }
 }
