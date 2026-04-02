@@ -13,6 +13,7 @@ import com.app.repository.WireGuardServerRepository
 import com.app.security.config.WireGuardProperties
 import com.app.utils.WireGuardKeyGenerator
 import org.slf4j.LoggerFactory
+import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.io.File
@@ -26,6 +27,7 @@ import kotlin.jvm.optionals.getOrNull
 
 @Service
 @Transactional
+@Primary
 class DefaultWireGuardManagementService(
     private val serverRepository: WireGuardServerRepository,
     private val clientRepository: WireGuardClientRepository,

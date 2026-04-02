@@ -25,14 +25,15 @@ import java.util.*
  * Unlike DefaultWireGuardManagementService which manages local interfaces,
  * this service deploys WireGuard to remote AnsibleHost machines.
  */
-@Service("ansibleWireguardManagementService")
+@Service("AnsibleWireGuardManagementService")
 @Transactional
 class AnsibleWireGuardManagementService(
     private val serverRepository: WireGuardServerRepository,
     private val clientRepository: WireGuardClientRepository,
     private val keyGenerator: WireGuardKeyGenerator,
     private val ansiblePlaybookExecutor: AnsiblePlaybookExecutor,
-    private val ansibleService: AnsibleService
+    private val ansibleService: AnsibleService,
+    private val wireGuardTemplateService: WireGuardTemplateService
 ) : WireGuardManagementService {
 
     companion object {
@@ -44,7 +45,7 @@ class AnsibleWireGuardManagementService(
     override fun createServer(request: CreateServerRequest): WireGuardServer {
         logger.info("Creating WireGuard server for Ansible deployment: ${request.name}")
 
-        // 驗證 AnsibleHost 是否存在和可用
+        // Verify AnsibleHost exists and is usable
         validateAndGetAnsibleHost(request.hostId)
 
         val (privateKey, publicKey) = keyGenerator.generateKeyPair()
@@ -57,10 +58,9 @@ class AnsibleWireGuardManagementService(
             listenPort = request.listenPort,
             dnsServers = request.dnsServers.map { IPAddress(it) }.toMutableList(),
             postUp = request.postUp?.trim()?.takeIf { it.isNotEmpty() },
-            postDown = request.postDown?.trim()?.takeIf { it.isNotEmpty() }
+            postDown = request.postDown?.trim()?.takeIf { it.isNotEmpty() },
+            hostId = request.hostId
         )
-        // 設置 hostId
-        server.hostId = request.hostId
 
         return serverRepository.save(server)
     }
@@ -70,7 +70,7 @@ class AnsibleWireGuardManagementService(
 
         val server = serverRepository.findById(serverId).orElse(null) ?: return null
 
-        // 更新基本屬性（不允許更改部署位置 hostId）
+        // Update basic properties (deployment hostId cannot be changed)
         request.name?.let { server.name = it }
         request.interfaceName?.let { server.interfaceName = it }
         request.listenPort?.let { server.listenPort = it }
@@ -90,18 +90,18 @@ class AnsibleWireGuardManagementService(
 
         val targetHost = validateAndGetAnsibleHost(server.hostId!!)
 
-        // 生成 Ansible inventory（只包含目標主機）
+        // Generate Ansible inventory (target host only)
         val inventoryContent = generateInventoryForHost(targetHost)
 
-        // 生成 WireGuard 配置變量
+        // Generate WireGuard configuration variables
         val extraVars = generateServerDeploymentVars(server)
 
-        // 通過 Ansible 部署 WireGuard 服務器
+        // Deploy WireGuard server via Ansible
         val job = ansiblePlaybookExecutor.executePlaybookAsync(
             inventoryContent = inventoryContent,
             playbook = "wireguard-install.yml",
             extraVars = extraVars,
-            triggeredBy = "AnsibleWireguardManagementService",
+            triggeredBy = "AnsibleWireGuardManagementService",
             notes = "Deploy WireGuard server '${server.name}' to host '${targetHost.name}'"
         )
 
@@ -125,7 +125,7 @@ class AnsibleWireGuardManagementService(
             inventoryContent = inventoryContent,
             playbook = "wireguard-control.yml",
             extraVars = extraVars,
-            triggeredBy = "AnsibleWireguardManagementService",
+            triggeredBy = "AnsibleWireGuardManagementService",
             notes = "Stop WireGuard server '${server.name}' on host '${targetHost.name}'"
         )
 
@@ -149,7 +149,7 @@ class AnsibleWireGuardManagementService(
             inventoryContent = inventoryContent,
             playbook = "wireguard-status.yml",
             extraVars = extraVars,
-            triggeredBy = "AnsibleWireguardManagementService",
+            triggeredBy = "AnsibleWireGuardManagementService",
             notes = "Check status of WireGuard server '${server.name}' on host '${targetHost.name}'"
         )
 
@@ -162,7 +162,7 @@ class AnsibleWireGuardManagementService(
         logger.info("Adding client to WireGuard server via Ansible: $serverId")
 
         val server = getServerWithAnsibleHost(serverId)
-        val targetHost = validateAndGetAnsibleHost(server.hostId!!)
+        val serverTargetHost = validateAndGetAnsibleHost(server.hostId!!)
 
         val client = WireGuardClient(
             name = request.clientName,
@@ -173,11 +173,30 @@ class AnsibleWireGuardManagementService(
             server = server
         )
 
+        // Set client deployment host
+        client.hostId = request.hostId
+
         val savedClient = clientRepository.save(client)
 
-        // 如果服務器在線，通過 Ansible 部署客戶端配置
+        // If server is online, deploy configuration
         if (isServerInterfaceOnline(serverId)) {
-            deployClientConfigurationViaAnsible(server, targetHost, savedClient)
+            // Reload server entity so it includes the newly added client
+            val updatedServer = getServerWithAnsibleHost(serverId)
+
+            // Step 1: update server config with client peer
+            deployRemoteServerConfiguration(updatedServer, serverTargetHost, savedClient)
+
+            // Step 2: if client is also deployed to a remote host, deploy client config
+            if (savedClient.hostId != null) {
+                try {
+                    val clientTargetHost = validateAndGetAnsibleHost(savedClient.hostId!!)
+                    deployRemoteClientConfiguration(savedClient, clientTargetHost, updatedServer)
+                    logger.info("Successfully deployed remote client configuration for '${savedClient.name}'")
+                } catch (e: Exception) {
+                    logger.error("Failed to deploy remote client configuration: ${e.message}")
+                    // Server config is updated; client deploy failure does not block saving the record
+                }
+            }
         }
 
         return savedClient
@@ -191,22 +210,53 @@ class AnsibleWireGuardManagementService(
         }
 
         val server = getServerWithAnsibleHost(serverId)
-        val targetHost = validateAndGetAnsibleHost(server.hostId!!)
+        val serverTargetHost = validateAndGetAnsibleHost(server.hostId!!)
 
-        // 更新客戶端屬性
+        // Check whether hostId changed (client deployment migration)
+        val originalHostId = client.hostId
+        val newHostId = request.hostId
+
+        // If client moves from one remote host to another, clean up the old host first
+        if (originalHostId != null && originalHostId != newHostId) {
+            try {
+                val originalClientHost = validateAndGetAnsibleHost(originalHostId)
+                removeRemoteClientConfiguration(client, originalClientHost)
+                logger.info("Successfully cleaned up original client configuration on host '${originalClientHost.name}'")
+            } catch (e: Exception) {
+                logger.error("Failed to cleanup original client configuration: ${e.message}")
+                // Continue; do not block the update
+            }
+        }
+
+        // Update client properties
         request.clientName?.let { client.name = it }
         request.addresses?.let { client.allowedIPs = it.toMutableList() }
         request.presharedKey?.let { client.presharedKey = it }
         request.persistentKeepalive?.let { client.persistentKeepalive = it }
         request.enabled?.let { client.enabled = it }
+        if (request.hostId != null) { client.hostId = request.hostId }
 
-        val updatedClient = client
+        val savedClient = clientRepository.save(client)
 
-        val savedClient = clientRepository.save(updatedClient)
-
-        // 通過 Ansible 更新客戶端配置
+        // Update server and client configuration via Ansible
         if (isServerInterfaceOnline(serverId)) {
-            deployClientConfigurationViaAnsible(server, targetHost, savedClient)
+            // Reload server entity with latest client state
+            val updatedServer = getServerWithAnsibleHost(serverId)
+
+            // Step 1: update server configuration
+            deployRemoteServerConfiguration(updatedServer, serverTargetHost, savedClient)
+
+            // Step 2: if client must be deployed to a remote host, deploy client configuration
+            if (savedClient.hostId != null) {
+                try {
+                    val clientTargetHost = validateAndGetAnsibleHost(savedClient.hostId!!)
+                    deployRemoteClientConfiguration(savedClient, clientTargetHost, updatedServer)
+                    logger.info("Successfully deployed updated client configuration to '${clientTargetHost.name}'")
+                } catch (e: Exception) {
+                    logger.error("Failed to deploy updated client configuration: ${e.message}")
+                    // Server config is updated; client deploy failure does not block record update
+                }
+            }
         }
 
         return savedClient
@@ -220,17 +270,34 @@ class AnsibleWireGuardManagementService(
         }
 
         val server = getServerWithAnsibleHost(serverId)
-        val targetHost = validateAndGetAnsibleHost(server.hostId!!)
+        val serverTargetHost = validateAndGetAnsibleHost(server.hostId!!)
 
-        // 通過 Ansible 移除客戶端配置
-        if (isServerInterfaceOnline(serverId)) {
-            removeClientConfigurationViaAnsible(server, targetHost, client)
+        // If server is offline, delete DB record only
+        if (!isServerInterfaceOnline(serverId)) {
+            clientRepository.delete(client)
+            return
         }
 
-        clientRepository.delete(client)
+        // Step 1: if client is on a remote host, clean up client config first
+        if (client.hostId != null) {
+            try {
+                val clientTargetHost = validateAndGetAnsibleHost(client.hostId!!)
+                removeRemoteClientConfiguration(client, clientTargetHost)
+                logger.info("Successfully cleaned up remote client configuration for '${client.name}'")
+            } catch (e: Exception) {
+                logger.error("Failed to clean up remote client configuration: ${e.message}")
+                // Continue; server-side cleanup must still run at minimum
+            }
+        }
+
+        // Step 2: update server config, remove client peer
+        removeClientFromRemoteServerConfiguration(server, serverTargetHost, client)
+
+        // Step 3: persist server (orphanRemoval deletes client record)
+        serverRepository.save(server)
     }
 
-    // ========== Query Methods (相同的實現) ==========
+    // ========== Query Methods (same implementation) ==========
 
     override fun getServerWithClients(serverId: UUID): WireGuardServer? {
         return serverRepository.findById(serverId).orElse(null)
@@ -335,62 +402,172 @@ class AnsibleWireGuardManagementService(
     }
 
     private fun generateServerDeploymentVars(server: WireGuardServer): Map<String, Any> {
+        val configContent = wireGuardTemplateService.generateServerConfig(server)
         return mapOf(
-            "wg_action" to "deploy_server",
-            "wg_server_name" to server.name,
-            "wg_interface" to server.interfaceName,
-            "wg_listen_port" to server.listenPort,
-            "wg_private_key" to server.privateKey,
-            "wg_public_key" to server.publicKey,
-            "wg_server_enabled" to server.enabled
+            "wg_interface_name" to server.interfaceName,
+            "wg_config_content" to configContent,
+            "wg_config_source" to "inline",
+            "wg_restart_after_deploy" to true,
+            "wg_enable_on_boot" to server.enabled
         )
     }
 
-    private fun deployClientConfigurationViaAnsible(
+    /**
+     * Deploy WireGuard server configuration to the remote host.
+     * Generates the full server config including all clients and deploys it.
+     */
+    private fun deployRemoteServerConfiguration(
         server: WireGuardServer,
         targetHost: AnsibleHost,
         client: WireGuardClient
     ) {
+        val configContent = wireGuardTemplateService.generateServerConfig(server)
         val inventoryContent = generateInventoryForHost(targetHost)
         val extraVars = mapOf(
-            "wg_action" to "add_client",
-            "wg_interface" to server.interfaceName,
-            "wg_client_name" to client.name,
-            "wg_client_public_key" to client.publicKey,
-            "wg_client_ips" to client.allowedIPs.map { it.address },
-            "wg_client_psk" to (client.presharedKey ?: ""),
-            "wg_client_keepalive" to client.persistentKeepalive,
-            "wg_client_enabled" to client.enabled
+            "wg_interface_name" to server.interfaceName,
+            "wg_config_content" to configContent,
+            "wg_config_source" to "inline",
+            "wg_restart_after_deploy" to true
         )
 
-        ansiblePlaybookExecutor.executePlaybookAsync(
+        val job = ansiblePlaybookExecutor.executePlaybook(
             inventoryContent = inventoryContent,
-            playbook = "wireguard-client-add.yml",
+            playbook = "wireguard-deploy-config.yml",
             extraVars = extraVars,
-            triggeredBy = "AnsibleWireguardManagementService",
-            notes = "Deploy client '${client.name}' to server '${server.name}' on host '${targetHost.name}'"
+            triggeredBy = "AnsibleWireGuardManagementService",
+            notes = "Deploy updated configuration with client '${client.name}' to server '${server.name}' on host '${targetHost.name}'"
         )
+
+        if (!job.isSuccessful()) {
+            throw RuntimeException("Failed to deploy client configuration: exit code ${job.exitCode}")
+        }
+
+        logger.info("Successfully deployed client '${client.name}' to server '${server.name}' configuration")
     }
 
-    private fun removeClientConfigurationViaAnsible(
+    /**
+     * Remove the client peer from the remote server configuration.
+     * Regenerates server config without that client and deploys it.
+     */
+    private fun removeClientFromRemoteServerConfiguration(
         server: WireGuardServer,
         targetHost: AnsibleHost,
         client: WireGuardClient
     ) {
+        // 1. Temporarily remove client and generate new config
+        val wasRemoved = server.clients.remove(client)
+        if (!wasRemoved) {
+            logger.warn("Client ${client.name} was not found in server ${server.name} client list")
+            return
+        }
+
+        val configContent = wireGuardTemplateService.generateServerConfig(server)
         val inventoryContent = generateInventoryForHost(targetHost)
         val extraVars = mapOf(
-            "wg_action" to "remove_client",
-            "wg_interface" to server.interfaceName,
-            "wg_client_name" to client.name,
-            "wg_client_public_key" to client.publicKey
+            "wg_interface_name" to server.interfaceName,
+            "wg_config_content" to configContent,
+            "wg_config_source" to "inline",
+            "wg_restart_after_deploy" to true
         )
 
-        ansiblePlaybookExecutor.executePlaybookAsync(
-            inventoryContent = inventoryContent,
-            playbook = "wireguard-client-remove.yml",
-            extraVars = extraVars,
-            triggeredBy = "AnsibleWireguardManagementService",
-            notes = "Remove client '${client.name}' from server '${server.name}' on host '${targetHost.name}'"
+        // 2. Deploy config; restore client on failure
+        try {
+            val job = ansiblePlaybookExecutor.executePlaybook(
+                inventoryContent = inventoryContent,
+                playbook = "wireguard-deploy-config.yml",
+                extraVars = extraVars,
+                triggeredBy = "AnsibleWireGuardManagementService",
+                notes = "Deploy updated configuration after removing client '${client.name}' from server '${server.name}' on host '${targetHost.name}'"
+            )
+
+            // 3. Check deploy result
+            if (!job.isSuccessful()) {
+                server.clients.add(client) // Restore client
+                throw RuntimeException("Failed to deploy WireGuard configuration: exit code ${job.exitCode}")
+            }
+
+            logger.info("Successfully removed client '${client.name}' from server '${server.name}' configuration")
+
+        } catch (e: Exception) {
+            server.clients.add(client) // Restore client
+            logger.error("Failed to remove client configuration: ${e.message}")
+            throw e
+        }
+    }
+
+    /**
+     * Clean up WireGuard client configuration on the remote host
+     * (stop interface, remove config files, disable service, etc.).
+     */
+    private fun removeRemoteClientConfiguration(
+        client: WireGuardClient,
+        clientTargetHost: AnsibleHost
+    ) {
+        val inventoryContent = generateInventoryForHost(clientTargetHost)
+        val clientInterfaceName = "wg-${client.name.lowercase().replace(" ", "-")}"
+
+        val extraVars = mapOf(
+            "wg_client_interface_name" to clientInterfaceName,
+            "wg_client_name" to client.name,
+            "wg_action" to "cleanup_client"
         )
+
+        val job = ansiblePlaybookExecutor.executePlaybook(
+            inventoryContent = inventoryContent,
+            playbook = "wireguard-client-cleanup.yml",
+            extraVars = extraVars,
+            triggeredBy = "AnsibleWireGuardManagementService",
+            notes = "Cleanup WireGuard client '${client.name}' configuration on host '${clientTargetHost.name}'"
+        )
+
+        if (!job.isSuccessful()) {
+            throw RuntimeException("Failed to cleanup remote client configuration: exit code ${job.exitCode}")
+        }
+
+        logger.info("Successfully cleaned up remote client configuration for '${client.name}' on host '${clientTargetHost.name}'")
+    }
+
+    /**
+     * Deploy WireGuard client configuration to the remote host.
+     */
+    private fun deployRemoteClientConfiguration(
+        client: WireGuardClient,
+        clientTargetHost: AnsibleHost,
+        server: WireGuardServer
+    ) {
+        val inventoryContent = generateInventoryForHost(clientTargetHost)
+        val clientInterfaceName = "wg-${client.name.lowercase().replace(" ", "-")}"
+
+        // Generate client configuration content
+        val clientConfig = wireGuardTemplateService.generateClientConfigWithPrivateKey(
+            clientPrivateKey = client.privateKey,
+            client = client,
+            server = server,
+            allowAllTraffic = false
+        )
+
+        val extraVars = mapOf(
+            "wg_client_interface_name" to clientInterfaceName,
+            "wg_client_name" to client.name,
+            "wg_config_content" to clientConfig,
+            "wg_config_source" to "inline",
+            "wg_restart_after_deploy" to true,
+            "wg_enable_on_boot" to client.enabled,
+            "wg_action" to "deploy_client"
+        )
+
+        val job = ansiblePlaybookExecutor.executePlaybook(
+            inventoryContent = inventoryContent,
+            playbook = "wireguard-client-deploy.yml",
+            extraVars = extraVars,
+            triggeredBy = "AnsibleWireGuardManagementService",
+            notes = "Deploy WireGuard client '${client.name}' configuration to host '${clientTargetHost.name}'"
+        )
+
+        if (!job.isSuccessful()) {
+            throw RuntimeException("Failed to deploy remote client configuration: exit code ${job.exitCode}")
+        }
+
+        logger.info("Successfully deployed remote client configuration for '${client.name}' on host '${clientTargetHost.name}'")
     }
 }

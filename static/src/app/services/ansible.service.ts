@@ -4,6 +4,8 @@ import { Observable, of, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
 import {
+  AnsibleExecutionJobDetail,
+  AnsibleExecutionJobSummary,
   AnsibleHost,
   AnsibleInventoryGroup,
   AnsibleStatisticsResponse,
@@ -13,6 +15,7 @@ import {
   InventoryFileInfo,
   InventoryValidationResponse,
   PrivateKeySummary,
+  SpringPage,
   UpdateAnsibleHostRequest,
   UpdateAnsibleInventoryGroupRequest,
   UpdatePrivateKeyRequest
@@ -191,6 +194,21 @@ export class AnsibleService {
 
   getStatistics(): Observable<AnsibleStatisticsResponse> {
     return this.http.get<AnsibleStatisticsResponse>(`${this.ansibleUrl}/statistics`).pipe(catchError(e => this.handle(e)));
+  }
+
+  // --- Execution jobs (Ansible playbook runs) ---
+  listExecutionJobs(page = 0, size = 50, status?: string | null): Observable<SpringPage<AnsibleExecutionJobSummary>> {
+    let params = new HttpParams().set('page', String(page)).set('size', String(size));
+    if (status?.trim()) params = params.set('status', status.trim());
+    return this.http
+      .get<SpringPage<AnsibleExecutionJobSummary>>(`${this.ansibleUrl}/execution-jobs`, { params })
+      .pipe(catchError(e => this.handle(e)));
+  }
+
+  getExecutionJob(id: string): Observable<AnsibleExecutionJobDetail> {
+    return this.http
+      .get<AnsibleExecutionJobDetail>(`${this.ansibleUrl}/execution-jobs/${id}`)
+      .pipe(catchError(e => this.handle(e)));
   }
 
   private handle(error: HttpErrorResponse): Observable<never> {

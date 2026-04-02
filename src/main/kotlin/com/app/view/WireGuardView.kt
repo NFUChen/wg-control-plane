@@ -79,7 +79,7 @@ data class CreateServerRequest(
     @field:Size(max = 8192, message = "PostDown must be at most 8192 characters")
     val postDown: String? = null,
 
-    val hostId: UUID? = null // null 表示在当前主机上创建服务器
+    val hostId: UUID? = null // null = create server on the current host
 )
 
 
@@ -94,7 +94,9 @@ data class AddClientRequest(
 
     val presharedKey: String? = null,
 
-    val addresses: List<IPAddress>
+    val addresses: List<IPAddress>,
+
+    val hostId: UUID? = null // null = config file only; non-null = deploy to remote AnsibleHost
 )
 
 /**
@@ -107,6 +109,7 @@ data class UpdateClientRequest(
     val presharedKey: String? = null,
     val persistentKeepalive: Int? = null,
     val enabled: Boolean? = null,
+    val hostId: UUID? = null // null = config file only; non-null = deploy to remote AnsibleHost
 )
 
 /**

@@ -1,0 +1,44 @@
+---
+- name: Deploy WireGuard client configuration to remote host
+  hosts: "{{ wg_target_hosts | default('all') }}"
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Install WireGuard tools if not present
+      ansible.builtin.package:
+        name: wireguard-tools
+        state: present
+      when: ansible_os_family == "Debian" or ansible_os_family == "RedHat"
+
+    - name: Ensure WireGuard config directory exists
+      ansible.builtin.file:
+        path: /etc/wireguard
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Deploy WireGuard client configuration
+      ansible.builtin.copy:
+        content: "{{ wg_config_content }}"
+        dest: "/etc/wireguard/{{ wg_client_interface_name }}.conf"
+        owner: root
+        group: root
+        mode: "0600"
+      when:
+        - wg_config_content is defined
+        - wg_client_interface_name is defined
+
+    - name: Enable WireGuard client interface on boot
+      ansible.builtin.systemd:
+        name: "wg-quick@{{ wg_client_interface_name }}"
+        enabled: "{{ wg_enable_on_boot | default(true) }}"
+        state: started
+      when:
+        - wg_restart_after_deploy | default(true)
+        - wg_client_interface_name is defined
+
+    - name: Log deployment completion
+      ansible.builtin.debug:
+        msg: "WireGuard client '{{ wg_client_name }}' deployed successfully on {{ inventory_hostname }}"
+      when: wg_client_name is defined

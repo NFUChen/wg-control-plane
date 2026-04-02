@@ -287,6 +287,11 @@ export class LayoutComponent {
       path: '/ansible/inventory',
       label: 'Inventory check',
       icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z'
+    },
+    {
+      path: '/ansible/jobs',
+      label: 'Jobs',
+      icon: 'M5.25 5.653c0-1.44 1.062-2.671 2.529-3.088l5.778-.694a.75.75 0 01.693.388l4.261 7.479a.75.75 0 01-.23.99l-2.06 1.66a.75.75 0 00-.292.604v2.006a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v-2.006a.75.75 0 00-.292-.604l-2.06-1.66a.75.75 0 01-.23-.99l4.261-7.479a.75.75 0 01.693-.388l5.778.694c1.467.417 2.529 1.648 2.529 3.088V19.5a2.25 2.25 0 01-2.25 2.25H7.5A2.25 2.25 0 015.25 19.5V5.653z'
     }
   ];
 
@@ -308,6 +313,8 @@ export class LayoutComponent {
 
   getCurrentPageTitle(): string {
     const url = this.router.url.split('?')[0];
+    if (url.includes('/ansible/jobs/') && url !== '/ansible/jobs' && url !== '/ansible/jobs/') return 'Job details';
+    if (url === '/ansible/jobs' || url === '/ansible/jobs/') return 'Ansible jobs';
     if (url.includes('/ansible/inventory')) return 'Inventory validation';
     if (url.includes('/ansible/keys') && url.includes('/edit')) return 'Edit SSH key';
     if (url.includes('/ansible/keys/new')) return 'Add SSH key';

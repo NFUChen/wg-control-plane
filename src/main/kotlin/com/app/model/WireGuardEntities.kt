@@ -58,7 +58,7 @@ class WireGuardServer(
     var enabled: Boolean = true,
 
     @Column(name = "host_id")
-    var hostId: UUID? = null, // null = 本地部署, 有值 = 遠程Ansible部署
+    var hostId: UUID? = null, // null = local deployment; non-null = remote Ansible deployment
 
     @OneToMany(mappedBy = "server", cascade = [CascadeType.ALL], fetch = FetchType.EAGER, orphanRemoval = true)
     val clients: MutableList<WireGuardClient> = mutableListOf(),
@@ -136,6 +136,9 @@ class WireGuardClient(
 
     @Column(name = "enabled", nullable = false)
     var enabled: Boolean = true,
+
+    @Column(name = "host_id")
+    var hostId: UUID? = null, // null = config file only; non-null = deploy to remote AnsibleHost
 
     @Column(name = "last_handshake")
     var lastHandshake: LocalDateTime? = null,

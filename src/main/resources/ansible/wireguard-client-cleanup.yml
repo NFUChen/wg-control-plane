@@ -1,0 +1,35 @@
+---
+- name: Cleanup WireGuard client configuration on remote host
+  hosts: "{{ wg_target_hosts | default('all') }}"
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Stop WireGuard client interface if running
+      ansible.builtin.systemd:
+        name: "wg-quick@{{ wg_client_interface_name }}"
+        state: stopped
+        enabled: false
+      ignore_errors: true
+      when: wg_client_interface_name is defined
+
+    - name: Remove WireGuard client configuration file
+      ansible.builtin.file:
+        path: "/etc/wireguard/{{ wg_client_interface_name }}.conf"
+        state: absent
+      when: wg_client_interface_name is defined
+
+    - name: Clean up any remaining interface
+      ansible.builtin.command:
+        cmd: "wg-quick down {{ wg_client_interface_name }}"
+      ignore_errors: true
+      when: wg_client_interface_name is defined
+
+    - name: Remove any remaining network interface
+      ansible.builtin.command:
+        cmd: "ip link delete {{ wg_client_interface_name }}"
+      ignore_errors: true
+      when: wg_client_interface_name is defined
+
+    - name: Log cleanup completion
+      ansible.builtin.debug:
+        msg: "WireGuard client '{{ wg_client_name }}' cleanup completed on {{ inventory_hostname }}"

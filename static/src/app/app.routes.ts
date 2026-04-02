@@ -133,6 +133,22 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/ansible/inventory/ansible-inventory.component').then(c => c.AnsibleInventoryComponent),
         title: 'Inventory validation'
+      },
+      {
+        path: 'ansible/jobs',
+        loadComponent: () =>
+          import('./features/ansible/execution-jobs/ansible-execution-job-list.component').then(
+            c => c.AnsibleExecutionJobListComponent
+          ),
+        title: 'Ansible jobs'
+      },
+      {
+        path: 'ansible/jobs/:id',
+        loadComponent: () =>
+          import('./features/ansible/execution-jobs/ansible-execution-job-detail.component').then(
+            c => c.AnsibleExecutionJobDetailComponent
+          ),
+        title: 'Job details'
       }
     ]
   },

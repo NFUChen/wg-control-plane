@@ -153,3 +153,41 @@ export interface AnsibleStatisticsResponse {
     newestFile: string | null;
   };
 }
+
+/** Spring Data `Page<T>` JSON shape */
+export interface SpringPage<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+}
+
+export type AnsibleExecutionStatus = 'PENDING' | 'RUNNING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+
+export interface AnsibleExecutionJobSummary {
+  id: string;
+  playbook: string;
+  status: AnsibleExecutionStatus;
+  startedAt: string | null;
+  completedAt: string | null;
+  durationSeconds: number | null;
+  exitCode: number | null;
+  successful: boolean;
+  checkMode: boolean;
+  verbosity: number;
+  triggeredBy: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface AnsibleExecutionJobDetail extends AnsibleExecutionJobSummary {
+  inventoryContent: string;
+  extraVars: Record<string, unknown>;
+  stdout: string | null;
+  stderr: string | null;
+  executionErrors: string[];
+  updatedAt: string;
+}

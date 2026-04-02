@@ -67,21 +67,6 @@ interface AnsibleExecutionJobRepository : JpaRepository<AnsibleExecutionJob, UUI
     fun findByTriggeredBy(triggeredBy: String): List<AnsibleExecutionJob>
 
     /**
-     * Find jobs for a specific group
-     */
-    fun findByGroupId(groupId: UUID): List<AnsibleExecutionJob>
-
-    /**
-     * Find jobs that include specific host IDs
-     */
-    @Query("""
-        SELECT j FROM AnsibleExecutionJob j
-        WHERE j.hostIds IS NOT EMPTY
-        AND :hostId MEMBER OF j.hostIds
-    """)
-    fun findJobsContainingHost(@Param("hostId") hostId: UUID): List<AnsibleExecutionJob>
-
-    /**
      * Find jobs created within a time range
      */
     fun findByCreatedAtBetween(
@@ -168,25 +153,6 @@ interface AnsibleExecutionJobRepository : JpaRepository<AnsibleExecutionJob, UUI
         AND j.completedAt < :cutoffDate
     """)
     fun deleteOldCompletedJobs(@Param("cutoffDate") cutoffDate: LocalDateTime): Int
-
-    /**
-     * Get execution statistics for a time period
-     */
-    @Query("""
-        SELECT
-            j.status as status,
-            COUNT(j) as count,
-            AVG(j.durationSeconds) as averageDuration,
-            SUM(j.successfulHosts) as totalSuccessfulHosts,
-            SUM(j.failedHosts) as totalFailedHosts
-        FROM AnsibleExecutionJob j
-        WHERE j.createdAt BETWEEN :startDate AND :endDate
-        GROUP BY j.status
-    """)
-    fun getExecutionStatistics(
-        @Param("startDate") startDate: LocalDateTime,
-        @Param("endDate") endDate: LocalDateTime
-    ): List<ExecutionStatistic>
 
     /**
      * Get playbook usage statistics

@@ -50,6 +50,11 @@ export class AnsibleHubComponent {
       path: '/ansible/inventory',
       title: 'Inventory check',
       description: 'Validate configuration and preview the effective inventory; optional on-server file snapshots.'
+    },
+    {
+      path: '/ansible/jobs',
+      title: 'Execution jobs',
+      description: 'History of Ansible playbook runs (status, logs, inventory snapshot).'
     }
   ];
 }
