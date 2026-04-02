@@ -62,7 +62,6 @@
     group: root
     mode: "{{ wg_config_mode }}"
   when: wg_config_source == 'url'
-  notify: Restart wg-quick
   become: true
 
 - name: Copy WireGuard config from controller path
@@ -75,7 +74,6 @@
   when:
     - wg_config_source == 'file'
     - wg_config_local_file | length > 0
-  notify: Restart wg-quick
   become: true
 
 - name: Write WireGuard config (inline content)
@@ -86,9 +84,25 @@
     group: root
     mode: "{{ wg_config_mode }}"
   when: wg_config_source == 'inline'
-  notify: Restart wg-quick
   become: true
 
-- name: Flush handlers to apply config before verify (optional ordering)
-  ansible.builtin.meta: flush_handlers
-  when: wg_restart_after_deploy | bool
+# Do not rely on notify+handlers alone: copy reports ok (not changed) when the file is
+# unchanged, so Restart would never run and wg0 would stay down. Always apply when enabled.
+- name: Apply WireGuard interface (systemd)
+  ansible.builtin.systemd:
+    name: "wg-quick@{{ wg_interface_name }}"
+    state: restarted
+    enabled: "{{ wg_enable_on_boot | bool }}"
+  when:
+    - wg_restart_after_deploy | bool
+    - ansible_service_mgr | default('') == 'systemd'
+  become: true
+
+- name: Apply WireGuard interface (wg-quick CLI — e.g. Alpine/OpenRC without systemd)
+  ansible.builtin.shell: |
+    wg-quick down {{ wg_interface_name }} 2>/dev/null || true
+    wg-quick up {{ wg_interface_name }}
+  when:
+    - wg_restart_after_deploy | bool
+    - ansible_service_mgr | default('') != 'systemd'
+  become: true

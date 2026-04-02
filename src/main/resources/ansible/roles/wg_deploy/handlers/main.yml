@@ -1,8 +1,0 @@
----
-- name: Restart wg-quick
-  ansible.builtin.systemd:
-    name: "wg-quick@{{ wg_interface_name }}"
-    state: restarted
-    enabled: "{{ wg_enable_on_boot | bool }}"
-  when: wg_restart_after_deploy | bool
-  become: true

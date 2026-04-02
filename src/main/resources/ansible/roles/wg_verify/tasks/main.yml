@@ -11,7 +11,11 @@
     that:
       - wg_verify_show.rc == 0
       - wg_verify_show.stdout | length > 0
-    fail_msg: "wg show failed or empty for {{ wg_interface_name }} (expected up)."
+    fail_msg: >-
+      wg show failed or empty for {{ wg_interface_name }} (expected up).
+      rc={{ wg_verify_show.rc }}.
+      stderr={{ wg_verify_show.stderr | default('') | replace('\n', ' ') }}.
+      stdout={{ wg_verify_show.stdout | default('') | replace('\n', ' ') }}.
   when: wg_expected_state == 'up'
 
 - name: Expect interface down — wg show fails
