@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
 import { WireguardService } from '../../../services/wireguard.service';
+import { AnsibleService } from '../../../services/ansible.service';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { AlertComponent } from '../../../shared/components/alert/alert.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
@@ -14,6 +15,7 @@ import {
   ServerDetailResponse,
   LoadingState
 } from '../../../models/wireguard.interface';
+import { AnsibleHost } from '../../../models/ansible.interface';
 
 @Component({
   selector: 'app-client-form',
@@ -234,6 +236,37 @@ import {
           </div>
           }
 
+          @if (server?.hostId && !isEditMode) {
+            <div class="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Client deployment (optional)</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                Optionally push this client&apos;s WireGuard config to an Ansible host. Leave as &quot;Config only&quot; to keep credentials on the control plane only.
+              </p>
+              <div>
+                <label for="clientDeployHostId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Remote host
+                </label>
+                <select
+                  id="clientDeployHostId"
+                  formControlName="clientDeployHostId"
+                  class="w-full max-w-xl px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Configuration only (no remote deploy)</option>
+                  @for (h of ansibleHosts; track h.id) {
+                    <option [value]="h.id">{{ h.name }} — {{ h.ipAddress }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+          }
+
+          @if (isEditMode && editDataReady) {
+            <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-200">
+              <span class="font-medium text-gray-900 dark:text-gray-100">Client deploy host:</span>
+              {{ clientDeployHostSummary || '—' }}
+            </div>
+          }
+
           <!-- IP Address Configuration -->
           <div class="space-y-4">
             <div class="flex items-center justify-between">
@@ -352,6 +385,9 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   publicKeyDisplay = '';
   /** For edit flow: wait for GET /api/private/wireguard/clients/:id before showing the form. */
   editDataReady = true;
+  ansibleHosts: AnsibleHost[] = [];
+  /** Resolved label for edit mode when client has hostId. */
+  clientDeployHostSummary = '';
   loadingState: LoadingState = { isLoading: false };
   /** Shown when add/update client fails (e.g. duplicate IP from API). */
   formSubmitError: string | null = null;
@@ -372,7 +408,8 @@ export class ClientFormComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private route: ActivatedRoute,
     private router: Router,
-    private wireguardService: WireguardService
+    private wireguardService: WireguardService,
+    private ansible: AnsibleService
   ) {
     this.createForm();
   }
@@ -408,6 +445,7 @@ export class ClientFormComponent implements OnInit, OnDestroy {
       removePresharedKey: [false],
       persistentKeepalive: [25, [Validators.min(0), Validators.max(65535)]],
       enabled: [true],
+      clientDeployHostId: [''],
       addresses: this.fb.array([])
     });
 
@@ -425,6 +463,9 @@ export class ClientFormComponent implements OnInit, OnDestroy {
     this.wireguardService.getServerWithClients(this.serverId).subscribe({
       next: (server) => {
         this.server = server;
+        if (server.hostId) {
+          this.loadAnsibleHosts();
+        }
         if (this.isEditMode && this.clientId) {
           this.loadClientForEdit();
         } else {
@@ -458,6 +499,22 @@ export class ClientFormComponent implements OnInit, OnDestroy {
           presharedKey: '',
           removePresharedKey: false
         });
+        if (!details.hostId) {
+          this.clientDeployHostSummary = 'Configuration only (not deployed to a remote host)';
+        } else {
+          this.clientDeployHostSummary = '';
+          this.ansible.listHosts(false).subscribe({
+            next: hosts => {
+              const h = hosts.find(x => x.id === details.hostId);
+              this.clientDeployHostSummary = h
+                ? `${h.name} (${h.ipAddress})`
+                : details.hostId ?? '';
+            },
+            error: () => {
+              this.clientDeployHostSummary = details.hostId ?? '';
+            }
+          });
+        }
         this.editDataReady = true;
       },
       error: (error) => {
@@ -478,6 +535,17 @@ export class ClientFormComponent implements OnInit, OnDestroy {
     if (this.addresses.length > 1) {
       this.addresses.removeAt(index);
     }
+  }
+
+  private loadAnsibleHosts(): void {
+    this.ansible.listHosts(false).subscribe({
+      next: rows => {
+        this.ansibleHosts = rows.filter(h => h.enabled);
+      },
+      error: () => {
+        this.ansibleHosts = [];
+      }
+    });
   }
 
   onSubmit(): void {
@@ -540,6 +608,11 @@ export class ClientFormComponent implements OnInit, OnDestroy {
 
     if (formValue.presharedKey && formValue.presharedKey.trim()) {
       addClientRequest.presharedKey = formValue.presharedKey.trim();
+    }
+
+    const deployHost = (formValue.clientDeployHostId as string)?.trim();
+    if (deployHost) {
+      addClientRequest.hostId = deployHost;
     }
 
     this.wireguardService.addClientToServer(this.serverId, addClientRequest).subscribe({

@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
 import { WireguardService } from '../../../services/wireguard.service';
+import { AnsibleService } from '../../../services/ansible.service';
 import { DataTableComponent, TableAction } from '../../../shared/components/data-table/data-table.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { AlertComponent } from '../../../shared/components/alert/alert.component';
@@ -123,6 +124,10 @@ import {
                 <div>
                   <dt class="text-xs text-gray-500 dark:text-gray-400">Last Updated</dt>
                   <dd class="text-sm text-gray-900 dark:text-gray-100">{{ server.updatedAt | date:'medium' }}</dd>
+                </div>
+                <div class="sm:col-span-2">
+                  <dt class="text-xs text-gray-500 dark:text-gray-400">Deployment</dt>
+                  <dd class="text-sm text-gray-900 dark:text-gray-100">{{ deploymentLabel }}</dd>
                 </div>
               </dl>
             </div>
@@ -314,6 +319,7 @@ import {
 export class ServerDetailComponent implements OnInit, OnDestroy {
   server?: ServerDetailResponse;
   serverId?: string;
+  deploymentLabel = '—';
   loadingState: LoadingState = { isLoading: false };
   clientsLoading = false;
   successMessage = '';
@@ -382,7 +388,8 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private wireguardService: WireguardService
+    private wireguardService: WireguardService,
+    private ansible: AnsibleService
   ) {}
 
   ngOnInit(): void {
@@ -412,9 +419,29 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
     this.wireguardService.getServerWithClients(this.serverId).subscribe({
       next: (server) => {
         this.server = server;
+        this.refreshDeploymentLabel(server);
       },
       error: (error) => {
         console.error('Error loading server details:', error);
+      }
+    });
+  }
+
+  private refreshDeploymentLabel(server: ServerDetailResponse): void {
+    if (!server.hostId) {
+      this.deploymentLabel = 'This control plane — local WireGuard';
+      return;
+    }
+    this.deploymentLabel = 'Loading…';
+    this.ansible.listHosts(false).subscribe({
+      next: hosts => {
+        const h = hosts.find(x => x.id === server.hostId);
+        this.deploymentLabel = h
+          ? `Ansible — ${h.name} (${h.ipAddress})`
+          : `Ansible host (${server.hostId})`;
+      },
+      error: () => {
+        this.deploymentLabel = `Ansible host (${server.hostId})`;
       }
     });
   }

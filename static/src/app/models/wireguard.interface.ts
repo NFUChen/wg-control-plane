@@ -12,6 +12,8 @@ export interface CreateServerRequest {
   dnsServers: string[];
   postUp?: string | null;
   postDown?: string | null;
+  /** When set, server is deployed via Ansible to this host (immutable after create). Omit or null = local WG on control plane. */
+  hostId?: string | null;
 }
 
 export interface UpdateServerRequest {
@@ -40,6 +42,8 @@ export interface ServerResponse {
   isOnline: boolean;
   totalClients: number;
   activeClients: number;
+  /** Set when this server is Ansible-managed (not local WG on the control plane). */
+  hostId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -57,6 +61,8 @@ export interface ServerDetailResponse {
   postDown?: string | null;
   enabled: boolean;
   clients: ClientResponse[];
+  /** Set when this server is Ansible-managed (not local WG on the control plane). */
+  hostId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -66,6 +72,8 @@ export interface AddClientRequest {
   clientPublicKey?: string;
   presharedKey?: string;
   addresses: IPAddress[];
+  /** Optional: deploy client config to this Ansible host (only for Ansible-managed servers). Immutable after create. */
+  hostId?: string | null;
 }
 
 /** PUT /api/private/wireguard/servers/{serverId}/clients/{clientId} — omitted fields unchanged; presharedKey: '' clears PSK */
@@ -87,6 +95,8 @@ export interface ClientDetailResponse {
   isOnline: boolean;
   lastHandshake?: string | null;
   persistentKeepalive: number;
+  /** When set, client config is deployed to this Ansible host. */
+  hostId: string | null;
   server: {
     id: string;
     name: string;
@@ -108,6 +118,8 @@ export interface ClientResponse {
   lastHandshake?: string;
   dataReceived: number;
   dataSent: number;
+  /** When set, client config is deployed to this Ansible host. */
+  hostId: string | null;
   createdAt: string;
   updatedAt: string;
 }

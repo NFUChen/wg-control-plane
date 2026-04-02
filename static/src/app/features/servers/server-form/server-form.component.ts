@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
 import { WireguardService } from '../../../services/wireguard.service';
+import { AnsibleService } from '../../../services/ansible.service';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import { AlertComponent } from '../../../shared/components/alert/alert.component';
 import {
@@ -13,6 +14,7 @@ import {
   ServerDetailResponse,
   LoadingState
 } from '../../../models/wireguard.interface';
+import { AnsibleHost } from '../../../models/ansible.interface';
 
 @Component({
   selector: 'app-server-form',
@@ -57,6 +59,40 @@ import {
         </div>
 
         <form [formGroup]="serverForm" (ngSubmit)="onSubmit()" class="p-6 space-y-6">
+          @if (!isEditMode) {
+            <div class="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Deployment</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                Choose whether this VPN runs on <strong class="font-medium text-gray-800 dark:text-gray-200">this machine</strong> (local
+                <code class="text-xs">wg-quick</code>) or on a registered <strong class="font-medium text-gray-800 dark:text-gray-200">Ansible host</strong>. This choice cannot be changed later.
+              </p>
+              <div>
+                <label for="deploymentTarget" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Target
+                </label>
+                <select
+                  id="deploymentTarget"
+                  formControlName="deploymentTarget"
+                  class="w-full max-w-xl px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option [ngValue]="null">This control plane — local WireGuard</option>
+                  @for (h of ansibleHosts; track h.id) {
+                    <option [ngValue]="h.id">{{ h.name }} — {{ h.ipAddress }}</option>
+                  }
+                </select>
+                @if (ansibleHostsLoadError) {
+                  <p class="mt-1 text-sm text-amber-700 dark:text-amber-400">{{ ansibleHostsLoadError }}</p>
+                }
+              </div>
+            </div>
+          }
+          @if (isEditMode && editDeploymentSummary) {
+            <div class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-200">
+              <span class="font-medium text-gray-900 dark:text-gray-100">Deployment:</span>
+              {{ editDeploymentSummary }}
+            </div>
+          }
+
           <!-- Basic Information -->
           <div class="space-y-4">
             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Basic Information</h3>
@@ -300,13 +336,19 @@ export class ServerFormComponent implements OnInit, OnDestroy {
   loadingState: LoadingState = { isLoading: false };
   submitting = false;
 
+  ansibleHosts: AnsibleHost[] = [];
+  ansibleHostsLoadError = '';
+  /** Shown in edit mode (host binding is immutable). */
+  editDeploymentSummary = '';
+
   private destroy$ = new Subject<void>();
 
   constructor(
     private fb: FormBuilder,
     private route: ActivatedRoute,
     private router: Router,
-    private wireguardService: WireguardService
+    private wireguardService: WireguardService,
+    private ansible: AnsibleService
   ) {
     this.createForm();
   }
@@ -315,6 +357,10 @@ export class ServerFormComponent implements OnInit, OnDestroy {
     this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {
       this.serverId = params['id'];
       this.isEditMode = !!this.serverId && this.route.snapshot.url.some(segment => segment.path === 'edit');
+
+      if (!this.isEditMode) {
+        this.loadAnsibleHostsForCreate();
+      }
 
       if (this.isEditMode && this.serverId) {
         this.loadServerForEdit();
@@ -336,6 +382,7 @@ export class ServerFormComponent implements OnInit, OnDestroy {
 
   createForm(): void {
     this.serverForm = this.fb.group({
+      deploymentTarget: [null as string | null],
       name: ['', [Validators.required, Validators.minLength(3)]],
       interfaceName: ['', [Validators.required]],
       networkAddress: ['', [Validators.required, Validators.pattern(/^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/)]],
@@ -367,6 +414,23 @@ export class ServerFormComponent implements OnInit, OnDestroy {
   }
 
   populateForm(server: ServerDetailResponse): void {
+    this.editDeploymentSummary = '';
+    if (server.hostId) {
+      this.ansible.listHosts(false).subscribe({
+        next: hosts => {
+          const h = hosts.find(x => x.id === server.hostId);
+          this.editDeploymentSummary = h
+            ? `Ansible — ${h.name} (${h.ipAddress})`
+            : `Ansible host (${server.hostId})`;
+        },
+        error: () => {
+          this.editDeploymentSummary = `Ansible host (${server.hostId})`;
+        }
+      });
+    } else {
+      this.editDeploymentSummary = 'This control plane — local WireGuard';
+    }
+
     this.serverForm.patchValue({
       name: server.name,
       interfaceName: server.interfaceName,
@@ -441,6 +505,11 @@ export class ServerFormComponent implements OnInit, OnDestroy {
       })()
     };
 
+    const target = formValue.deploymentTarget as string | null;
+    if (target) {
+      createRequest.hostId = target;
+    }
+
     this.wireguardService.createServer(createRequest).subscribe({
       next: (server) => {
         this.router.navigate(['/servers', server.id]);
@@ -478,6 +547,18 @@ export class ServerFormComponent implements OnInit, OnDestroy {
 
   cancel(): void {
     this.router.navigate(['/servers']);
+  }
+
+  private loadAnsibleHostsForCreate(): void {
+    this.ansibleHostsLoadError = '';
+    this.ansible.listHosts(false).subscribe({
+      next: rows => {
+        this.ansibleHosts = rows.filter(h => h.enabled);
+      },
+      error: err => {
+        this.ansibleHostsLoadError = this.ansible.getApiErrorMessage(err);
+      }
+    });
   }
 
   clearError(): void {

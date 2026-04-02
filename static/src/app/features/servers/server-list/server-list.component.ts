@@ -257,6 +257,11 @@ export class ServerListComponent implements OnInit, OnDestroy {
     if (!server.enabled && !server.isOnline) {
       return 'Enable the server before starting the interface';
     }
+    if (server.hostId) {
+      return server.isOnline
+        ? 'Ansible-managed: WireGuard reported up on remote host — click to stop (Ansible)'
+        : 'Ansible-managed: click to start / deploy on remote host (not local wg on control plane)';
+    }
     return server.isOnline ? 'Interface running — click to stop' : 'Interface down — click to start';
   }
 
@@ -275,7 +280,13 @@ export class ServerListComponent implements OnInit, OnDestroy {
     req$.subscribe({
       next: () => {
         this.serverPowerLoadingIds.delete(server.id);
-        this.successMessage = wantOn ? 'Interface started' : 'Interface stopped';
+        this.successMessage = wantOn
+          ? server.hostId
+            ? 'Start job sent (Ansible remote)'
+            : 'Interface started'
+          : server.hostId
+            ? 'Stop job sent (Ansible remote)'
+            : 'Interface stopped';
         this.loadServers();
       },
       error: (error) => {
