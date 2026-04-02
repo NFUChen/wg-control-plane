@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.ResourceLoader
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import java.io.File
 import java.nio.file.Files
@@ -43,6 +44,11 @@ class DefaultAnsiblePlaybookExecutor(
 
     // ========== Core Execution Methods ==========
 
+    /**
+     * Runs in a separate transaction so job rows commit even when the caller
+     * (e.g. [com.app.service.AnsibleWireGuardManagementService]) rolls back after a failed deploy.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     override fun executePlaybook(
         inventoryContent: String,
         playbook: String,
@@ -67,6 +73,7 @@ class DefaultAnsiblePlaybookExecutor(
     }
 
     @Async
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     override fun executePlaybookAsync(
         inventoryContent: String,
         playbook: String,
