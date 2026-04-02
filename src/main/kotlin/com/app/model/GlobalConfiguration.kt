@@ -78,7 +78,8 @@ data class GlobalConfiguration(
  */
 data class GlobalConfig(
     /**
-     * Public endpoint for WireGuard server (replaces WireGuardServer.endpoint)
+     * Public endpoint for locally managed WireGuard servers (control plane host).
+     * Servers deployed to an Ansible host use that host's IP and the server's listen port instead.
      */
     val serverEndpoint: String = "",
 

@@ -7,7 +7,8 @@ import org.springframework.stereotype.Service
 @Service
 class WireGuardTemplateService(
     private val templateService: TemplateService,
-    private val globalConfigurationService: GlobalConfigurationService
+    private val globalConfigurationService: GlobalConfigurationService,
+    private val wireGuardServerEndpointResolver: WireGuardServerEndpointResolver
 ) {
 
     /**
@@ -43,13 +44,14 @@ class WireGuardTemplateService(
         }
 
         val globalConfig = globalConfigurationService.getCurrentConfig()
+        val serverEndpoint = wireGuardServerEndpointResolver.resolve(server, globalConfig)
 
         val dataModel = mutableMapOf<String, Any>(
             "privateKey" to "", // Client should provide their own private key
             "address" to (client.allowedIPs.joinToString(", ") { it.address }),
             "dnsServers" to server.dnsServers.joinToString(", ") { it.IP },
             "serverPublicKey" to server.publicKey,
-            "serverEndpoint" to globalConfig.serverEndpoint,
+            "serverEndpoint" to serverEndpoint,
             "allowedIPs" to allowedIPs.joinToString(", "),
             "persistentKeepalive" to client.persistentKeepalive
         )
@@ -77,13 +79,14 @@ class WireGuardTemplateService(
         }
 
         val globalConfig = globalConfigurationService.getCurrentConfig()
+        val serverEndpoint = wireGuardServerEndpointResolver.resolve(server, globalConfig)
 
         val dataModel = mutableMapOf<String, Any>(
             "privateKey" to clientPrivateKey,
             "address" to (client.allowedIPs.joinToString(", ") { it.address }),
             "dnsServers" to server.dnsServers.joinToString(", ") { it.IP },
             "serverPublicKey" to server.publicKey,
-            "serverEndpoint" to globalConfig.serverEndpoint,
+            "serverEndpoint" to serverEndpoint,
             "allowedIPs" to allowedIPs.joinToString(", "),
             "persistentKeepalive" to client.persistentKeepalive
         )

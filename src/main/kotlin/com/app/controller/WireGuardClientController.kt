@@ -3,6 +3,7 @@ package com.app.controller
 import com.app.model.*
 import com.app.service.GlobalConfigurationService
 import com.app.service.WireGuardManagementService
+import com.app.service.WireGuardServerEndpointResolver
 import com.app.service.WireGuardTemplateService
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -17,7 +18,8 @@ import java.util.*
 class WireGuardClientController(
     private val managementService: WireGuardManagementService,
     private val templateService: WireGuardTemplateService,
-    private val globalConfigurationService: GlobalConfigurationService
+    private val globalConfigurationService: GlobalConfigurationService,
+    private val wireGuardServerEndpointResolver: WireGuardServerEndpointResolver
 ) {
 
     /**
@@ -28,6 +30,7 @@ class WireGuardClientController(
         val client = managementService.getClientById(clientId)
 
         val globalConfig = globalConfigurationService.getCurrentConfig()
+        val endpoint = wireGuardServerEndpointResolver.resolve(client.server, globalConfig)
 
         val response = ClientConfigurationResponse(
             id = client.id,
@@ -42,7 +45,7 @@ class WireGuardClientController(
             server = ServerInfo(
                 id = client.server.id,
                 name = client.server.name,
-                endpoint = globalConfig.serverEndpoint,
+                endpoint = endpoint,
                 publicKey = client.server.publicKey,
                 dnsServers = client.server.dnsServers.map { it.IP },
                 mtu = client.server.mtu

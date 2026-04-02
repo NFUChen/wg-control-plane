@@ -3,6 +3,7 @@ package com.app.controller
 import com.app.view.*
 import com.app.service.GlobalConfigurationService
 import com.app.service.WireGuardManagementService
+import com.app.service.WireGuardServerEndpointResolver
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -13,7 +14,8 @@ import java.util.*
 @RequestMapping("/api/private/wireguard")
 class WireGuardController(
     private val wireGuardService: WireGuardManagementService,
-    private val globalConfigurationService: GlobalConfigurationService
+    private val globalConfigurationService: GlobalConfigurationService,
+    private val wireGuardServerEndpointResolver: WireGuardServerEndpointResolver
 ) {
 
     /**
@@ -23,8 +25,9 @@ class WireGuardController(
     fun createServer(@Valid @RequestBody request: CreateServerRequest): ResponseEntity<ServerResponse> {
         val server = wireGuardService.createServer(request)
         val globalConfig = globalConfigurationService.getCurrentConfig()
+        val endpoint = wireGuardServerEndpointResolver.resolve(server, globalConfig)
         return ResponseEntity.status(HttpStatus.CREATED).body(
-            ServerResponse.from(server, globalConfig, wireGuardService.isServerInterfaceOnline(server.id))
+            ServerResponse.from(server, wireGuardService.isServerInterfaceOnline(server.id), endpoint)
         )
     }
 
@@ -49,7 +52,8 @@ class WireGuardController(
         val servers = wireGuardService.getAllServers()
         val globalConfig = globalConfigurationService.getCurrentConfig()
         val serverResponses = servers.map {
-            ServerResponse.from(it, globalConfig, wireGuardService.isServerInterfaceOnline(it.id))
+            val endpoint = wireGuardServerEndpointResolver.resolve(it, globalConfig)
+            ServerResponse.from(it, wireGuardService.isServerInterfaceOnline(it.id), endpoint)
         }
         return ResponseEntity.ok(serverResponses)
     }
@@ -62,7 +66,8 @@ class WireGuardController(
         val servers = wireGuardService.getActiveServers()
         val globalConfig = globalConfigurationService.getCurrentConfig()
         val serverResponses = servers.map {
-            ServerResponse.from(it, globalConfig, wireGuardService.isServerInterfaceOnline(it.id))
+            val endpoint = wireGuardServerEndpointResolver.resolve(it, globalConfig)
+            ServerResponse.from(it, wireGuardService.isServerInterfaceOnline(it.id), endpoint)
         }
         return ResponseEntity.ok(serverResponses)
     }
@@ -75,7 +80,8 @@ class WireGuardController(
         val server = wireGuardService.getServerWithClients(serverId)
             ?: return ResponseEntity.notFound().build()
         val globalConfig = globalConfigurationService.getCurrentConfig()
-        return ResponseEntity.ok(ServerDetailResponse.from(server, globalConfig))
+        val endpoint = wireGuardServerEndpointResolver.resolve(server, globalConfig)
+        return ResponseEntity.ok(ServerDetailResponse.from(server, endpoint))
     }
 
     /**
@@ -99,8 +105,9 @@ class WireGuardController(
         val server = wireGuardService.updateServer(serverId, request)
             ?: return ResponseEntity.notFound().build()
         val globalConfig = globalConfigurationService.getCurrentConfig()
+        val endpoint = wireGuardServerEndpointResolver.resolve(server, globalConfig)
         return ResponseEntity.ok(
-            ServerResponse.from(server, globalConfig, wireGuardService.isServerInterfaceOnline(server.id))
+            ServerResponse.from(server, wireGuardService.isServerInterfaceOnline(server.id), endpoint)
         )
     }
 

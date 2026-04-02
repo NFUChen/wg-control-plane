@@ -1,7 +1,6 @@
 package com.app.view
 
 import com.app.model.GOOGLE_DNS
-import com.app.model.GlobalConfig
 import com.app.model.IPAddress
 import com.app.model.WireGuardClient
 import com.app.model.WireGuardServer
@@ -153,7 +152,7 @@ data class ServerResponse(
     val updatedAt: LocalDateTime
 ) {
     companion object {
-        fun from(server: WireGuardServer, globalConfig: GlobalConfig, isOnline: Boolean): ServerResponse {
+        fun from(server: WireGuardServer, isOnline: Boolean, endpoint: String): ServerResponse {
             val activeClients = server.clients.count { it.enabled }
             return ServerResponse(
                 id = server.id.toString(),
@@ -162,7 +161,7 @@ data class ServerResponse(
                 publicKey = server.publicKey,
                 networkAddress = server.primaryAddress,
                 listenPort = server.listenPort,
-                endpoint = globalConfig.serverEndpoint,
+                endpoint = endpoint,
                 dnsServers = server.dnsServers.toList(),
                 postUp = server.postUp,
                 postDown = server.postDown,
@@ -200,7 +199,7 @@ data class ServerDetailResponse(
     val updatedAt: LocalDateTime
 ) {
     companion object {
-        fun from(server: WireGuardServer, globalConfig: GlobalConfig): ServerDetailResponse {
+        fun from(server: WireGuardServer, endpoint: String): ServerDetailResponse {
             return ServerDetailResponse(
                 id = server.id.toString(),
                 name = server.name,
@@ -208,7 +207,7 @@ data class ServerDetailResponse(
                 publicKey = server.publicKey,
                 networkAddress = server.primaryAddress,
                 listenPort = server.listenPort,
-                endpoint = globalConfig.serverEndpoint,
+                endpoint = endpoint,
                 dnsServers = server.dnsServers.toList(),
                 postUp = server.postUp,
                 postDown = server.postDown,
