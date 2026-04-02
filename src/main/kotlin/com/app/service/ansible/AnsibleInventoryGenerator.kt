@@ -82,7 +82,7 @@ class AnsibleInventoryGenerator(
         hostVars["ansible_user"] = host.sshUsername
 
         // SSH key configuration
-        host.sshPrivateKey?.let { key ->
+        host.sshPrivateKey.let { key ->
             if (key.enabled) {
                 // In practice, the private key file path would be managed by the ansible service
                 hostVars["ansible_ssh_private_key_file"] = "/tmp/keys/${key.id}.pem"

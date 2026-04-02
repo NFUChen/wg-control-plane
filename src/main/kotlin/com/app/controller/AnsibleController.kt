@@ -3,14 +3,8 @@ package com.app.controller
 import com.app.model.AnsibleHost
 import com.app.model.AnsibleInventoryGroup
 import com.app.service.ansible.AnsibleManagementService
-import com.app.view.ansible.CreateAnsibleHostRequest
-import com.app.view.ansible.CreateAnsibleInventoryGroupRequest
-import com.app.view.ansible.UpdateAnsibleHostRequest
-import com.app.view.ansible.UpdateAnsibleInventoryGroupRequest
 import com.app.service.ansible.InventoryFileInfo
-import com.app.view.ansible.AnsibleStatisticsResponse
-import com.app.view.ansible.InventoryValidationResponse
-import com.app.view.ansible.MaintenanceResponse
+import com.app.view.ansible.*
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.core.io.Resource
 import org.springframework.http.HttpHeaders
@@ -25,7 +19,7 @@ import java.util.*
  * Provides endpoints for managing hosts, groups, and inventory files.
  */
 @RestController
-@RequestMapping("/api/ansible")
+@RequestMapping("/api/private/ansible")
 class AnsibleController(
     private val ansibleManagementService: AnsibleManagementService
 ) {
@@ -235,12 +229,3 @@ class AnsibleController(
         return ResponseEntity.ok(response)
     }
 }
-
-/**
- * Standard error response format
- */
-data class ErrorResponse(
-    val error: String,
-    val message: String,
-    val timestamp: String = java.time.Instant.now().toString()
-)

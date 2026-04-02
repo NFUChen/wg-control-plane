@@ -20,7 +20,7 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class AnsibleService {
-  private readonly ansibleUrl = '/api/ansible';
+  private readonly ansibleUrl = '/api/private/ansible';
   private readonly privateKeysUrl = '/api/private/ansible/private-keys';
 
   constructor(private http: HttpClient) {}

@@ -244,7 +244,7 @@ export class AnsibleInventoryComponent implements OnInit, OnDestroy {
 
   downloadUrl(filename: string): string {
     const enc = encodeURIComponent(filename);
-    return `/api/ansible/inventory/files/${enc}/download`;
+    return `/api/private/ansible/inventory/files/${enc}/download`;
   }
 
   loadFiles(): void {
