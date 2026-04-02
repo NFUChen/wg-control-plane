@@ -316,6 +316,8 @@ class DefaultAnsiblePlaybookExecutor(
 
         val env = processBuilder.environment()
         env["ANSIBLE_HOST_KEY_CHECKING"] = "False"
+        // Matches [defaults] interpreter_python = auto_silent — suppresses discovery WARNING on stderr
+        env["ANSIBLE_INTERPRETER_PYTHON"] = "auto_silent"
 
         val process = processBuilder.start()
         runningProcesses[jobId] = process
