@@ -1,4 +1,4 @@
-package com.app.web.controller
+package com.app.controller
 
 import com.app.model.AnsibleHost
 import com.app.model.AnsibleInventoryGroup
@@ -8,9 +8,9 @@ import com.app.view.ansible.CreateAnsibleInventoryGroupRequest
 import com.app.view.ansible.UpdateAnsibleHostRequest
 import com.app.view.ansible.UpdateAnsibleInventoryGroupRequest
 import com.app.service.ansible.InventoryFileInfo
-import com.app.web.dto.AnsibleStatisticsResponse
-import com.app.web.dto.InventoryValidationResponse
-import com.app.web.dto.MaintenanceResponse
+import com.app.view.ansible.AnsibleStatisticsResponse
+import com.app.view.ansible.InventoryValidationResponse
+import com.app.view.ansible.MaintenanceResponse
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.core.io.Resource
 import org.springframework.http.HttpHeaders

@@ -1,4 +1,4 @@
-package com.app.web.dto
+package com.app.view.ansible
 
 import com.app.service.ansible.AnsibleManagementStatistics
 import com.app.service.ansible.CleanupResult
