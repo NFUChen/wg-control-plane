@@ -164,6 +164,17 @@ class AnsibleInventoryGenerator(
     }
 
     /**
+     * Single-host inventory for one playbook run (e.g. [ping.yml]), using the same host line
+     * formatting as bulk inventory (SSH key path, become, python, custom vars).
+     */
+    fun inventoryForSinglePlaybookTarget(host: AnsibleHost, inventoryGroupName: String): String {
+        return buildString {
+            appendLine("[$inventoryGroupName]")
+            appendLine(formatHostEntry(host))
+        }
+    }
+
+    /**
      * Validate that generated inventory content is valid
      */
     fun validateInventoryContent(content: String): List<String> {

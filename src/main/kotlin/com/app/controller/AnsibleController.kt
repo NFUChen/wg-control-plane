@@ -2,9 +2,11 @@ package com.app.controller
 
 import com.app.model.AnsibleHost
 import com.app.model.AnsibleInventoryGroup
+import com.app.service.ansible.AnsibleHostConnectivityService
 import com.app.service.ansible.AnsibleManagementService
 import com.app.service.ansible.InventoryFileInfo
 import com.app.view.ansible.*
+import com.app.view.ansible.toDetailResponse
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.core.io.Resource
 import org.springframework.http.HttpHeaders
@@ -21,7 +23,8 @@ import java.util.*
 @RestController
 @RequestMapping("/api/private/ansible")
 class AnsibleController(
-    private val ansibleManagementService: AnsibleManagementService
+    private val ansibleManagementService: AnsibleManagementService,
+    private val ansibleHostConnectivityService: AnsibleHostConnectivityService,
 ) {
 
     // ========== Host Management Endpoints ==========
@@ -74,6 +77,19 @@ class AnsibleController(
     fun deleteHost(@PathVariable id: UUID): ResponseEntity<Void> {
         ansibleManagementService.deleteHost(id)
         return ResponseEntity.noContent().build()
+    }
+
+    /**
+     * Runs [AnsibleHostConnectivityService.PING_PLAYBOOK] (ansible.builtin.ping) against this host synchronously.
+     */
+    @PostMapping("/hosts/{id}/health-check")
+    fun healthCheckHost(@PathVariable id: UUID): ResponseEntity<AnsibleExecutionJobDetailResponse> {
+        return try {
+            val job = ansibleHostConnectivityService.runPing(id)
+            ResponseEntity.ok(job.toDetailResponse())
+        } catch (_: IllegalArgumentException) {
+            ResponseEntity.notFound().build()
+        }
     }
 
     // ========== Group Management Endpoints ==========
