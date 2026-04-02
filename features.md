@@ -1,194 +1,194 @@
-# WGDashboard 功能清單
+# WGDashboard feature list
 
-基於 example 目錄中的 WGDashboard 項目分析，以下是完整的功能清單，可供復制和增強參考。
+Based on analysis of the WGDashboard project in the `example` directory, the following is a complete feature list for replication and enhancement reference.
 
-## 🚀 核心 WireGuard 管理功能
+## Core WireGuard management
 
-### 配置管理 (Configuration Management)
-- **多配置支持**: 支援多個 WireGuard 配置文件同時管理
-- **配置啟動/停止**: 可以啟動和停止各個 WireGuard 配置
-- **配置創建**: 支援新建 WireGuard 配置
-- **配置編輯**: 可編輯現有配置的參數
-- **配置模板**: 提供配置模板系統，快速創建標準配置
-- **配置備份/恢復**: 完整的配置備份和恢復功能
-- **原始文件編輯**: 直接編輯 WireGuard 配置文件
-- **配置重命名**: 支援配置文件重命名
-- **配置刪除**: 安全刪除不需要的配置
-- **自動啟動**: 支援配置自動啟動設定
+### Configuration management
+- **Multi-config support:** Manage multiple WireGuard configuration files at once
+- **Start/stop configs:** Start and stop individual WireGuard configurations
+- **Create configs:** Create new WireGuard configurations
+- **Edit configs:** Edit parameters of existing configurations
+- **Config templates:** Template system for quick standard configs
+- **Backup/restore:** Full configuration backup and restore
+- **Raw file edit:** Edit WireGuard configuration files directly
+- **Rename configs:** Rename configuration files
+- **Delete configs:** Safely remove unused configurations
+- **Auto-start:** Optional auto-start for configurations
 
-### 對等點管理 (Peer Management)
-- **對等點創建**: 單個或批量創建對等點
-- **對等點編輯**: 修改對等點配置參數
-- **對等點刪除**: 安全刪除對等點
-- **對等點狀態**: 實時顯示對等點連接狀態
-- **對等點搜索**: 支援對等點搜索和篩選功能
-- **對等點排序**: 支援多種排序方式
-- **對等點標籤**: 標籤管理系統，支援顏色和圖標
-- **對等點群組**: 對等點分組管理
-- **批量操作**: 支援批量選擇和操作對等點
+### Peer management
+- **Create peers:** Single or bulk peer creation
+- **Edit peers:** Change peer configuration parameters
+- **Delete peers:** Safely remove peers
+- **Peer status:** Live peer connection status
+- **Peer search:** Search and filter peers
+- **Peer sorting:** Multiple sort options
+- **Peer tags:** Tag system with colors and icons
+- **Peer groups:** Group peers
+- **Bulk actions:** Bulk select and operate on peers
 
-### 網路監控 (Network Monitoring)
-- **實時流量**: 即時顯示數據傳輸統計
-- **流量圖表**: 可視化流量趨勢圖表
-- **連接狀態**: 對等點連接狀態監控
-- **最後握手**: 顯示最後握手時間
-- **端點追蹤**: 歷史端點連接記錄
-- **地理位置**: 對等點地理位置顯示 (地圖支援)
-- **Ping 測試**: 內建 ping 功能測試連接
-- **路由追蹤**: 內建 traceroute 功能
+### Network monitoring
+- **Live traffic:** Real-time transfer statistics
+- **Traffic charts:** Visual traffic trends
+- **Connection status:** Peer connection monitoring
+- **Last handshake:** Display last handshake time
+- **Endpoint history:** Historical endpoint connections
+- **Geolocation:** Peer geolocation (map support)
+- **Ping test:** Built-in ping for connectivity
+- **Traceroute:** Built-in traceroute
 
-### 系統監控 (System Monitoring)
-- **CPU 使用率**: 系統和每個核心的 CPU 使用率
-- **記憶體使用**: 虛擬記憶體和交換空間監控
-- **磁碟使用**: 磁碟空間使用統計
-- **網路介面**: 網路介面狀態和優先級
-- **進程監控**: 系統進程監控
-- **系統狀態**: 綜合系統健康狀態
+### System monitoring
+- **CPU usage:** System and per-core CPU usage
+- **Memory usage:** Virtual memory and swap monitoring
+- **Disk usage:** Disk space statistics
+- **Network interfaces:** Interface status and priority
+- **Process monitoring:** System process view
+- **System health:** Overall health summary
 
-## 🔐 安全與認證功能
+## Security and authentication
 
-### 用戶管理
-- **管理員認證**: 支援用戶名/密碼登入
-- **多因子認證 (MFA)**: TOTP 兩因子認證支援
-- **會話管理**: 安全的會話管理機制
-- **密碼重設**: 密碼重設功能
-- **OIDC 集成**: OpenID Connect 單點登入支援
+### User management
+- **Admin auth:** Username/password login
+- **MFA:** TOTP two-factor authentication
+- **Session management:** Secure session handling
+- **Password reset:** Password reset flow
+- **OIDC:** OpenID Connect SSO
 
-### 客戶端管理 (Client Management)
-- **客戶端註冊**: 支援客戶端自助註冊
-- **客戶端權限**: 基於角色的權限控制
-- **客戶端分組**: 客戶端群組管理
-- **對等點分配**: 將對等點分配給特定客戶端
-- **客戶端面板**: 專門的客戶端管理面板
+### Client management
+- **Client registration:** Self-service client registration
+- **Client permissions:** Role-based access
+- **Client groups:** Client grouping
+- **Peer assignment:** Assign peers to clients
+- **Client dashboard:** Dedicated client management UI
 
-### API 安全
-- **API 金鑰**: API 金鑰管理系統
-- **權限控制**: 細粒度的 API 權限控制
-- **安全令牌**: 安全令牌生成和驗證
+### API security
+- **API keys:** API key management
+- **Permission control:** Fine-grained API permissions
+- **Security tokens:** Token generation and validation
 
-## 📱 用戶介面功能
+## User interface
 
-### Web 界面
-- **響應式設計**: 支援桌面和移動設備
-- **深色/淺色主題**: 主題切換功能
-- **多語言支援**: 國際化語言支援
-- **即時更新**: 實時數據更新，無需刷新頁面
-- **拖拽排序**: 支援拖拽排序對等點
-- **搜索和篩選**: 強大的搜索和篩選功能
+### Web UI
+- **Responsive layout:** Desktop and mobile
+- **Dark/light theme:** Theme switching
+- **i18n:** Internationalization
+- **Live updates:** Real-time data without full page reload
+- **Drag-and-drop sort:** Reorder peers by drag-and-drop
+- **Search and filter:** Powerful search and filtering
 
-### 配置分享
-- **QR 碼生成**: 為對等點生成 QR 碼
-- **配置檔下載**: 直接下載配置文件
-- **郵件分享**: 通過電子郵件分享配置
-- **分享連結**: 生成臨時分享連結
-- **ZIP 包導出**: 批量導出配置為 ZIP 包
+### Config sharing
+- **QR codes:** Generate QR codes for peers
+- **Config download:** Download configuration files
+- **Email share:** Share configs by email
+- **Share links:** Temporary share links
+- **ZIP export:** Bulk export as ZIP
 
-## ⚡ 高級功能
+## Advanced features
 
-### 作業調度 (Job Scheduling)
-- **對等點作業**: 支援對等點狀態的定時作業
-- **作業日志**: 詳細的作業執行日志
-- **作業歷史**: 作業執行歷史記錄
-- **批量作業**: 批量執行對等點操作
+### Job scheduling
+- **Peer jobs:** Scheduled jobs on peer state
+- **Job logs:** Detailed execution logs
+- **Job history:** Historical job runs
+- **Bulk jobs:** Bulk peer operations
 
-### 插件系統
-- **插件架構**: 支援第三方插件擴展
-- **Webhook**: 支援 Webhook 集成
-- **事件觸發**: 基於事件的自動化操作
+### Plugin system
+- **Plugin architecture:** Third-party extensions
+- **Webhooks:** Webhook integrations
+- **Event triggers:** Event-driven automation
 
-### 數據分析
-- **流量統計**: 詳細的流量統計分析
-- **會話記錄**: 詳細的連接會話記錄
-- **日歷視圖**: 會話數據的日歷視圖
-- **趨勢分析**: 長期趨勢數據分析
+### Analytics
+- **Traffic stats:** Detailed traffic analysis
+- **Session records:** Detailed connection sessions
+- **Calendar view:** Calendar view of session data
+- **Trend analysis:** Long-term trends
 
-### 協議支援
-- **WireGuard**: 標準 WireGuard 協議支援
-- **AmneziaWG**: Amnezia WireGuard 協議支援
-- **跨協議管理**: 統一管理多種協議
+### Protocol support
+- **WireGuard:** Standard WireGuard
+- **AmneziaWG:** Amnezia WireGuard variant
+- **Cross-protocol:** Unified multi-protocol management
 
-## 🔧 管理與維護功能
+## Administration and maintenance
 
-### 配置模板
-- **模板管理**: 創建、編輯、刪除配置模板
-- **快速部署**: 基於模板快速創建配置
-- **標準化**: 組織標準配置的統一管理
+### Config templates
+- **Template CRUD:** Create, edit, delete templates
+- **Quick deploy:** Deploy from templates quickly
+- **Standardization:** Centralized standard configs
 
-### 備份與恢復
-- **自動備份**: 定期自動備份配置
-- **手動備份**: 手動觸發備份
-- **增量備份**: 智能增量備份
-- **一鍵恢復**: 快速恢復到任意備份點
-- **備份驗證**: 備份文件完整性驗證
+### Backup and restore
+- **Automatic backup:** Scheduled backups
+- **Manual backup:** On-demand backup
+- **Incremental backup:** Smart incremental backups
+- **One-click restore:** Restore to any backup point
+- **Backup verification:** Integrity checks
 
-### 日志管理
-- **詳細日志**: 完整的系統和應用日志
-- **日志級別**: 可配置的日志級別
-- **日志轉檔**: 自動日志轉檔和清理
-- **日志查詢**: 日志搜索和篩選功能
+### Logging
+- **Detailed logs:** System and application logs
+- **Log levels:** Configurable verbosity
+- **Log rotation:** Automatic rotation and cleanup
+- **Log search:** Search and filter logs
 
-### 系統配置
-- **網路設定**: 系統網路參數配置
-- **路徑配置**: WireGuard 配置文件路徑設定
-- **埠配置**: 系統監聽埠配置
-- **郵件設定**: SMTP 郵件服務配置
-- **主題設定**: 界面主題和外觀配置
+### System settings
+- **Network settings:** System network parameters
+- **Path configuration:** WireGuard config file paths
+- **Port configuration:** Listen ports
+- **Mail settings:** SMTP configuration
+- **Theme settings:** UI theme and appearance
 
-## 🚀 可增強的功能方向
+## Possible enhancements
 
-### 監控增強
-- **告警系統**: 基於閾值的告警機制
-- **指標收集**: Prometheus/Grafana 集成
-- **性能分析**: 深度性能監控和分析
-- **容量規劃**: 基於歷史數據的容量規劃
+### Monitoring
+- **Alerting:** Threshold-based alerts
+- **Metrics:** Prometheus/Grafana integration
+- **Performance analysis:** Deep performance monitoring
+- **Capacity planning:** Planning from historical data
 
-### 安全增強
-- **入侵檢測**: 異常流量檢測
-- **安全審計**: 詳細的安全審計日志
-- **訪問控制**: 更細粒度的訪問控制
-- **加密增強**: 額外的加密選項
+### Security
+- **Intrusion detection:** Anomalous traffic detection
+- **Security audit:** Detailed audit logs
+- **Access control:** Finer-grained access control
+- **Encryption options:** Additional encryption choices
 
-### 運維增強
-- **自動化部署**: CI/CD 流水線集成
-- **容器化**: Docker/Kubernetes 支援
-- **集群管理**: 多節點集群管理
-- **負載均衡**: 智能負載均衡功能
+### Operations
+- **Automated deployment:** CI/CD integration
+- **Containerization:** Docker/Kubernetes support
+- **Cluster management:** Multi-node clusters
+- **Load balancing:** Intelligent load balancing
 
-### 用戶體驗增強
-- **移動 APP**: 原生移動應用
-- **桌面應用**: Electron 桌面應用
-- **CLI 工具**: 命令行管理工具
-- **API SDK**: 多語言 SDK 支援
+### User experience
+- **Mobile app:** Native mobile clients
+- **Desktop app:** Electron desktop app
+- **CLI tools:** Command-line administration
+- **API SDKs:** Multi-language SDKs
 
-### 企業功能
-- **LDAP/AD 集成**: 企業目錄服務集成
-- **合規性報告**: 合規性和審計報告
-- **多租戶**: 多租戶架構支援
-- **SSO 集成**: 更多 SSO 解決方案集成
+### Enterprise
+- **LDAP/AD:** Directory integration
+- **Compliance reporting:** Compliance and audit reports
+- **Multi-tenant:** Multi-tenant architecture
+- **SSO:** Additional SSO integrations
 
-## 📊 技術架構
+## Technical stack
 
-### 後端技術棧
-- **Python Flask**: Web 框架
-- **SQLAlchemy**: 數據庫 ORM
-- **SQLite/PostgreSQL**: 數據存儲
-- **Gunicorn**: WSGI 服務器
-- **WireGuard Tools**: WireGuard 命令行工具集成
+### Backend
+- **Python Flask:** Web framework
+- **SQLAlchemy:** ORM
+- **SQLite/PostgreSQL:** Storage
+- **Gunicorn:** WSGI server
+- **WireGuard tools:** CLI integration
 
-### 前端技術棧
-- **Vue.js 3**: 前端框架
-- **Vite**: 構建工具
-- **Pinia**: 狀態管理
-- **Bootstrap 5**: UI 框架
-- **Chart.js**: 圖表庫
-- **OpenLayers**: 地圖庫
+### Frontend
+- **Vue.js 3:** UI framework
+- **Vite:** Build tool
+- **Pinia:** State management
+- **Bootstrap 5:** UI framework
+- **Chart.js:** Charts
+- **OpenLayers:** Maps
 
-### 部署支援
-- **Docker**: 容器化部署
-- **Docker Compose**: 編排支援
-- **SSL/TLS**: HTTPS 支援
-- **Reverse Proxy**: 反向代理支援
+### Deployment
+- **Docker:** Container deployment
+- **Docker Compose:** Orchestration
+- **SSL/TLS:** HTTPS
+- **Reverse proxy:** Reverse proxy support
 
 ---
 
-*此功能清單基於 WGDashboard v4.3.2 的源碼分析整理，為復制和增強提供全面的功能參考。*
+*This list is derived from WGDashboard v4.3.2 source analysis and is intended as a full feature reference for replication and enhancement.*

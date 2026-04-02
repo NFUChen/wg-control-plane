@@ -55,7 +55,7 @@ class SpringMailEmailServiceTest {
             EmailContent(text = null, html = null)
             assertTrue(false, "Should have thrown exception")
         } catch (e: IllegalArgumentException) {
-            assertTrue(e.message?.contains("至少需要提供純文字或 HTML 內容其中一種") == true)
+            assertTrue(e.message?.contains("At least one of plain text or HTML content must be provided") == true)
         }
 
         // Valid cases

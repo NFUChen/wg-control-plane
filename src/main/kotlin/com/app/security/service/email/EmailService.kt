@@ -1,28 +1,27 @@
 package com.app.security.service.email
 
 /**
- * 抽象郵件服務接口，支援多種郵件服務提供商
- * 避免被單一供應商綁定
+ * Abstract email service; supports multiple providers and avoids vendor lock-in.
  */
 interface EmailService {
     /**
-     * 發送郵件
-     * @param email 郵件內容
-     * @return 發送結果
+     * Send an email.
+     * @param email Message content
+     * @return Send result
      */
     fun sendEmail(email: Email): EmailSendResult
 
     /**
-     * 批量發送郵件
-     * @param emails 郵件列表
-     * @return 發送結果列表
+     * Send multiple emails.
+     * @param emails Messages to send
+     * @return Results per message
      */
     fun sendEmails(emails: List<Email>): List<EmailSendResult>
 
     /**
-     * 驗證郵件地址格式
-     * @param emailAddress 郵件地址
-     * @return 是否有效
+     * Validate email address format.
+     * @param emailAddress Address to check
+     * @return true if valid
      */
     fun validateEmailAddress(emailAddress: String): Boolean {
         return emailAddress.matches(Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"))
@@ -30,7 +29,7 @@ interface EmailService {
 }
 
 /**
- * 郵件內容
+ * Full email message.
  */
 data class Email(
     val from: EmailAddress,
@@ -46,7 +45,7 @@ data class Email(
 )
 
 /**
- * 郵件地址
+ * Email address with optional display name.
  */
 data class EmailAddress(
     val email: String,
@@ -62,7 +61,7 @@ data class EmailAddress(
 }
 
 /**
- * 郵件內容
+ * Plain and/or HTML body.
  */
 data class EmailContent(
     val text: String? = null,
@@ -71,13 +70,13 @@ data class EmailContent(
 ) {
     init {
         require(!text.isNullOrBlank() || !html.isNullOrBlank()) {
-            "至少需要提供純文字或 HTML 內容其中一種"
+            "At least one of plain text or HTML content must be provided"
         }
     }
 }
 
 /**
- * 郵件附件
+ * Attachment (inline or regular).
  */
 data class EmailAttachment(
     val filename: String,
@@ -112,14 +111,14 @@ data class EmailAttachment(
 }
 
 /**
- * 郵件優先級
+ * Message priority for MIME headers.
  */
 enum class EmailPriority {
     HIGH, NORMAL, LOW
 }
 
 /**
- * 郵件發送結果
+ * Result of a send attempt.
  */
 sealed class EmailSendResult {
     data class Success(
@@ -136,7 +135,7 @@ sealed class EmailSendResult {
 }
 
 /**
- * 郵件發送錯誤
+ * Structured send failure.
  */
 data class EmailSendError(
     val code: String,

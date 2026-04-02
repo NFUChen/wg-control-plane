@@ -36,31 +36,31 @@ data class ServiceAccountRegistration(
     val scopes: Set<String> = emptySet(),
 )
 
-// 創建 Service Account 的回應，包含生成的 client secret（僅在創建時顯示）
+// Response when creating a service account; includes generated client secret (shown once).
 data class ServiceAccountCreationResponse(
     val serviceAccount: ServiceAccount,
-    val clientSecret: String // 系統生成的 client secret，僅在創建時返回
+    val clientSecret: String // system-generated; returned only at creation
 )
 
 interface ServiceAccountManager {
-    fun authenticate(authRequest: ServiceAccountAuthRequest): ServiceAccount // 驗證 secret，回傳帳號資訊
-    fun generateAccessToken(serviceAccount: ServiceAccount): String // 簽發 JWT token
-    fun getScopes(clientId: String): Set<String> // 查詢權限（JWT 驗證後用）
-    
+    fun authenticate(authRequest: ServiceAccountAuthRequest): ServiceAccount // verify secret; return account
+    fun generateAccessToken(serviceAccount: ServiceAccount): String // issue JWT
+    fun getScopes(clientId: String): Set<String> // scopes after JWT validation
+
     @PreAuthorize("hasRole('ADMIN')")
-    fun getServiceAccountByClientId(clientId: String): ServiceAccount // 用在非登入流程查資料時
-    
+    fun getServiceAccountByClientId(clientId: String): ServiceAccount // non-login lookups
+
     @PreAuthorize("hasRole('ADMIN')")
-    fun createServiceAccount(account: ServiceAccountRegistration): ServiceAccountCreationResponse // 建立新帳號（自動產生 clientSecret）
-    
+    fun createServiceAccount(account: ServiceAccountRegistration): ServiceAccountCreationResponse // create; auto clientSecret
+
     @PreAuthorize("hasRole('ADMIN')")
-    fun disableServiceAccount(clientId: String) // 停用帳號
-    
+    fun disableServiceAccount(clientId: String)
+
     @PreAuthorize("hasRole('ADMIN')")
-    fun enableServiceAccount(clientId: String) // 啟用帳號
-    
+    fun enableServiceAccount(clientId: String)
+
     @PreAuthorize("hasRole('ADMIN')")
-    fun deleteServiceAccount(clientId: String) // 刪除帳號
+    fun deleteServiceAccount(clientId: String)
 }
 
 

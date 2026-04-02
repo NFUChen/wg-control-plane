@@ -36,10 +36,8 @@ class PublicUserVerificationController(
 
         return try {
             userVerificationService.verifyUser(token)
-            // 驗證成功，重定向到成功頁面
             RedirectView(userVerificationService.getSuccessRedirectEndpoint())
         } catch (error: Exception) {
-            // 驗證失敗，重定向到錯誤頁面
             logger.error("User verification failed: ${error.message}")
             RedirectView(userVerificationService.getErrorRedirectEndpoint())
         }

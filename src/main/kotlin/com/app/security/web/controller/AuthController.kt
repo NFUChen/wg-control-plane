@@ -16,24 +16,24 @@ import org.springframework.web.bind.annotation.*
 
 
 data class UserRegistration(
-    @field:NotBlank(message = "使用者名稱不能為空")
+    @field:NotBlank(message = "Username must not be blank")
     val username: String,
     @field:Email
     val email: String,
-    @field:NotBlank(message = "密碼不能為空")
+    @field:NotBlank(message = "Password must not be blank")
     val password: String,
 )
 
 data class PasswordResetRequest(
-    @field:Email(message = "請提供有效的郵箱地址")
-    @field:NotBlank(message = "郵箱地址不能為空")
+    @field:Email(message = "A valid email address is required")
+    @field:NotBlank(message = "Email must not be blank")
     val email: String
 )
 
 data class PasswordResetConfirmation(
-    @field:NotBlank(message = "重置令牌不能為空")
+    @field:NotBlank(message = "Reset token must not be blank")
     val token: String,
-    @field:NotBlank(message = "新密碼不能為空")
+    @field:NotBlank(message = "New password must not be blank")
     val newPassword: String
 )
 
@@ -85,14 +85,11 @@ class AuthController(
     ): ResponseEntity<Map<String, String>> {
         val user = authService.authenticate(credentials)
 
-        // 使用 LoginProcessingService 處理登入邏輯
-
         val result = loginProcessingService.processLogin(user)
 
-        // 設定 cookie
         authService.writeTokenToCookie(response, authService.LOGIN_KEY, result.userToken)
 
-        // 否則返回標準的 JSON 響應
+        // Standard JSON response
         return ResponseEntity.ok(mapOf("message" to "OK"))
     }
 
@@ -110,7 +107,7 @@ class AuthController(
     }
 
     /**
-     * 發送密碼重置郵件
+     * Request a password reset email.
      */
     @PostMapping("/public/auth/reset-password/request")
     fun requestPasswordReset(
@@ -121,7 +118,7 @@ class AuthController(
     }
 
     /**
-     * 確認密碼重置並設置新密碼
+     * Confirm password reset and set a new password.
      */
     @PostMapping("/public/auth/reset-password/confirm")
     fun confirmPasswordReset(

@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service
 import java.util.*
 
 /**
- * Spring Boot Mail 郵件服務實現
+ * Spring Boot Mail email service implementation.
  */
 @Service("springMail")
 class SpringMailEmailService(
@@ -27,20 +27,20 @@ class SpringMailEmailService(
             val mimeMessage: MimeMessage = javaMailSender.createMimeMessage()
             val helper = MimeMessageHelper(mimeMessage, true, email.content.charset)
 
-            // 設置發件人
+            // From
             val fromAddress = InternetAddress(
                 email.from.email,
                 email.from.name ?: emailProperties.fromName
             )
             helper.setFrom(fromAddress)
 
-            // 設置收件人
+            // To
             val toAddresses = email.to.map {
                 InternetAddress(it.email, it.name)
             }.toTypedArray()
             helper.setTo(toAddresses)
 
-            // 設置副本收件人
+            // CC
             if (email.cc.isNotEmpty()) {
                 val ccAddresses = email.cc.map {
                     InternetAddress(it.email, it.name)
@@ -48,7 +48,7 @@ class SpringMailEmailService(
                 helper.setCc(ccAddresses)
             }
 
-            // 設置密件副本收件人
+            // BCC
             if (email.bcc.isNotEmpty()) {
                 val bccAddresses = email.bcc.map {
                     InternetAddress(it.email, it.name)
@@ -56,15 +56,15 @@ class SpringMailEmailService(
                 helper.setBcc(bccAddresses)
             }
 
-            // 設置回覆地址
+            // Reply-To
             email.replyTo?.let {
                 helper.setReplyTo(InternetAddress(it.email, it.name))
             }
 
-            // 設置主題
+            // Subject
             helper.setSubject(email.subject)
 
-            // 設置郵件內容
+            // Body
             when {
                 email.content.html != null && email.content.text != null -> {
                     helper.setText(email.content.text, email.content.html)
@@ -77,7 +77,7 @@ class SpringMailEmailService(
                 }
             }
 
-            // 設置優先級
+            // Priority
             when (email.priority) {
                 EmailPriority.HIGH -> {
                     helper.mimeMessage.setHeader("X-Priority", "1")
@@ -88,16 +88,16 @@ class SpringMailEmailService(
                     helper.mimeMessage.setHeader("Importance", "low")
                 }
                 else -> {
-                    // NORMAL - 不設置特殊標頭
+                    // NORMAL — no extra headers
                 }
             }
 
-            // 設置自定義標頭
+            // Custom headers
             email.headers.forEach { (key, value) ->
                 helper.mimeMessage.setHeader(key, value)
             }
 
-            // 添加附件
+            // Attachments
             email.attachments.forEach { attachment ->
                 if (attachment.inline && attachment.contentId != null) {
                     val inputStreamSource = ByteArrayResource(attachment.data)
@@ -108,7 +108,7 @@ class SpringMailEmailService(
                 }
             }
 
-            // 發送郵件
+            // Send
             javaMailSender.send(mimeMessage)
 
             val messageId = UUID.randomUUID().toString()

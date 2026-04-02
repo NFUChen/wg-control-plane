@@ -19,7 +19,7 @@ class ServiceAccount(
 
     @Column(nullable = false)
     @JsonIgnore
-    val clientSecretHash: String, // 使用 bcrypt/scrypt 加密存放
+    val clientSecretHash: String, // stored hashed (e.g. bcrypt)
 
     @Column(nullable = false)
     val name: String, // e.g. "LINE Sync Service", for human-readability

@@ -21,10 +21,8 @@ class DefaultLoginProcessingService(
 ) : LoginProcessingService {
 
     override fun processLogin(user: User): LoginProcessingResult {
-        // 生成用戶 token
         val userToken = authService.login(user)
 
-        // 發布登入事件
         applicationEventPublisher.publishEvent(UserLoginEvent(user))
 
         return LoginProcessingResult(

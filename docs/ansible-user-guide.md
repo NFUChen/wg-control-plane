@@ -1,110 +1,110 @@
-# Ansible 使用手冊（wg-control-plane）
+# Ansible user guide (wg-control-plane)
 
-本文件說明 **inventory、group_vars、host_vars** 在 Ansible 裡如何作用，以及在本專案中如何搭配 **本機產生** 的檔案使用 playbook，而不必依賴 repo 內「範例」路徑。
+This document explains how **inventory**, **group_vars**, and **host_vars** work in Ansible, and how to use playbooks in this project with **locally generated** files instead of relying only on committed “example” paths in the repo.
 
-Ansible 目錄位置：`src/main/resources/ansible/`（以下簡稱 **`ansible/`**）。
-
----
-
-## 1. Repo 裡的 inventory / group_vars 是什麼？
-
-| 路徑 | 用途 |
-|------|------|
-| `ansible/inventory/static-example.ini` | **範例**：示範 `[wg_servers]` 長相；可刪可不刪，**不應**當成你環境的唯一真相。 |
-| `ansible/group_vars/all.yml` | **範例預設**：定義 `wg_target_hosts`（playbook 的 `hosts:` 用字串群組名）。 |
-| `ansible/group_vars/wg_servers.yml` | **範例預設**：`wg_interface_name`、`wg_listen_port`、`wg_config_content` 等。 |
-| `ansible/ansible.cfg` | 預設 `inventory = inventory/static-example.ini`；**僅在你不加 `-i` 時生效**。 |
-
-重點：**這些是「可提交的預設／範例」**。真實環境通常會在本機 **generate** inventory（例如從 wg-control-plane API 下載），以及 **generate 或手寫** host/group 變數；做法見下文。
+Ansible content lives under `src/main/resources/ansible/` (referred to below as **`ansible/`**).
 
 ---
 
-## 2. Playbook 如何決定「打哪幾台」？
+## 1. What are the repo’s inventory / group_vars?
 
-本專案 playbook 使用：
+| Path | Purpose |
+|------|---------|
+| `ansible/inventory/static-example.ini` | **Example** showing what `[wg_servers]` looks like; optional to keep; **do not** treat it as the single source of truth for your environment. |
+| `ansible/group_vars/all.yml` | **Example default:** defines `wg_target_hosts` (group name string for playbook `hosts:`). |
+| `ansible/group_vars/wg_servers.yml` | **Example default:** `wg_interface_name`, `wg_listen_port`, `wg_config_content`, etc. |
+| `ansible/ansible.cfg` | Default `inventory = inventory/static-example.ini`; **only applies when you omit `-i`**. |
+
+**Takeaway:** these are **committable defaults/examples**. Real environments usually **generate** inventory locally (e.g. from the wg-control-plane API) and **generate or hand-write** host/group variables; see below.
+
+---
+
+## 2. How does a playbook choose which hosts to target?
+
+Project playbooks use:
 
 ```yaml
 hosts: "{{ wg_target_hosts }}"
 ```
 
-預設在 `group_vars/all.yml` 為：
+The default in `group_vars/all.yml` is:
 
 ```yaml
 wg_target_hosts: wg_servers
 ```
 
-因此 **inventory 裡必須有一個群組名稱與 `wg_target_hosts` 一致**（預設即 **`[wg_servers]`**）。  
-若你產生的 inventory 群組叫 `production_wg`，執行時請二選一：
+So **inventory must contain a group whose name matches `wg_target_hosts`** (default **`[wg_servers]`**).  
+If your generated inventory uses e.g. `production_wg`, either:
 
-- 在變數中設 `wg_target_hosts: production_wg`（見第 4 節），或  
-- 改你的 inventory 群組名為 `wg_servers`。
+- Set `wg_target_hosts: production_wg` in variables (see section 4), or  
+- Rename the inventory group to `wg_servers`.
 
 ---
 
-## 3. Ansible 怎麼「找」inventory 與變數？
+## 3. How does Ansible resolve inventory and variables?
 
-### 3.1 Inventory（主機清單）
+### 3.1 Inventory (host list)
 
-- **單一檔案**：`hosts.ini`、`hosts.yaml` 皆可。  
-- **目錄當 inventory**：資料夾內可放多個 `*.ini` / `*.yml`，並可並排 `group_vars/`、`host_vars/`（見下）。  
-- **指定方式**：執行時 **`ansible-playbook -i <路徑>`** 會覆寫 `ansible.cfg` 的預設 inventory。
+- **Single file:** `hosts.ini`, `hosts.yaml`, etc.  
+- **Directory as inventory:** Multiple `*.ini` / `*.yml` files plus adjacent `group_vars/` and `host_vars/` (below).  
+- **Selection:** **`ansible-playbook -i <path>`** overrides the default inventory from `ansible.cfg`.
 
-因此：**本機 gen 的檔案只要用 `-i` 指到即可**，不必放進 git。
+So: **point `-i` at your locally generated files**; they do not need to be in git.
 
 ### 3.2 group_vars / host_vars
 
-Ansible 會在 **inventory 所在脈絡** 載入變數（與「劇本目錄旁的 group_vars」可並存，順序依 Ansible 版本與設定略有差異；實務上建議 **把「環境專用」變數集中在你控制的 inventory 目錄**）。
+Ansible loads variables in the **inventory context** (can coexist with `group_vars` next to the playbook directory; precedence depends on Ansible version and settings). In practice, **keep environment-specific vars under an inventory directory you control**.
 
-常見結構（**目錄型 inventory**）：
+Typical layout (**directory inventory**):
 
 ```text
 my-ansible-env/
   inventory/
-    hosts.ini          # 內含 [wg_servers] ...
+    hosts.ini          # contains [wg_servers] ...
     group_vars/
-      wg_servers.yml   # 只給 wg_servers 的變數
-      all.yml          # 可選：等同 all 群組
+      wg_servers.yml   # vars for wg_servers only
+      all.yml          # optional: all group
     host_vars/
-      node-a.yml       # 單台覆寫
+      node-a.yml       # per-host overrides
 ```
 
-執行：
+Run:
 
 ```bash
 ansible-playbook -i my-ansible-env/inventory site.yml
 ```
 
-這樣 **完全不依賴** repo 內的 `ansible/group_vars/wg_servers.yml`。
+This **does not depend** on the repo’s `ansible/group_vars/wg_servers.yml`.
 
-### 3.3 變數優先級（實務記這幾個就夠）
+### 3.3 Variable precedence (practical subset)
 
-由低到高（大略）：
+Roughly low to high:
 
-1. Role `defaults`（roles 裡 `defaults/main.yml`）  
+1. Role `defaults` (`roles/.../defaults/main.yml`)  
 2. `group_vars` / `host_vars`  
-3. **`ansible-playbook -e` / `-e @file`（extra vars，權重很高）**
+3. **`ansible-playbook -e` / `-e @file` (extra vars — very high)**
 
-因此：**本機 gen 的 `extra-vars.yml` 可以覆蓋** repo 範例中的 `group_vars`。
+So: **a locally generated `extra-vars.yml` can override** the repo’s example `group_vars`.
 
 ---
 
-## 4. 本機產生檔案：推薦用法
+## 4. Locally generated files: recommended patterns
 
-### 4.1 方式 A：只產生 inventory，變數沿用 repo 內範例（不建議生產）
+### 4.1 Option A: generate inventory only, keep repo group_vars (not for production)
 
-適合本機試跑。
+Good for quick local trials.
 
 ```bash
 cd ansible
 ansible-playbook -i /path/to/generated/inventory.ini wireguard-install.yml
 ```
 
-注意：若仍使用 repo 內 `group_vars`，會讀到範例的 `wg_config_content` 等。生產環境請改用方式 B 或 C。
+Note: if you still use the repo’s `group_vars`, you will pick up example values like `wg_config_content`. For production use option B or C.
 
-### 4.2 方式 B：inventory + 獨立 vars 檔（`-e @file`）
+### 4.2 Option B: inventory + separate vars file (`-e @file`)
 
-1. 產生 `inventory.ini`（含 `[wg_servers]` 與主機）。  
-2. 產生 `wg-extra-vars.yml`（例如由模板或 API 資料 gen）：
+1. Generate `inventory.ini` (with `[wg_servers]` and hosts).  
+2. Generate `wg-extra-vars.yml` (e.g. from a template or API):
 
 ```yaml
 ---
@@ -119,16 +119,16 @@ wg_config_content: |
   ListenPort = 51820
 ```
 
-3. 執行：
+3. Run:
 
 ```bash
 cd ansible
 ansible-playbook -i /path/to/inventory.ini -e @/path/to/wg-extra-vars.yml wireguard-deploy-config.yml
 ```
 
-`-e @file` 的變數會強制覆蓋多數來源，適合 **CI 產生檔**。
+`-e @file` overrides most sources—good for **CI-generated** files.
 
-### 4.3 方式 C：目錄型 inventory + 同目錄 `group_vars`（最像「環境一份」）
+### 4.3 Option C: directory inventory + `group_vars` beside it (“one env folder”)
 
 ```text
 ~/wg-ops/env-prod/
@@ -138,18 +138,18 @@ ansible-playbook -i /path/to/inventory.ini -e @/path/to/wg-extra-vars.yml wiregu
       wg_servers.yml
 ```
 
-執行：
+Run:
 
 ```bash
 cd ansible
 ansible-playbook -i ~/wg-ops/env-prod/inventory site.yml
 ```
 
-`group_vars/wg_servers.yml` 只放在本機或私密 repo，**不必**提交到 wg-control-plane。
+Keep `group_vars/wg_servers.yml` only on disk or in a private repo—**no need** to commit it to wg-control-plane.
 
-### 4.4 方式 D：本 repo 內 `ansible/local/`（已加入 .gitignore）
+### 4.4 Option D: `ansible/local/` in this repo (listed in `.gitignore`)
 
-若希望路徑固定、又不要 commit 密鑰與真實 IP：
+For a fixed path without committing secrets or real IPs:
 
 ```text
 ansible/local/
@@ -163,53 +163,53 @@ cd ansible
 ansible-playbook -i local/inventory.ini site.yml
 ```
 
-（若 `group_vars` 放在 `local/group_vars/`，請用 **目錄 inventory** 一併指向 `local/`，見下節「注意」。）
+(If `group_vars` lives under `local/group_vars/`, use a **directory inventory** pointing at `local/`—see the note in section 5.)
 
 ---
 
-## 5. 目錄當 `-i` 時的注意事項
+## 5. Notes when using a directory as `-i`
 
-- 若使用 `ansible/local/` **目錄** 作為 inventory，請把 `hosts.ini` 與 `group_vars/` **放在同一個 inventory 根目錄底下**，結構見 3.2。  
-- 若只用 **單一 `inventory.ini` 檔** 當 `-i`，則 **同目錄的 `group_vars` 不會自動套用**（除非該檔與 group_vars 的相對關係符合 Ansible 對「相鄰 inventory 檔」的規則）。實務上 **目錄型 inventory 最直覺**。
-
----
-
-## 6. 與 wg-control-plane（API 產生 inventory）的配合
-
-1. 使用控制面 API 產生 **inventory 字串** 並寫入本機檔案，例如 `~/wg/generated/inventory.ini`。  
-2. 確認其中有與 `wg_target_hosts` 一致的群組（預設 `wg_servers`）。  
-3. SSH 私鑰路徑須與 inventory 內 `ansible_ssh_private_key_file` 一致（控制面產生器預設範例為 `/tmp/keys/<id>.pem`，執行 Ansible 的機器上必須真有該檔）。  
-4. WireGuard 設定內容若仍由控制面持有，可：  
-   - 用 API 拉取後 gen 成 `wg_extra_vars.yml`（方式 B），或  
-   - 在 extra vars 設定 `wg_config_source: url` 與 `wg_config_fetch_url`（playbook 已支援由 controller 取回再寫入遠端）。
+- If `ansible/local/` is a **directory** inventory, put `hosts.ini` and `group_vars/` **under the same inventory root** (structure as in 3.2).  
+- If you pass a **single `inventory.ini` file** as `-i`, **adjacent `group_vars` may not apply** unless Ansible’s rules for adjacent inventory files match. In practice, a **directory inventory** is the clearest approach.
 
 ---
 
-## 7. 常用指令對照
+## 6. Working with wg-control-plane (API-generated inventory)
 
-| 需求 | 範例 |
-|------|------|
-| 指定 inventory | `ansible-playbook -i path/to/inv site.yml` |
-| 注入單一變數 | `ansible-playbook -i inv -e wg_target_hosts=wg_servers site.yml` |
-| 注入檔案 | `ansible-playbook -i inv -e @extra-vars.yml site.yml` |
-| 限縮主機 | `ansible-playbook -i inv site.yml --limit wg-node-1` |
-| 語法檢查 | `ansible-playbook --syntax-check -i inv site.yml` |
-
----
-
-## 8. 常見問題
-
-**Q：為什麼我改了 repo 的 `group_vars` 卻不想提交？**  
-A：不要改 repo；改在你本機的 `inventory/group_vars/` 或 `-e @file` 覆蓋。
-
-**Q：playbook 有沒有「支援本機 gen」？**  
-A：有。**Ansible 原生**就是透過 `-i`、inventory 目錄、`group_vars`/`host_vars`、`-e` 來支援；本專案 playbook 沒有寫死路徑，只有 `ansible.cfg` 預設 inventory 在沒指定 `-i` 時會用到範例檔。
-
-**Q：`community.general` 報錯？**  
-A：執行 `ansible-galaxy collection install -r requirements.yml`（在 `ansible/` 目錄）。
+1. Use the control-plane API to produce **inventory text** and write a local file, e.g. `~/wg/generated/inventory.ini`.  
+2. Ensure it contains a group matching `wg_target_hosts` (default `wg_servers`).  
+3. SSH private key paths must match `ansible_ssh_private_key_file` in inventory (the generator’s example is `/tmp/keys/<id>.pem`; that file must exist on the machine running Ansible).  
+4. If WireGuard config content is still owned by the control plane, either:  
+   - Fetch via API and generate `wg_extra_vars.yml` (option B), or  
+   - Set `wg_config_source: url` and `wg_config_fetch_url` in extra vars (playbooks support fetching from the controller and writing remotely).
 
 ---
 
-## 9. 相關文件
+## 7. Common commands
 
-- [ansible-playbooks-spec.md](./ansible-playbooks-spec.md)：playbook 職責與範圍說明。
+| Need | Example |
+|------|---------|
+| Specify inventory | `ansible-playbook -i path/to/inv site.yml` |
+| Inject one variable | `ansible-playbook -i inv -e wg_target_hosts=wg_servers site.yml` |
+| Inject from file | `ansible-playbook -i inv -e @extra-vars.yml site.yml` |
+| Limit hosts | `ansible-playbook -i inv site.yml --limit wg-node-1` |
+| Syntax check | `ansible-playbook --syntax-check -i inv site.yml` |
+
+---
+
+## 8. FAQ
+
+**Q: I changed repo `group_vars` but don’t want to commit—why?**  
+A: Don’t change the repo; override with local `inventory/group_vars/` or `-e @file`.
+
+**Q: Do playbooks “support local generation”?**  
+A: Yes—**natively**, via `-i`, inventory directories, `group_vars`/`host_vars`, and `-e`. Project playbooks do not hard-code paths; only `ansible.cfg`’s default inventory applies when `-i` is omitted.
+
+**Q: `community.general` errors?**  
+A: Run `ansible-galaxy collection install -r requirements.yml` from the `ansible/` directory.
+
+---
+
+## 9. Related documents
+
+- [ansible-playbooks-spec.md](./ansible-playbooks-spec.md): playbook responsibilities and scope.

@@ -14,7 +14,7 @@ class RedisConfig {
         val template = RedisTemplate<String, String>()
         template.connectionFactory = connectionFactory
 
-        // 使用 String 序列化器確保鍵值都是字符串類型
+        // String serializers for keys and values
         val stringSerializer = StringRedisSerializer()
         template.keySerializer = stringSerializer
         template.valueSerializer = stringSerializer

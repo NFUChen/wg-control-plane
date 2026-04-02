@@ -17,59 +17,58 @@ import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrNull
 
 /**
- * 密碼重置服務接口
- * 負責處理用戶忘記密碼的功能
+ * Password reset flow for users who forgot their password.
  */
 interface PasswordResetService {
     /**
-     * 發送密碼重置郵件
-     * @param email 用戶郵箱地址
+     * Send a password reset email.
+     * @param email User email address
      */
     fun sendPasswordResetEmail(email: String)
 
     /**
-     * 重置密碼
-     * @param token 密碼重置令牌
-     * @param newPassword 新密碼
+     * Reset password using a valid token.
+     * @param token Password reset token
+     * @param newPassword New password
      */
     fun resetPassword(token: String, newPassword: String)
 
     /**
-     * 創建密碼重置郵件
-     * @param user 用戶對象
-     * @param resetToken 重置令牌
-     * @return 郵件對象
+     * Build the password reset email for a user.
+     * @param user User entity
+     * @param resetToken One-time reset token
+     * @return Email model
      */
     fun createPasswordResetEmail(user: User, resetToken: String): Email
 
     /**
-     * 獲取密碼重置前端端點
-     * @return 前端端點URL
+     * Base URL of the frontend used in reset links.
+     * @return Frontend base URL
      */
     fun getPasswordResetFrontendEndpoint(): String
 }
 
 /**
- * 密碼重置令牌服務接口
+ * Token storage for password reset.
  */
 interface PasswordResetTokenService {
     /**
-     * 生成密碼重置令牌
-     * @param userId 用戶ID
-     * @return 重置令牌
+     * Create and store a reset token for the given user id.
+     * @param userId User id
+     * @return Opaque token string
      */
     fun generatePasswordResetToken(userId: String): String
 
     /**
-     * 驗證並消費令牌
-     * @param token 重置令牌
-     * @return 用戶ID（如果有效）
+     * Validate and consume a token.
+     * @param token Reset token
+     * @return User id if valid
      */
     fun verifyAndConsumeToken(token: String): String?
 }
 
 /**
- * 基於Redis的密碼重置令牌服務實現
+ * Redis-backed password reset tokens.
  */
 @Service
 class RedisPasswordResetTokenService(
@@ -79,7 +78,7 @@ class RedisPasswordResetTokenService(
 
     companion object {
         private const val TOKEN_PREFIX = "password_reset"
-        private const val TOKEN_TTL_MINUTES = 15L // 密碼重置令牌有效期15分鐘
+        private const val TOKEN_TTL_MINUTES = 15L // reset token TTL
     }
 
     override fun generatePasswordResetToken(userId: String): String {
@@ -91,12 +90,12 @@ class RedisPasswordResetTokenService(
 
     override fun verifyAndConsumeToken(token: String): String? {
         val key = redisRepository.withPrefix(TOKEN_PREFIX, token)
-        return redisRepository.getAndDelete(key) // 一次性消費，重置後自動刪除
+        return redisRepository.getAndDelete(key) // one-time use
     }
 }
 
 /**
- * 默認密碼重置服務實現
+ * Default password reset implementation.
  */
 @Service
 class DefaultPasswordResetService(
@@ -112,7 +111,7 @@ class DefaultPasswordResetService(
     override fun sendPasswordResetEmail(email: String) {
         val user = userRepository.findByEmail(email) ?: throw UserNotFound
 
-        // 只允許本地帳戶重置密碼
+        // Only local (password) accounts can use email reset
         if (!user.isLocalAccount()) {
             throw OnlyLocalAccountCanResetPassword
         }
@@ -130,12 +129,10 @@ class DefaultPasswordResetService(
         val user = userRepository.findById(UUID.fromString(userId)).getOrNull()
             ?: throw UserNotFound
 
-        // 檢查是否為本地帳戶
         if (!user.isLocalAccount()) {
             throw OnlyLocalAccountCanResetPassword
         }
 
-        // 更新密碼（先進行加密）
         val hashedPassword = passwordEncoder.encode(newPassword)
         user.updateHashedPassword(hashedPassword)
         userRepository.save(user)
@@ -148,7 +145,7 @@ class DefaultPasswordResetService(
             "username" to user.username,
             "resetUrl" to resetUrl,
             "serviceName" to emailProperties.fromName,
-            "expirationMinutes" to "15" // 令牌有效期
+            "expirationMinutes" to "15"
         )
 
         val htmlContent = templateService.processTemplate(
@@ -159,7 +156,7 @@ class DefaultPasswordResetService(
         return Email(
             from = EmailAddress(emailProperties.from, emailProperties.fromName),
             to = listOf(EmailAddress(user.mustGetEmail(), user.username)),
-            subject = "[${emailProperties.fromName}] 密碼重置請求",
+            subject = "[${emailProperties.fromName}] Password reset request",
             content = EmailContent(
                 html = htmlContent
             )

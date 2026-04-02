@@ -29,7 +29,7 @@ class GlobalExceptionHandler {
             message = "Request validation failed",
             details = errors,
             timestamp = LocalDateTime.now(),
-            path = "" // 可以通過 HttpServletRequest 獲取實際路徑
+            path = "" // may be filled from HttpServletRequest if needed
         )
 
         return ResponseEntity.badRequest().body(errorResponse)

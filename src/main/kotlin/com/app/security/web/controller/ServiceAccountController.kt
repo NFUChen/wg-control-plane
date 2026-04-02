@@ -23,7 +23,7 @@ class PublicServiceController(
     private val serviceAccountManager: ServiceAccountManager
 ) {
     /**
-     * Service Account 認證並獲取 Access Token
+     * Authenticate a service account and return an access token.
      */
     @PostMapping("/auth")
     fun authenticate(
@@ -45,9 +45,8 @@ class ServiceAccountController(
 
 
     /**
-     * 創建新的 Service Account
-     * 系統會自動生成 client secret，僅在此回應中顯示一次
-     * 需要管理員權限
+     * Create a service account. The system generates a client secret shown only in this response.
+     * Requires admin role.
      */
     @PostMapping("/create")
     fun createServiceAccount(
@@ -59,8 +58,7 @@ class ServiceAccountController(
     }
 
     /**
-     * 根據 Client ID 獲取 Service Account 資訊
-     * 需要管理員權限
+     * Get a service account by client ID. Requires admin role.
      */
     @GetMapping("/{clientId}")
     fun getServiceAccount(
@@ -70,8 +68,7 @@ class ServiceAccountController(
     }
 
     /**
-     * 獲取 Service Account 的權限範圍
-     * 用於 JWT 驗證後查詢權限
+     * Return OAuth-style scopes for a service account (e.g. after JWT validation).
      */
     @GetMapping("/{clientId}/scopes")
     fun getServiceAccountScopes(
@@ -82,8 +79,7 @@ class ServiceAccountController(
     }
 
     /**
-     * 啟用 Service Account
-     * 需要管理員權限
+     * Enable a service account. Requires admin role.
      */
     @PutMapping("/{clientId}/enable")
     fun enableServiceAccount(
@@ -94,8 +90,7 @@ class ServiceAccountController(
     }
 
     /**
-     * 停用 Service Account
-     * 需要管理員權限
+     * Disable a service account. Requires admin role.
      */
     @PutMapping("/{clientId}/disable")
     fun disableServiceAccount(
@@ -106,8 +101,7 @@ class ServiceAccountController(
     }
 
     /**
-     * 刪除 Service Account
-     * 需要管理員權限
+     * Delete a service account. Requires admin role.
      */
     @DeleteMapping("/{clientId}")
     fun deleteServiceAccount(

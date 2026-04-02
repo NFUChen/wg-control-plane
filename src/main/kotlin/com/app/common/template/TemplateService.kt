@@ -6,26 +6,25 @@ import org.springframework.stereotype.Service
 import java.io.StringWriter
 
 /**
- * 統一的 FreeMarker 模板服務
- * 支援 WireGuard 配置和郵件模板處理
+ * Shared FreeMarker template processing for WireGuard configs and email HTML.
  */
 interface TemplateService {
     /**
-     * 處理模板文件，將變數替換為實際值
+     * Render a template file under the configured templates directory.
      *
-     * @param templatePath 模板文件路徑 (相對於 templates 目錄)
-     * @param variables 變數映射表
-     * @return 處理後的內容
+     * @param templatePath Path relative to the templates root
+     * @param variables Variable map for the model
+     * @return Rendered string
      */
     fun processTemplate(templatePath: String, variables: Map<String, Any>): String
 
     /**
-     * 使用內聯模板內容處理變數
+     * Render inline template content.
      *
-     * @param templateContent 模板內容字串
-     * @param variables 變數映射表
-     * @param templateName 模板名稱（用於錯誤追蹤）
-     * @return 處理後的內容
+     * @param templateContent Template source string
+     * @param variables Variable map
+     * @param templateName Logical name for error messages
+     * @return Rendered string
      */
     fun processInlineTemplate(templateContent: String, variables: Map<String, Any>, templateName: String = "inline"): String
 }

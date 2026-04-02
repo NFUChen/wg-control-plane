@@ -54,7 +54,7 @@ class RedisVerificationTokenService(
 
     override fun verifyAndConsumeToken(token: String): String? {
         val key = redisRepository.withPrefix(TOKEN_PREFIX, token)
-        return redisRepository.getAndDelete(key) // 一次性消費，驗證後自動刪除
+        return redisRepository.getAndDelete(key) // one-time use; removed after verify
     }
 
     override fun isTokenValid(token: String): Boolean {
@@ -118,7 +118,7 @@ class DefaultUserVerificationService(
         return Email(
             from = EmailAddress(emailProperties.from, emailProperties.fromName),
             to = listOf(EmailAddress(user.mustGetEmail(), user.username)),
-            subject = "[${emailProperties.fromName}] 請完成您的帳戶驗證",
+            subject = "[${emailProperties.fromName}] Please verify your account",
             content = EmailContent(
                 html = htmlContent
             )

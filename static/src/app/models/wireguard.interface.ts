@@ -1,4 +1,4 @@
-// WireGuard 相關的 TypeScript 介面定義
+// WireGuard-related TypeScript interfaces
 
 export interface IPAddress {
   address: string; // e.g., "10.0.0.1/24"
@@ -166,7 +166,7 @@ export interface ConfigurationPreview {
   metadata: ConfigurationMetadata;
 }
 
-// API 回應包裝器
+// API response wrapper
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
@@ -174,7 +174,7 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
-// 分頁介面
+// Pagination
 export interface PaginationParams {
   page: number;
   size: number;
@@ -192,7 +192,7 @@ export interface PageResponse<T> {
   last: boolean;
 }
 
-// UI 狀態介面
+// UI loading state
 export interface LoadingState {
   isLoading: boolean;
   error?: string;
@@ -206,7 +206,7 @@ export interface TableColumn {
   type?: 'text' | 'number' | 'boolean' | 'date' | 'action';
 }
 
-// 過濾器介面
+// List filters
 export interface ServerFilter {
   searchQuery?: string;
   enabled?: boolean;
