@@ -121,20 +121,6 @@ class DefaultAnsiblePlaybookExecutor(
         return executionJobRepository.findById(jobId).orElse(null)
     }
 
-    override fun waitForCompletion(jobId: UUID, timeoutSeconds: Long): AnsibleExecutionJob? {
-        val startTime = System.currentTimeMillis()
-        val timeoutMillis = timeoutSeconds * 1000
-
-        while (System.currentTimeMillis() - startTime < timeoutMillis) {
-            val job = getExecutionStatus(jobId)
-            if (job != null && job.isCompleted()) {
-                return job
-            }
-            Thread.sleep(1000)
-        }
-        return null
-    }
-
     override fun getExecutionJob(jobId: UUID): AnsibleExecutionJob? {
         return executionJobRepository.findById(jobId).orElse(null)
     }

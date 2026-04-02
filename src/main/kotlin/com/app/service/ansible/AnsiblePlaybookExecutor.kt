@@ -53,11 +53,6 @@ interface AnsiblePlaybookExecutor {
     fun getExecutionStatus(jobId: UUID): AnsibleExecutionJob?
 
     /**
-     * Wait for execution to complete (with timeout)
-     */
-    fun waitForCompletion(jobId: UUID, timeoutSeconds: Long = 3600): AnsibleExecutionJob?
-
-    /**
      * Get execution job by ID
      */
     fun getExecutionJob(jobId: UUID): AnsibleExecutionJob?
