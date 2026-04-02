@@ -33,8 +33,8 @@ data class AnsibleHost(
     val sshUsername: String,
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "ssh_private_key_id")
-    val sshPrivateKey: PrivateKey? = null,
+    @JoinColumn(name = "ssh_private_key_id", nullable = false)
+    val sshPrivateKey: PrivateKey,
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ansible_inventory_group_id")
@@ -89,11 +89,6 @@ data class AnsibleHost(
             errors.add("IP address cannot be blank")
         }
 
-        // Basic IP address format validation
-        if (!isValidIpAddress(ipAddress)) {
-            errors.add("Invalid IP address format: $ipAddress")
-        }
-
         if (sshPort !in 1..65535) {
             errors.add("SSH port must be between 1 and 65535")
         }
@@ -102,16 +97,9 @@ data class AnsibleHost(
             errors.add("SSH username cannot be blank")
         }
 
-        // Either SSH private key or password fallback must be provided
-        if (sshPrivateKey == null) {
-            errors.add("SSH private key must be provided")
-        }
-
-        // Validate SSH private key if provided
-        sshPrivateKey?.let { key ->
-            if (!key.enabled) {
-                errors.add("SSH private key is disabled")
-            }
+        // Validate SSH private key
+        if (!sshPrivateKey.enabled) {
+            errors.add("SSH private key is disabled")
         }
 
         if (sudoRequired && sudoPassword.isNullOrBlank()) {
@@ -119,18 +107,5 @@ data class AnsibleHost(
         }
 
         return errors
-    }
-
-    private fun isValidIpAddress(ip: String): Boolean {
-        return try {
-            val parts = ip.split(".")
-            if (parts.size != 4) return false
-            parts.all { part ->
-                val num = part.toIntOrNull()
-                num != null && num in 0..255
-            }
-        } catch (e: Exception) {
-            false
-        }
     }
 }
