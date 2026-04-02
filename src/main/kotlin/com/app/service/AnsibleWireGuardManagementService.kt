@@ -105,7 +105,8 @@ class AnsibleWireGuardManagementService(
         val extraVars = generateServerDeploymentVars(server)
 
         // Install packages (wg_install) then write config and restart wg-quick (wg_deploy) — see wireguard-server-launch.yml
-        val job = ansiblePlaybookExecutor.executePlaybookAsync(
+        logger.info("Started WireGuard server deployment job for server: ${server.name}")
+        ansiblePlaybookExecutor.executePlaybookAsync(
             inventoryContent = inventoryContent,
             playbook = "wireguard-server-launch.yml",
             extraVars = extraVars,
@@ -113,7 +114,7 @@ class AnsibleWireGuardManagementService(
             notes = "Deploy WireGuard server '${server.name}' to host '${targetHost.name}'"
         )
 
-        logger.info("Started WireGuard server deployment job: ${job.id} for server: ${server.name}")
+
     }
 
     override fun stopServer(serverId: UUID) {
@@ -129,7 +130,8 @@ class AnsibleWireGuardManagementService(
             "wg_stop_remove_config" to false
         )
 
-        val job = ansiblePlaybookExecutor.executePlaybookAsync(
+        logger.info("Started WireGuard server stop job for server: ${server.name}")
+        ansiblePlaybookExecutor.executePlaybookAsync(
             inventoryContent = inventoryContent,
             playbook = "wireguard-stop.yml",
             extraVars = extraVars,
@@ -137,7 +139,6 @@ class AnsibleWireGuardManagementService(
             notes = "Stop WireGuard server '${server.name}' on host '${targetHost.name}'"
         )
 
-        logger.info("Started WireGuard server stop job: ${job.id} for server: ${server.name}")
     }
 
     override fun isServerInterfaceOnline(serverId: UUID): Boolean {

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.ResourceLoader
+import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.io.File
@@ -14,7 +15,6 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.LocalDateTime
 import java.util.*
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.exists
@@ -55,7 +55,6 @@ class DefaultAnsiblePlaybookExecutor(
         logger.info("Executing playbook: $playbook")
 
         val job = createExecutionJob(inventoryContent, playbook, extraVars, checkMode, verbosity, triggeredBy, notes)
-
         try {
             executeJobSync(job)
         } catch (e: Exception) {
@@ -64,10 +63,10 @@ class DefaultAnsiblePlaybookExecutor(
             job.executionErrors = listOf(e.message ?: "Unknown error")
             executionJobRepository.save(job)
         }
-
         return job
     }
 
+    @Async
     override fun executePlaybookAsync(
         inventoryContent: String,
         playbook: String,
@@ -76,24 +75,11 @@ class DefaultAnsiblePlaybookExecutor(
         verbosity: Int,
         triggeredBy: String?,
         notes: String?
-    ): AnsibleExecutionJob {
+    ) {
         logger.info("Starting async execution of playbook: $playbook")
 
         val job = createExecutionJob(inventoryContent, playbook, extraVars, checkMode, verbosity, triggeredBy, notes)
-
-        // Execute asynchronously
-        CompletableFuture.runAsync {
-            try {
-                executeJobSync(job)
-            } catch (e: Exception) {
-                logger.error("Error in async execution: $playbook", e)
-                job.markAsCompleted(AnsibleExecutionStatus.FAILED)
-                job.executionErrors = listOf(e.message ?: "Unknown error")
-                executionJobRepository.save(job)
-            }
-        }
-
-        return executionJobRepository.save(job)
+        executeJobSync(job)
     }
 
     // ========== Job Management ==========
@@ -147,7 +133,7 @@ class DefaultAnsiblePlaybookExecutor(
             IllegalArgumentException("Original job not found: $originalJobId")
         }
 
-        return executePlaybookAsync(
+        return executePlaybook(
             inventoryContent = originalJob.inventoryContent,
             playbook = originalJob.playbook,
             extraVars = originalJob.extraVars,

@@ -38,7 +38,7 @@ interface AnsiblePlaybookExecutor {
         verbosity: Int = 0,
         triggeredBy: String? = null,
         notes: String? = null
-    ): AnsibleExecutionJob
+    )
 
     // ========== Job Management ==========
 
