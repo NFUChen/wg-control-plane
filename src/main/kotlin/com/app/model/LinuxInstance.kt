@@ -2,7 +2,9 @@ package com.app.model
 
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.annotations.UpdateTimestamp
+import org.hibernate.type.SqlTypes
 import java.time.LocalDateTime
 import java.util.*
 
@@ -58,12 +60,9 @@ data class LinuxInstance(
     @Column(name = "description")
     val description: String? = null,
 
-    @Column(name = "last_ping")
-    var lastPing: LocalDateTime? = null,
-
-    @Column(name = "connection_status")
-    @Enumerated(EnumType.STRING)
-    var connectionStatus: ConnectionStatus = ConnectionStatus.UNKNOWN,
+    @Column(name = "annotation", columnDefinition = "JSONB")
+    @JdbcTypeCode(SqlTypes.JSON)
+    val annotation: Map<String, Any> = mutableMapOf(),
 
     @CreationTimestamp
     @Column(name = "created_at")
@@ -73,18 +72,6 @@ data class LinuxInstance(
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime = LocalDateTime.now()
 ) {
-    /**
-     * Check if instance is reachable based on last ping
-     */
-    val isReachable: Boolean
-        get() = lastPing?.isAfter(LocalDateTime.now().minusMinutes(5)) == true &&
-                connectionStatus == ConnectionStatus.CONNECTED
-
-    /**
-     * Get SSH connection string for Ansible
-     */
-    val sshConnectionString: String
-        get() = "${sshUsername}@${ipAddress}:${sshPort}"
 
     /**
      * Validate instance configuration
@@ -144,15 +131,4 @@ data class LinuxInstance(
             false
         }
     }
-}
-
-/**
- * Connection status enumeration
- */
-enum class ConnectionStatus {
-    UNKNOWN,
-    CONNECTING,
-    CONNECTED,
-    DISCONNECTED,
-    ERROR
 }
