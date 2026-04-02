@@ -106,7 +106,7 @@ class AnsibleWireGuardManagementService(
 
         // Install packages (wg_install) then write config and restart wg-quick (wg_deploy) — see wireguard-server-launch.yml
         logger.info("Started WireGuard server deployment job for server: ${server.name}")
-        ansiblePlaybookExecutor.executePlaybookAsync(
+        ansiblePlaybookExecutor.executePlaybook(
             inventoryContent = inventoryContent,
             playbook = "wireguard-server-launch.yml",
             extraVars = extraVars,
@@ -131,7 +131,7 @@ class AnsibleWireGuardManagementService(
         )
 
         logger.info("Started WireGuard server stop job for server: ${server.name}")
-        ansiblePlaybookExecutor.executePlaybookAsync(
+        ansiblePlaybookExecutor.executePlaybook(
             inventoryContent = inventoryContent,
             playbook = "wireguard-stop.yml",
             extraVars = extraVars,
