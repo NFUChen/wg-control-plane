@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional
 @Service("globalConfigurationService")
 @Transactional
 class DefaultGlobalConfigurationService(
-    private val repository: com.app.repository.GlobalConfigurationRepository
+    private val repository: GlobalConfigurationRepository
 ) : GlobalConfigurationService {
 
     private val logger = LoggerFactory.getLogger(DefaultGlobalConfigurationService::class.java)
