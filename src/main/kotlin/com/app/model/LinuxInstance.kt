@@ -36,9 +36,6 @@ data class LinuxInstance(
     @JoinColumn(name = "ssh_private_key_id")
     val sshPrivateKey: PrivateKey? = null,
 
-    @Column(name = "ssh_password_fallback")
-    val sshPasswordFallback: String? = null,
-
     @Column(name = "ansible_inventory_group")
     val ansibleInventoryGroup: String? = null,
 
@@ -105,8 +102,8 @@ data class LinuxInstance(
         }
 
         // Either SSH private key or password fallback must be provided
-        if (sshPrivateKey == null && sshPasswordFallback.isNullOrBlank()) {
-            errors.add("Either SSH private key or SSH password fallback must be provided")
+        if (sshPrivateKey == null) {
+            errors.add("SSH private key must be provided")
         }
 
         // Validate SSH private key if provided
@@ -114,6 +111,10 @@ data class LinuxInstance(
             if (!key.enabled) {
                 errors.add("SSH private key is disabled")
             }
+        }
+
+        if (sudoRequired && sudoPassword.isNullOrBlank()) {
+            errors.add("Sudo password must be provided if sudo is required")
         }
 
         return errors
