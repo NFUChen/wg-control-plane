@@ -9,6 +9,7 @@ import { AnsibleService } from '../../../services/ansible.service';
 import { AlertComponent } from '../../../shared/components/alert/alert.component';
 import { LoadingSpinnerComponent } from '../../../shared/components/loading-spinner/loading-spinner.component';
 import {
+  AnsibleExecutionJobDetail,
   AnsibleHost,
   AnsibleInventoryGroup,
   PrivateKeySummary
@@ -25,6 +26,13 @@ import {
       @if (error) {
         <app-alert type="error" [message]="error" (dismissed)="error = ''" />
       }
+      @if (healthCheckMessage) {
+        <app-alert
+          [type]="healthCheckOk ? 'success' : 'error'"
+          [message]="healthCheckMessage"
+          (dismissed)="clearHealthCheck()"
+        />
+      }
 
       @if (metaLoading) {
         <app-loading-spinner [showText]="true" loadingText="Loading..." containerClass="py-12" />
@@ -32,11 +40,67 @@ import {
 
       @if (!metaLoading) {
         <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 class="text-xl font-semibold">{{ isEdit ? 'Edit host' : 'Add Ansible host' }}</h2>
-            <p class="text-sm text-gray-500 mt-1">
-              When sudo is required, you must provide the sudo password on every save (it is not shown back from the server).
-            </p>
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+              <h2 class="text-xl font-semibold">{{ isEdit ? 'Edit host' : 'Add Ansible host' }}</h2>
+              <p class="text-sm text-gray-500 mt-1">
+                When sudo is required, you must provide the sudo password on every save (it is not shown back from the server).
+              </p>
+            </div>
+            @if (isEdit && id) {
+              <div class="flex items-center gap-3 shrink-0">
+                @switch (healthCheckVisual) {
+                  @case ('checking') {
+                    <svg
+                      class="w-6 h-6 shrink-0 animate-spin text-blue-600 dark:text-blue-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                      <path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                  }
+                  @case ('ok') {
+                    <svg
+                      class="w-6 h-6 shrink-0 text-green-600 dark:text-green-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  }
+                  @case ('fail') {
+                    <svg
+                      class="w-6 h-6 shrink-0 text-red-600 dark:text-red-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  }
+                }
+                <button
+                  type="button"
+                  (click)="runHealthCheck()"
+                  [disabled]="healthCheckRunning"
+                  class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 disabled:opacity-50"
+                >
+                  {{ healthCheckRunning ? 'Checking…' : 'Health check (ping)' }}
+                </button>
+              </div>
+            }
           </div>
           <form [formGroup]="form" (ngSubmit)="submit()" class="p-6 space-y-4">
             <div class="grid sm:grid-cols-2 gap-4">
@@ -162,11 +226,53 @@ export class AnsibleHostFormComponent implements OnInit {
   submitting = false;
   error = '';
 
+  healthCheckRunning = false;
+  healthCheckMessage = '';
+  healthCheckOk = false;
+  lastHealthJob: AnsibleExecutionJobDetail | null = null;
+  /** Inline icon beside the health button (row-action icons in the list are static). */
+  healthCheckVisual: 'none' | 'checking' | 'ok' | 'fail' = 'none';
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private ansible: AnsibleService
   ) {}
+
+  clearHealthCheck(): void {
+    this.healthCheckMessage = '';
+    this.lastHealthJob = null;
+    this.healthCheckVisual = 'none';
+  }
+
+  runHealthCheck(): void {
+    if (!this.id || this.healthCheckRunning) return;
+    this.healthCheckRunning = true;
+    this.healthCheckMessage = '';
+    this.lastHealthJob = null;
+    this.healthCheckVisual = 'checking';
+    this.ansible.runHostHealthCheck(this.id).subscribe({
+      next: job => {
+        this.lastHealthJob = job;
+        this.healthCheckOk = job.successful && job.exitCode === 0;
+        this.healthCheckVisual = this.healthCheckOk ? 'ok' : 'fail';
+        const summary = this.healthCheckOk
+          ? `Ping succeeded (exit ${job.exitCode ?? '—'}). Job ${job.id}.`
+          : `Ping failed (exit ${job.exitCode ?? '—'}). Job ${job.id}.`;
+        const tail =
+          job.stdout?.trim() || job.stderr?.trim()
+            ? `\n\n${(job.stdout || '').trim()}\n${(job.stderr || '').trim()}`.trim()
+            : '';
+        this.healthCheckMessage = summary + (tail ? `\n\n${tail}` : '');
+        this.healthCheckRunning = false;
+      },
+      error: (err: HttpErrorResponse) => {
+        this.error = this.ansible.getApiErrorMessage(err);
+        this.healthCheckVisual = 'fail';
+        this.healthCheckRunning = false;
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.id = this.route.snapshot.paramMap.get('id');

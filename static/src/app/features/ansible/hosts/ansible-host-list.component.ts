@@ -47,6 +47,59 @@ import { LoadingState, TableColumn } from '../../../models/wireguard.interface';
             <span *ngSwitchCase="'group'">
               {{ item.ansibleInventoryGroup?.name ?? '—' }}
             </span>
+            <span *ngSwitchCase="'reachability'" class="inline-flex items-center justify-center w-10">
+              <ng-container [ngSwitch]="pingState(item.id)">
+                <svg
+                  *ngSwitchCase="'checking'"
+                  class="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                <svg
+                  *ngSwitchCase="'ok'"
+                  class="w-5 h-5 text-green-600 dark:text-green-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                  title="Last ping: OK"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <svg
+                  *ngSwitchCase="'fail'"
+                  class="w-5 h-5 text-red-600 dark:text-red-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                  title="Last ping: failed"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span
+                  *ngSwitchDefault
+                  class="text-gray-400 dark:text-gray-500 text-sm select-none"
+                  title="Use Actions → Health check"
+                  >—</span>
+              </ng-container>
+            </span>
             <span *ngSwitchDefault class="text-sm text-gray-900 dark:text-gray-100">{{ item[column.key] }}</span>
           </ng-container>
         </ng-template>
@@ -63,12 +116,15 @@ export class AnsibleHostListComponent implements OnInit, OnDestroy {
   successMessage = '';
   searchQuery = '';
 
+  private pingUi: Record<string, 'idle' | 'checking' | 'ok' | 'fail'> = {};
+
   columns: TableColumn[] = [
     { key: 'hostname', label: 'Hostname', sortable: true, type: 'text' },
     { key: 'ipAddress', label: 'IP', type: 'text' },
     { key: 'sshUsername', label: 'SSH user', type: 'text' },
     { key: 'group', label: 'Group' },
     { key: 'enabled', label: 'Status' },
+    { key: 'reachability', label: 'Last ping' },
     { key: 'actions', label: 'Actions', type: 'action' }
   ];
 
@@ -80,6 +136,12 @@ export class AnsibleHostListComponent implements OnInit, OnDestroy {
       icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
       action: 'edit',
       variant: 'primary'
+    },
+    {
+      label: 'Health check',
+      icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+      action: 'health',
+      variant: 'secondary'
     },
     {
       label: 'Delete',
@@ -146,6 +208,10 @@ export class AnsibleHostListComponent implements OnInit, OnDestroy {
     return enabled ? 'success' : 'gray';
   }
 
+  pingState(hostId: string): 'idle' | 'checking' | 'ok' | 'fail' {
+    return this.pingUi[hostId] ?? 'idle';
+  }
+
   goNew(): void {
     this.router.navigate(['/ansible/hosts/new']);
   }
@@ -153,6 +219,25 @@ export class AnsibleHostListComponent implements OnInit, OnDestroy {
   onRowAction(ev: { action: string; item: AnsibleHost }): void {
     if (ev.action === 'edit') {
       this.router.navigate(['/ansible/hosts', ev.item.id, 'edit']);
+    }
+    if (ev.action === 'health') {
+      this.error = '';
+      this.successMessage = '';
+      const id = ev.item.id;
+      this.pingUi = { ...this.pingUi, [id]: 'checking' };
+      this.ansible.runHostHealthCheck(id).subscribe({
+        next: job => {
+          const ok = job.successful && job.exitCode === 0;
+          this.pingUi = { ...this.pingUi, [id]: ok ? 'ok' : 'fail' };
+          this.successMessage = ok
+            ? `Ping OK — ${ev.item.hostname} (job ${job.id})`
+            : `Ping failed — ${ev.item.hostname} (exit ${job.exitCode ?? '—'}, job ${job.id})`;
+        },
+        error: err => {
+          this.pingUi = { ...this.pingUi, [id]: 'fail' };
+          this.error = this.ansible.getApiErrorMessage(err);
+        }
+      });
     }
     if (ev.action === 'delete') {
       if (confirm(`Delete host "${ev.item.hostname}"?`)) {

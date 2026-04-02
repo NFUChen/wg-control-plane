@@ -132,6 +132,15 @@ export class AnsibleService {
     return this.http.delete<void>(`${this.ansibleUrl}/hosts/${id}`).pipe(catchError(e => this.handle(e)));
   }
 
+  /**
+   * Runs bundled `ping.yml` (ansible.builtin.ping) against one host; returns the execution job with stdout/stderr.
+   */
+  runHostHealthCheck(id: string): Observable<AnsibleExecutionJobDetail> {
+    return this.http
+      .post<AnsibleExecutionJobDetail>(`${this.ansibleUrl}/hosts/${id}/health-check`, null)
+      .pipe(catchError(e => this.handle(e)));
+  }
+
   // --- Inventory files ---
   listInventoryFiles(): Observable<InventoryFileInfo[]> {
     return this.http.get<InventoryFileInfo[]>(`${this.ansibleUrl}/inventory/files`).pipe(catchError(e => this.handle(e)));

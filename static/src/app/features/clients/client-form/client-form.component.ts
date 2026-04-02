@@ -262,7 +262,7 @@ import { AnsibleHost } from '../../../models/ansible.interface';
           </div>
           }
 
-          @if (server?.hostId && !isEditMode) {
+          @if (server.hostId && !isEditMode) {
             <div class="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
               <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Client deployment (optional)</h3>
               <p class="text-sm text-gray-600 dark:text-gray-400">
