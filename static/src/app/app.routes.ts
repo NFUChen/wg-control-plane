@@ -132,7 +132,7 @@ export const routes: Routes = [
         path: 'ansible/inventory',
         loadComponent: () =>
           import('./features/ansible/inventory/ansible-inventory.component').then(c => c.AnsibleInventoryComponent),
-        title: 'Inventory files'
+        title: 'Inventory validation'
       }
     ]
   },

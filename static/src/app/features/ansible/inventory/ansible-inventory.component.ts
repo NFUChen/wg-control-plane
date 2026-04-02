@@ -19,7 +19,7 @@ import { HttpErrorResponse } from '@angular/common/http';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule, AlertComponent, LoadingSpinnerComponent],
   template: `
-    <div class="space-y-8">
+    <div class="space-y-6">
       <a routerLink="/ansible" class="text-sm text-blue-600 dark:text-blue-400">← Ansible</a>
 
       @if (error) {
@@ -29,56 +29,41 @@ import { HttpErrorResponse } from '@angular/common/http';
         <app-alert type="success" [message]="successMessage" (dismissed)="successMessage = ''" />
       }
 
-      <div class="grid gap-6 lg:grid-cols-3">
-        <div class="lg:col-span-2 space-y-4">
-          <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Actions</h3>
-            <div class="mt-4 flex flex-wrap gap-2">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Inventory validation</h2>
+        <p class="mt-2 max-w-3xl text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+          Confirm that hosts and groups in the control plane form a coherent Ansible inventory. Use
+          <strong class="font-medium text-gray-800 dark:text-gray-200">Validate</strong> for checks,
+          <strong class="font-medium text-gray-800 dark:text-gray-200">Preview</strong> to see the effective INI text Ansible would use
+          (lines such as <code class="rounded bg-gray-100 px-1 text-xs dark:bg-gray-800">ansible_ssh_private_key_file=…</code> refer to
+          <span class="whitespace-nowrap">runtime paths on the app server</span> — not PEM contents).
+        </p>
+      </div>
+
+      <div class="grid gap-6 lg:grid-cols-3 lg:items-start">
+        <!-- Main: validation + preview -->
+        <div class="space-y-4 lg:col-span-2">
+          <div class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Checks &amp; preview</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              These run against the current database state — no dependency on files written to disk.
+            </p>
+            <div class="mt-5 flex flex-wrap gap-2">
               <button
                 type="button"
                 (click)="runValidate()"
                 [disabled]="busy"
-                class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md disabled:opacity-50"
+                class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
               >
-                Validate inventory
+                Run validation
               </button>
               <button
                 type="button"
                 (click)="runPreview()"
                 [disabled]="busy"
-                class="px-3 py-2 border border-gray-300 dark:border-gray-600 text-sm rounded-md disabled:opacity-50"
+                class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
-                Preview generated INI
-              </button>
-              <button
-                type="button"
-                (click)="runGenerate()"
-                [disabled]="busy"
-                class="px-3 py-2 border border-gray-300 dark:border-gray-600 text-sm rounded-md disabled:opacity-50"
-              >
-                Generate &amp; save (full)
-              </button>
-            </div>
-            <div class="mt-4 flex flex-wrap items-end gap-3">
-              <div>
-                <label class="block text-xs text-gray-500 mb-1">Group inventory</label>
-                <select
-                  [(ngModel)]="selectedGroupId"
-                  class="px-3 py-2 border rounded-md bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-sm min-w-[200px]"
-                >
-                  <option value="">Select group…</option>
-                  @for (g of groups; track g.id) {
-                    <option [value]="g.id">{{ g.name }}</option>
-                  }
-                </select>
-              </div>
-              <button
-                type="button"
-                (click)="runGenerateGroup()"
-                [disabled]="busy || !selectedGroupId"
-                class="px-3 py-2 border border-gray-300 dark:border-gray-600 text-sm rounded-md disabled:opacity-50"
-              >
-                Generate for group
+                Preview effective inventory
               </button>
             </div>
           </div>
@@ -92,16 +77,19 @@ import { HttpErrorResponse } from '@angular/common/http';
                   : 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30'
               "
             >
-              <p class="font-medium">{{ validation.valid ? 'Valid' : 'Invalid' }} — hosts: {{ validation.hostCount }}, groups: {{ validation.groupCount }}</p>
+              <p class="font-medium text-gray-900 dark:text-gray-100">
+                {{ validation.valid ? 'Validation passed' : 'Validation failed' }} — hosts
+                {{ validation.hostCount }}, groups {{ validation.groupCount }}
+              </p>
               @if (validation.errors.length > 0) {
-                <ul class="mt-2 text-sm list-disc list-inside text-red-800 dark:text-red-200">
+                <ul class="mt-2 list-inside list-disc text-sm text-red-800 dark:text-red-200">
                   @for (e of validation.errors; track e) {
                     <li>{{ e }}</li>
                   }
                 </ul>
               }
               @if (validation.warnings.length > 0) {
-                <ul class="mt-2 text-sm list-disc list-inside text-amber-800 dark:text-amber-200">
+                <ul class="mt-2 list-inside list-disc text-sm text-amber-800 dark:text-amber-200">
                   @for (w of validation.warnings; track w) {
                     <li>{{ w }}</li>
                   }
@@ -111,97 +99,77 @@ import { HttpErrorResponse } from '@angular/common/http';
           }
 
           @if (previewText !== null) {
-            <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-              <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                <span class="text-sm font-medium">Preview</span>
-                <button type="button" (click)="previewText = null" class="text-xs text-gray-500 hover:text-gray-800">Close</button>
+            <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+              <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
+                <div>
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">Effective inventory (preview)</span>
+                  <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Read-only; same shape Ansible would consume at runtime.</p>
+                </div>
+                <button type="button" (click)="previewText = null" class="text-xs text-gray-500 hover:text-gray-800 dark:hover:text-gray-300">
+                  Close
+                </button>
               </div>
-              <pre class="p-4 text-xs font-mono whitespace-pre-wrap max-h-[480px] overflow-auto text-gray-800 dark:text-gray-200">{{ previewText }}</pre>
+              <pre
+                class="max-h-[min(28rem,60vh)] overflow-auto whitespace-pre-wrap p-4 font-mono text-xs text-gray-800 dark:text-gray-200"
+                >{{ previewText }}</pre
+              >
             </div>
           }
+        </div>
 
-          <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h3 class="text-lg font-semibold">Saved inventory files</h3>
-              <button type="button" (click)="loadFiles()" [disabled]="busy" class="text-sm text-blue-600 dark:text-blue-400">Refresh</button>
+        <!-- Summary: stats -->
+        <aside class="lg:col-span-1">
+          <div
+            class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-900 lg:sticky lg:top-20"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Summary</h3>
+              <button
+                type="button"
+                (click)="refreshSummary()"
+                [disabled]="statsLoading"
+                class="shrink-0 text-xs font-medium text-blue-600 hover:text-blue-800 disabled:opacity-50 dark:text-blue-400"
+              >
+                Refresh
+              </button>
             </div>
-            @if (filesLoading) {
-              <app-loading-spinner containerClass="py-12" />
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Counts from the control plane (not from on-disk files).</p>
+
+            @if (statsLoading) {
+              <app-loading-spinner containerClass="py-8" />
+            } @else if (stats) {
+              <dl class="mt-4 space-y-4 text-sm">
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Hosts</dt>
+                  <dd class="mt-1 text-gray-900 dark:text-gray-100">
+                    <span class="text-lg font-semibold">{{ stats.hostStatistics.totalHosts }}</span>
+                    <span class="text-gray-500"> total</span>
+                    <span class="ml-2 text-gray-600 dark:text-gray-300">· {{ stats.hostStatistics.enabledHosts }} enabled</span>
+                  </dd>
+                  <dd class="mt-1 text-xs text-gray-500">Ungrouped: {{ stats.hostStatistics.ungroupedHosts }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Groups</dt>
+                  <dd class="mt-1 text-gray-900 dark:text-gray-100">
+                    <span class="text-lg font-semibold">{{ stats.hostStatistics.totalGroups }}</span>
+                    <span class="text-gray-500"> total</span>
+                    <span class="ml-2 text-gray-600 dark:text-gray-300">· {{ stats.hostStatistics.enabledGroups }} enabled</span>
+                  </dd>
+                </div>
+                <div class="border-t border-gray-100 pt-3 dark:border-gray-800">
+                  <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Server file snapshots</dt>
+                  <dd class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                    {{ stats.inventoryFileStatistics.fileCount }} file(s), {{ stats.inventoryFileStatistics.totalSize | number }} B
+                    <span class="block text-[11px] text-gray-400 dark:text-gray-500">Optional persisted copies; may be empty in ephemeral deploys.</span>
+                  </dd>
+                </div>
+              </dl>
             } @else {
-              <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                  <thead class="bg-gray-50 dark:bg-gray-800/80 text-left text-xs uppercase text-gray-500">
-                    <tr>
-                      <th class="px-6 py-3">File</th>
-                      <th class="px-6 py-3">Size</th>
-                      <th class="px-6 py-3">Created</th>
-                      <th class="px-6 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    @for (f of files; track f.filename) {
-                      <tr>
-                        <td class="px-6 py-3 font-mono text-xs">{{ f.filename }}</td>
-                        <td class="px-6 py-3">{{ f.size | number }} B</td>
-                        <td class="px-6 py-3">{{ f.createdAt | date: 'medium' }}</td>
-                        <td class="px-6 py-3 text-right space-x-2">
-                          <button type="button" class="text-blue-600 text-xs" (click)="viewFile(f)">View</button>
-                          <a
-                            class="text-blue-600 text-xs"
-                            [href]="downloadUrl(f.filename)"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            >Download</a>
-                          <button type="button" class="text-red-600 text-xs" (click)="deleteFile(f)">Delete</button>
-                        </td>
-                      </tr>
-                    }
-                    @if (files.length === 0) {
-                      <tr>
-                        <td colspan="4" class="px-6 py-8 text-center text-gray-500">No files yet. Generate an inventory to create one.</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
+              <p class="mt-4 text-sm text-gray-500">Summary unavailable.</p>
             }
           </div>
-
-          @if (viewContent !== null) {
-            <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-              <div class="px-4 py-2 border-b flex justify-between">
-                <span class="text-sm font-medium">{{ viewTitle }}</span>
-                <button type="button" (click)="viewContent = null" class="text-xs text-gray-500">Close</button>
-              </div>
-              <pre class="p-4 text-xs font-mono max-h-[400px] overflow-auto whitespace-pre-wrap">{{ viewContent }}</pre>
-            </div>
-          }
-        </div>
-
-        <div class="space-y-4">
-          @if (statsLoading) {
-            <app-loading-spinner containerClass="py-8" />
-          } @else if (stats) {
-            <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm text-sm space-y-3">
-              <h3 class="text-lg font-semibold">Statistics</h3>
-              <div>
-                <p class="text-gray-500 dark:text-gray-400">Hosts</p>
-                <p>Total {{ stats.hostStatistics.totalHosts }}, enabled {{ stats.hostStatistics.enabledHosts }}</p>
-                <p>Ungrouped {{ stats.hostStatistics.ungroupedHosts }}</p>
-              </div>
-              <div>
-                <p class="text-gray-500 dark:text-gray-400">Groups</p>
-                <p>Total {{ stats.hostStatistics.totalGroups }}, enabled {{ stats.hostStatistics.enabledGroups }}</p>
-              </div>
-              <div>
-                <p class="text-gray-500 dark:text-gray-400">Inventory files</p>
-                <p>Count {{ stats.inventoryFileStatistics.fileCount }}, size {{ stats.inventoryFileStatistics.totalSize | number }} B</p>
-              </div>
-            </div>
-          }
-        </div>
+        </aside>
       </div>
-    </div>
   `
 })
 export class AnsibleInventoryComponent implements OnInit, OnDestroy {
@@ -221,12 +189,13 @@ export class AnsibleInventoryComponent implements OnInit, OnDestroy {
   error = '';
   successMessage = '';
 
+  private optionalFilesOpened = false;
+
   private destroy$ = new Subject<void>();
 
   constructor(private ansible: AnsibleService) {}
 
   ngOnInit(): void {
-    this.loadFiles();
     this.loadStats();
     this.ansible
       .listGroups(true)
@@ -240,6 +209,18 @@ export class AnsibleInventoryComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  onOptionalFilesToggle(ev: Event): void {
+    const el = ev.target as HTMLDetailsElement;
+    if (el.open && !this.optionalFilesOpened) {
+      this.optionalFilesOpened = true;
+      this.loadFiles();
+    }
+  }
+
+  refreshSummary(): void {
+    this.loadStats();
   }
 
   downloadUrl(filename: string): string {
@@ -281,6 +262,7 @@ export class AnsibleInventoryComponent implements OnInit, OnDestroy {
       next: v => {
         this.validation = v;
         this.busy = false;
+        this.loadStats();
       },
       error: err => {
         this.error = this.ansible.getApiErrorMessage(err);
@@ -310,7 +292,7 @@ export class AnsibleInventoryComponent implements OnInit, OnDestroy {
     this.busy = true;
     this.ansible.generateInventory(name || undefined).subscribe({
       next: () => {
-        this.successMessage = 'Inventory file generated';
+        this.successMessage = 'Inventory written on server (optional snapshot).';
         this.busy = false;
         this.loadFiles();
         this.loadStats();
@@ -329,7 +311,7 @@ export class AnsibleInventoryComponent implements OnInit, OnDestroy {
     this.busy = true;
     this.ansible.generateGroupInventory(this.selectedGroupId, name || undefined).subscribe({
       next: () => {
-        this.successMessage = 'Group inventory file generated';
+        this.successMessage = 'Group inventory written on server (optional snapshot).';
         this.busy = false;
         this.loadFiles();
         this.loadStats();
@@ -354,10 +336,10 @@ export class AnsibleInventoryComponent implements OnInit, OnDestroy {
   }
 
   deleteFile(f: InventoryFileInfo): void {
-    if (!confirm(`Delete file "${f.filename}"?`)) return;
+    if (!confirm(`Delete file "${f.filename}" on the server?`)) return;
     this.ansible.deleteInventoryFile(f.filename).subscribe({
       next: () => {
-        this.successMessage = 'File deleted';
+        this.successMessage = 'Server file removed.';
         this.loadFiles();
         this.loadStats();
       },

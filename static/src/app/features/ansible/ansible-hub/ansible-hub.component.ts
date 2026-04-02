@@ -11,7 +11,7 @@ import { RouterModule } from '@angular/router';
       <div>
         <h2 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Ansible</h2>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Manage SSH keys, inventory groups, hosts, and generated inventory files.
+          Manage SSH keys, inventory groups, hosts, and validate the effective Ansible inventory.
         </p>
       </div>
 
@@ -48,8 +48,8 @@ export class AnsibleHubComponent {
     },
     {
       path: '/ansible/inventory',
-      title: 'Inventory files',
-      description: 'Generate, validate, and manage saved inventory files.'
+      title: 'Inventory check',
+      description: 'Validate configuration and preview the effective inventory; optional on-server file snapshots.'
     }
   ];
 }
