@@ -13,7 +13,6 @@ import com.app.repository.WireGuardServerRepository
 import com.app.security.config.WireGuardProperties
 import com.app.utils.WireGuardKeyGenerator
 import org.slf4j.LoggerFactory
-import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.io.File
@@ -25,9 +24,11 @@ import java.util.*
 import kotlin.jvm.optionals.getOrNull
 
 
+/**
+ * Local WireGuard (wg-quick) on the control plane host. Primary bean is [DelegatingWireGuardManagementService].
+ */
 @Service
 @Transactional
-@Primary
 class DefaultWireGuardManagementService(
     private val serverRepository: WireGuardServerRepository,
     private val clientRepository: WireGuardClientRepository,
@@ -77,6 +78,9 @@ class DefaultWireGuardManagementService(
      */
     @Transactional
     override fun createServer(request: CreateServerRequest): WireGuardServer {
+        require(request.hostId == null) {
+            "Ansible-managed servers must be created with the remote deployment path (hostId is set only for new remote servers)"
+        }
         require(!serverRepository.existsByName(request.name)) { "Server with name '${request.name}' already exists" }
         require(!serverRepository.existsByListenPort(request.listenPort)) { "Port ${request.listenPort} is already in use" }
 
@@ -102,6 +106,9 @@ class DefaultWireGuardManagementService(
      */
     @Transactional
     override fun addClientToServer(serverId: UUID, request: AddClientRequest): WireGuardClient {
+        require(request.hostId == null) {
+            "Binding a client to an Ansible host for remote deploy is only supported for Ansible-managed servers"
+        }
         val server = serverRepository.findByIdWithClients(serverId)
             ?: throw IllegalArgumentException("Server not found: $serverId")
 

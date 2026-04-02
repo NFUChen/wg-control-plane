@@ -38,6 +38,7 @@ class WireGuardClientController(
             isOnline = client.isOnline,
             lastHandshake = client.lastHandshake,
             persistentKeepalive = client.persistentKeepalive,
+            hostId = client.hostId?.toString(),
             server = ServerInfo(
                 id = client.server.id,
                 name = client.server.name,

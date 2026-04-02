@@ -33,17 +33,25 @@ class AnsibleWireGuardManagementService(
     private val keyGenerator: WireGuardKeyGenerator,
     private val ansiblePlaybookExecutor: AnsiblePlaybookExecutor,
     private val ansibleService: AnsibleService,
-    private val wireGuardTemplateService: WireGuardTemplateService
+    private val wireGuardTemplateService: WireGuardTemplateService,
+    private val ipConflictDetectionService: IPConflictDetectionService,
+    private val globalConfigurationService: GlobalConfigurationService,
 ) : WireGuardManagementService {
 
     companion object {
         private val logger = LoggerFactory.getLogger(AnsibleWireGuardManagementService::class.java)
+
+        /** Must match the group name in [generateInventoryForHost]. */
+        private const val ANSIBLE_INVENTORY_GROUP = "wireguard_servers"
     }
 
     // ========== Server Management ==========
 
     override fun createServer(request: CreateServerRequest): WireGuardServer {
         logger.info("Creating WireGuard server for Ansible deployment: ${request.name}")
+
+        require(!serverRepository.existsByName(request.name)) { "Server with name '${request.name}' already exists" }
+        require(!serverRepository.existsByListenPort(request.listenPort)) { "Port ${request.listenPort} is already in use" }
 
         // Verify AnsibleHost exists and is usable
         validateAndGetAnsibleHost(request.hostId)
@@ -96,10 +104,10 @@ class AnsibleWireGuardManagementService(
         // Generate WireGuard configuration variables
         val extraVars = generateServerDeploymentVars(server)
 
-        // Deploy WireGuard server via Ansible
+        // Install packages (wg_install) then write config and restart wg-quick (wg_deploy) — see wireguard-server-launch.yml
         val job = ansiblePlaybookExecutor.executePlaybookAsync(
             inventoryContent = inventoryContent,
-            playbook = "wireguard-install.yml",
+            playbook = "wireguard-server-launch.yml",
             extraVars = extraVars,
             triggeredBy = "AnsibleWireGuardManagementService",
             notes = "Deploy WireGuard server '${server.name}' to host '${targetHost.name}'"
@@ -116,14 +124,14 @@ class AnsibleWireGuardManagementService(
 
         val inventoryContent = generateInventoryForHost(targetHost)
         val extraVars = mapOf(
-            "wg_action" to "stop",
-            "wg_interface" to server.interfaceName,
-            "wg_server_name" to server.name
+            "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
+            "wg_interface_name" to server.interfaceName,
+            "wg_stop_remove_config" to false
         )
 
         val job = ansiblePlaybookExecutor.executePlaybookAsync(
             inventoryContent = inventoryContent,
-            playbook = "wireguard-control.yml",
+            playbook = "wireguard-stop.yml",
             extraVars = extraVars,
             triggeredBy = "AnsibleWireGuardManagementService",
             notes = "Stop WireGuard server '${server.name}' on host '${targetHost.name}'"
@@ -140,14 +148,16 @@ class AnsibleWireGuardManagementService(
 
         val inventoryContent = generateInventoryForHost(targetHost)
         val extraVars = mapOf(
-            "wg_action" to "status",
-            "wg_interface" to server.interfaceName,
-            "wg_server_name" to server.name
+            "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
+            "wg_interface_name" to server.interfaceName,
+            "wg_expected_state" to "up",
+            "wg_listen_port" to server.listenPort,
+            "wg_verify_check_listen" to true
         )
 
         val job = ansiblePlaybookExecutor.executePlaybook(
             inventoryContent = inventoryContent,
-            playbook = "wireguard-status.yml",
+            playbook = "wireguard-verify.yml",
             extraVars = extraVars,
             triggeredBy = "AnsibleWireGuardManagementService",
             notes = "Check status of WireGuard server '${server.name}' on host '${targetHost.name}'"
@@ -161,27 +171,47 @@ class AnsibleWireGuardManagementService(
     override fun addClientToServer(serverId: UUID, request: AddClientRequest): WireGuardClient {
         logger.info("Adding client to WireGuard server via Ansible: $serverId")
 
-        val server = getServerWithAnsibleHost(serverId)
+        val server = serverRepository.findByIdWithClients(serverId)
+            ?: throw IllegalArgumentException("Server not found: $serverId")
+        if (server.hostId == null) {
+            throw IllegalStateException("Server $serverId is not configured for Ansible deployment (no AnsibleHost assigned)")
+        }
         val serverTargetHost = validateAndGetAnsibleHost(server.hostId!!)
 
+        ipConflictDetectionService.validateNewClientIPs(server, request.addresses.toMutableList())
+
+        val trimmedPublic = request.clientPublicKey?.trim()?.takeIf { it.isNotEmpty() }
+        val (privateKey, publicKey) = if (trimmedPublic == null) {
+            keyGenerator.generateKeyPair()
+        } else {
+            // User supplied an existing public key (BYOK). Stored private key is only a DB placeholder
+            // and does not match; the server peer uses [publicKey]. Do not use stored privateKey for client configs.
+            Pair(keyGenerator.generatePrivateKey(), trimmedPublic)
+        }
+
+        val globalConfig = globalConfigurationService.getCurrentConfig()
         val client = WireGuardClient(
             name = request.clientName,
-            publicKey = request.clientPublicKey ?: keyGenerator.generateKeyPair().second,
-            privateKey = keyGenerator.generateKeyPair().first,
+            publicKey = publicKey,
+            privateKey = privateKey,
             allowedIPs = request.addresses.toMutableList(),
             presharedKey = request.presharedKey,
             server = server
-        )
+        ).apply {
+            persistentKeepalive = globalConfig.defaultPersistentKeepalive
+        }
 
-        // Set client deployment host
+        server.addClient(client)
         client.hostId = request.hostId
 
-        val savedClient = clientRepository.save(client)
+        val savedServer = serverRepository.save(server)
+        val savedClient = savedServer.clients.find { it.id == client.id }
+            ?: throw IllegalStateException("Failed to persist client")
 
         // If server is online, deploy configuration
         if (isServerInterfaceOnline(serverId)) {
-            // Reload server entity so it includes the newly added client
-            val updatedServer = getServerWithAnsibleHost(serverId)
+            val updatedServer = serverRepository.findByIdWithClients(serverId)
+                ?: throw IllegalStateException("Server not found after save: $serverId")
 
             // Step 1: update server config with client peer
             deployRemoteServerConfiguration(updatedServer, serverTargetHost, savedClient)
@@ -208,33 +238,24 @@ class AnsibleWireGuardManagementService(
         val client = clientRepository.findById(clientId).orElseThrow {
             IllegalArgumentException("Client not found: $clientId")
         }
+        require(client.server.id == serverId) { "Client does not belong to server $serverId" }
 
         val server = getServerWithAnsibleHost(serverId)
         val serverTargetHost = validateAndGetAnsibleHost(server.hostId!!)
 
-        // Check whether hostId changed (client deployment migration)
-        val originalHostId = client.hostId
-        val newHostId = request.hostId
-
-        // If client moves from one remote host to another, clean up the old host first
-        if (originalHostId != null && originalHostId != newHostId) {
-            try {
-                val originalClientHost = validateAndGetAnsibleHost(originalHostId)
-                removeRemoteClientConfiguration(client, originalClientHost)
-                logger.info("Successfully cleaned up original client configuration on host '${originalClientHost.name}'")
-            } catch (e: Exception) {
-                logger.error("Failed to cleanup original client configuration: ${e.message}")
-                // Continue; do not block the update
-            }
+        if (request.hostId != null && request.hostId != client.hostId) {
+            throw IllegalArgumentException("Client Ansible host cannot be changed after the client is created")
         }
 
-        // Update client properties
+        // Update client properties (hostId is set only when adding the client)
         request.clientName?.let { client.name = it }
-        request.addresses?.let { client.allowedIPs = it.toMutableList() }
+        request.addresses?.let { addrs ->
+            ipConflictDetectionService.validateUpdatedClientIPs(server, clientId, addrs)
+            client.allowedIPs = addrs.toMutableList()
+        }
         request.presharedKey?.let { client.presharedKey = it }
         request.persistentKeepalive?.let { client.persistentKeepalive = it }
         request.enabled?.let { client.enabled = it }
-        if (request.hostId != null) { client.hostId = request.hostId }
 
         val savedClient = clientRepository.save(client)
 
@@ -268,6 +289,7 @@ class AnsibleWireGuardManagementService(
         val client = clientRepository.findById(clientId).orElseThrow {
             IllegalArgumentException("Client not found: $clientId")
         }
+        require(client.server.id == serverId) { "Client does not belong to server $serverId" }
 
         val server = getServerWithAnsibleHost(serverId)
         val serverTargetHost = validateAndGetAnsibleHost(server.hostId!!)
@@ -404,6 +426,7 @@ class AnsibleWireGuardManagementService(
     private fun generateServerDeploymentVars(server: WireGuardServer): Map<String, Any> {
         val configContent = wireGuardTemplateService.generateServerConfig(server)
         return mapOf(
+            "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
             "wg_interface_name" to server.interfaceName,
             "wg_config_content" to configContent,
             "wg_config_source" to "inline",
@@ -424,10 +447,12 @@ class AnsibleWireGuardManagementService(
         val configContent = wireGuardTemplateService.generateServerConfig(server)
         val inventoryContent = generateInventoryForHost(targetHost)
         val extraVars = mapOf(
+            "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
             "wg_interface_name" to server.interfaceName,
             "wg_config_content" to configContent,
             "wg_config_source" to "inline",
-            "wg_restart_after_deploy" to true
+            "wg_restart_after_deploy" to true,
+            "wg_enable_on_boot" to server.enabled
         )
 
         val job = ansiblePlaybookExecutor.executePlaybook(
@@ -464,10 +489,12 @@ class AnsibleWireGuardManagementService(
         val configContent = wireGuardTemplateService.generateServerConfig(server)
         val inventoryContent = generateInventoryForHost(targetHost)
         val extraVars = mapOf(
+            "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
             "wg_interface_name" to server.interfaceName,
             "wg_config_content" to configContent,
             "wg_config_source" to "inline",
-            "wg_restart_after_deploy" to true
+            "wg_restart_after_deploy" to true,
+            "wg_enable_on_boot" to server.enabled
         )
 
         // 2. Deploy config; restore client on failure
@@ -507,9 +534,9 @@ class AnsibleWireGuardManagementService(
         val clientInterfaceName = "wg-${client.name.lowercase().replace(" ", "-")}"
 
         val extraVars = mapOf(
+            "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
             "wg_client_interface_name" to clientInterfaceName,
-            "wg_client_name" to client.name,
-            "wg_action" to "cleanup_client"
+            "wg_client_name" to client.name
         )
 
         val job = ansiblePlaybookExecutor.executePlaybook(
@@ -547,13 +574,13 @@ class AnsibleWireGuardManagementService(
         )
 
         val extraVars = mapOf(
+            "wg_target_hosts" to ANSIBLE_INVENTORY_GROUP,
             "wg_client_interface_name" to clientInterfaceName,
             "wg_client_name" to client.name,
             "wg_config_content" to clientConfig,
             "wg_config_source" to "inline",
             "wg_restart_after_deploy" to true,
-            "wg_enable_on_boot" to client.enabled,
-            "wg_action" to "deploy_client"
+            "wg_enable_on_boot" to client.enabled
         )
 
         val job = ansiblePlaybookExecutor.executePlaybook(

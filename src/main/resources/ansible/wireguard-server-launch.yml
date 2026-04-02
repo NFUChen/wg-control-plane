@@ -1,0 +1,10 @@
+---
+# Control-plane "launch" for a remote server: install packages, then deploy inline config and start/restart wg-quick.
+# Mirrors site.yml steps wireguard-install.yml + wireguard-deploy-config.yml for a single target group.
+- name: Install WireGuard tools and deploy server configuration
+  hosts: "{{ wg_target_hosts }}"
+  gather_facts: true
+  become: true
+  roles:
+    - role: wg_install
+    - role: wg_deploy

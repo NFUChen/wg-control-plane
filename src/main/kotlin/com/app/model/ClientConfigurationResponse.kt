@@ -15,6 +15,8 @@ data class ClientConfigurationResponse(
     val isOnline: Boolean,
     val lastHandshake: LocalDateTime?,
     val persistentKeepalive: Int,
+    /** When set, client config is deployed to this Ansible host (immutable after create). */
+    val hostId: String?,
     val server: ServerInfo
 )
 

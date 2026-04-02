@@ -147,6 +147,8 @@ data class ServerResponse(
     val isOnline: Boolean,
     val totalClients: Int,
     val activeClients: Int,
+    /** When set, the server is deployed via Ansible to this host (not local wg on the control plane). */
+    val hostId: String?,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 ) {
@@ -168,6 +170,7 @@ data class ServerResponse(
                 isOnline = isOnline,
                 totalClients = server.clients.size,
                 activeClients = activeClients,
+                hostId = server.hostId?.toString(),
                 createdAt = server.createdAt,
                 updatedAt = server.updatedAt
             )
@@ -191,6 +194,8 @@ data class ServerDetailResponse(
     val postDown: String?,
     val enabled: Boolean,
     val clients: List<ClientResponse>,
+    /** When set, the server is deployed via Ansible to this host (not local wg on the control plane). */
+    val hostId: String?,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 ) {
@@ -209,6 +214,7 @@ data class ServerDetailResponse(
                 postDown = server.postDown,
                 enabled = server.enabled,
                 clients = server.clients.map { ClientResponse.from(it) },
+                hostId = server.hostId?.toString(),
                 createdAt = server.createdAt,
                 updatedAt = server.updatedAt
             )
@@ -230,6 +236,8 @@ data class ClientResponse(
     val lastHandshake: LocalDateTime?,
     val dataReceived: Long,
     val dataSent: Long,
+    /** When set, client config is (or was) deployed to this Ansible host. Immutable after create. */
+    val hostId: String?,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 ) {
@@ -246,6 +254,7 @@ data class ClientResponse(
                 lastHandshake = client.lastHandshake,
                 dataReceived = client.dataReceived,
                 dataSent = client.dataSent,
+                hostId = client.hostId?.toString(),
                 createdAt = client.createdAt,
                 updatedAt = client.updatedAt
             )
