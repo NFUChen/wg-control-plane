@@ -318,6 +318,8 @@ class DefaultAnsiblePlaybookExecutor(
         env["ANSIBLE_HOST_KEY_CHECKING"] = "False"
         // Matches [defaults] interpreter_python = auto_silent — suppresses discovery WARNING on stderr
         env["ANSIBLE_INTERPRETER_PYTHON"] = "auto_silent"
+        // Subprocess has no TTY; without this Ansible omits ANSI and logs look plain
+        env["ANSIBLE_FORCE_COLOR"] = "true"
 
         val process = processBuilder.start()
         runningProcesses[jobId] = process
