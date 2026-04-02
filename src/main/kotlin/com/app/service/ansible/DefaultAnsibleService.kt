@@ -334,10 +334,6 @@ class DefaultAnsibleService(
             errors.add("SSH username cannot be blank")
         }
 
-        if (request.sudoRequired && request.sudoPassword.isNullOrBlank()) {
-            errors.add("Sudo password must be provided if sudo is required")
-        }
-
         return errors
     }
 
@@ -370,10 +366,6 @@ class DefaultAnsibleService(
 
         if (request.sshUsername.isBlank()) {
             errors.add("SSH username cannot be blank")
-        }
-
-        if (request.sudoRequired && request.sudoPassword.isNullOrBlank()) {
-            errors.add("Sudo password must be provided if sudo is required")
         }
 
         return errors

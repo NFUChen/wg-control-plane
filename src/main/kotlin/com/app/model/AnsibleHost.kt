@@ -102,10 +102,6 @@ data class AnsibleHost(
             errors.add("SSH private key is disabled")
         }
 
-        if (sudoRequired && sudoPassword.isNullOrBlank()) {
-            errors.add("Sudo password must be provided if sudo is required")
-        }
-
         return errors
     }
 }

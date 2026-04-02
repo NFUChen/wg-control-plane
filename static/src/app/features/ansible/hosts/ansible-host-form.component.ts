@@ -302,11 +302,6 @@ export class AnsibleHostFormComponent implements OnInit {
       customVariables
     };
 
-    if (body.sudoRequired && !body.sudoPassword) {
-      this.error = 'Sudo password is required when sudo is enabled';
-      return;
-    }
-
     this.submitting = true;
     this.error = '';
 
