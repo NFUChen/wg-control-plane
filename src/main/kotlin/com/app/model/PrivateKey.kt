@@ -19,9 +19,9 @@ data class PrivateKey(
     @Column(name = "name", nullable = false, unique = true)
     val name: String,
 
-    @Column(name = "encrypted_private_key", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     @JsonIgnore
-    val encryptedPrivateKey: String,
+    val content: String,
 
     @Column(name = "enabled", nullable = false)
     var enabled: Boolean = true,
