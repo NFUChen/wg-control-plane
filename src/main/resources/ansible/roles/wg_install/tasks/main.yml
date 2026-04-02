@@ -16,7 +16,7 @@
 
 - name: Verify wg-quick exists
   ansible.builtin.command:
-    cmd: wg-quick --version
-  register: wg_quick_version
+    cmd: wg --version
+  register: wg_version
   changed_when: false
   become: false
