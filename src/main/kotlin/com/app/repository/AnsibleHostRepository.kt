@@ -3,6 +3,8 @@ package com.app.repository
 import com.app.model.AnsibleInventoryGroup
 import com.app.model.AnsibleHost
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import java.util.*
 
@@ -46,4 +48,7 @@ interface AnsibleHostRepository : JpaRepository<AnsibleHost, UUID> {
      * Find instances without an ansible inventory group assigned
      */
     fun findByAnsibleInventoryGroupIsNull(): List<AnsibleHost>
+
+    @Query("SELECT COUNT(h) FROM AnsibleHost h WHERE h.sshPrivateKey.id = :privateKeyId")
+    fun countHostsUsingPrivateKey(@Param("privateKeyId") privateKeyId: UUID): Long
 }
