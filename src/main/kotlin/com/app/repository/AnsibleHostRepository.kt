@@ -1,0 +1,49 @@
+package com.app.repository
+
+import com.app.model.AnsibleInventoryGroup
+import com.app.model.AnsibleHost
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.stereotype.Repository
+import java.util.*
+
+/**
+ * Repository interface for AnsibleHost entities
+ */
+@Repository
+interface AnsibleHostRepository : JpaRepository<AnsibleHost, UUID> {
+
+    /**
+     * Find all enabled instances
+     */
+    fun findByEnabledTrue(): List<AnsibleHost>
+
+    /**
+     * Find instance by name
+     */
+    fun findByName(name: String): AnsibleHost?
+
+    /**
+     * Check if instance with name exists
+     */
+    fun existsByName(name: String): Boolean
+
+    /**
+     * Check if instance with IP address exists
+     */
+    fun existsByIpAddress(ipAddress: String): Boolean
+
+    /**
+     * Find instances by ansible inventory group
+     */
+    fun findByAnsibleInventoryGroup(ansibleInventoryGroup: AnsibleInventoryGroup): List<AnsibleHost>
+
+    /**
+     * Find enabled instances by ansible inventory group
+     */
+    fun findByEnabledTrueAndAnsibleInventoryGroup(ansibleInventoryGroup: AnsibleInventoryGroup): List<AnsibleHost>
+
+    /**
+     * Find instances without an ansible inventory group assigned
+     */
+    fun findByAnsibleInventoryGroupIsNull(): List<AnsibleHost>
+}

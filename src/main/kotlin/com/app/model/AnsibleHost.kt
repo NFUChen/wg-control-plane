@@ -12,8 +12,8 @@ import java.util.*
  * Represents a remote Linux instance for Ansible-based WireGuard management
  */
 @Entity
-@Table(name = "linux_instances")
-data class LinuxInstance(
+@Table(name = "ansible_hosts")
+data class AnsibleHost(
     @Id
     val id: UUID = UUID.randomUUID(),
 
@@ -36,8 +36,9 @@ data class LinuxInstance(
     @JoinColumn(name = "ssh_private_key_id")
     val sshPrivateKey: PrivateKey? = null,
 
-    @Column(name = "ansible_inventory_group")
-    val ansibleInventoryGroup: String? = null,
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "ansible_inventory_group_id")
+    val ansibleInventoryGroup: AnsibleInventoryGroup? = null,
 
     @Column(name = "sudo_required", nullable = false)
     val sudoRequired: Boolean = true,
