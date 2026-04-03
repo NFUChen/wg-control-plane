@@ -17,7 +17,7 @@ import java.util.*
 
 /**
  * Routes WireGuard operations to [DefaultWireGuardManagementService] (local interfaces) or
- * [AnsibleWireGuardManagementService] (remote Ansible hosts) based on [WireGuardServer.hostId].
+ * [AnsibleWireGuardManagementService] (remote Ansible hosts) based on [WireGuardServer.ansibleHost] / [WireGuardServer.hostId].
  */
 @Service
 @Primary

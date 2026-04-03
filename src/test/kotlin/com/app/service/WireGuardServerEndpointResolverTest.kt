@@ -1,14 +1,10 @@
 package com.app.service
 
 import com.app.model.GlobalConfig
+import com.app.model.IPAddress
 import com.app.model.WireGuardServer
-import com.app.repository.AnsibleHostRepository
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
-import java.util.Optional
-import java.util.UUID
 
 class WireGuardServerEndpointResolverTest {
 
@@ -37,13 +33,15 @@ class WireGuardServerEndpointResolverTest {
     }
 
     @Test
-    fun `DefaultWireGuardServerEndpointResolver falls back to global endpoint when ansible host row is missing`() {
-        val hostId = UUID.fromString("1cc0d6be-f8e4-42e2-905a-f7351b74e0de")
-        val repo = mock(AnsibleHostRepository::class.java)
-        `when`(repo.findById(hostId)).thenReturn(Optional.empty())
-        val resolver = DefaultWireGuardServerEndpointResolver(repo)
-        val server = mock(WireGuardServer::class.java)
-        `when`(server.hostId).thenReturn(hostId)
+    fun `DefaultWireGuardServerEndpointResolver uses global endpoint when no ansible host`() {
+        val resolver = DefaultWireGuardServerEndpointResolver()
+        val server = WireGuardServer(
+            name = "test",
+            privateKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+            publicKey = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+            addresses = mutableListOf(IPAddress("10.0.0.1/24")),
+            listenPort = 51820,
+        )
         val global = GlobalConfig(serverEndpoint = "ep.example.com:51820")
         assertEquals("ep.example.com:51820", resolver.resolve(server, global))
     }

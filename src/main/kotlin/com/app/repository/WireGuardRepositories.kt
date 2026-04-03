@@ -35,7 +35,7 @@ interface WireGuardServerRepository : JpaRepository<WireGuardServer, UUID> {
 
     /** Clear dangling references when an Ansible host row is removed (no DB FK on this column). */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE WireGuardServer s SET s.hostId = null WHERE s.hostId = :hostId")
+    @Query("UPDATE WireGuardServer s SET s.ansibleHost = null WHERE s.ansibleHost.id = :hostId")
     fun clearAnsibleHostReference(@Param("hostId") hostId: UUID): Int
 }
 

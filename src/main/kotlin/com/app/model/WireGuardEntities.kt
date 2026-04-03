@@ -4,6 +4,8 @@ import com.app.converter.IPAddressListConverter
 import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.NotFound
+import org.hibernate.annotations.NotFoundAction
 import org.hibernate.annotations.UpdateTimestamp
 import java.net.InetAddress
 import java.net.UnknownHostException
@@ -57,8 +59,17 @@ class WireGuardServer(
     @Column(name = "enabled", nullable = false)
     var enabled: Boolean = true,
 
-    @Column(name = "host_id")
-    var hostId: UUID? = null, // null = local deployment; non-null = remote Ansible deployment
+    /**
+     * Remote deployment target on the control plane's Ansible inventory.
+     * Null means this server is managed locally on the control plane host.
+     * Many WG servers may reference the same host (e.g. wg0 / wg1 on one machine); EAGER avoids
+     * lazy issues when building API responses outside a repository call stack.
+     */
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.EAGER, optional = true)
+    @NotFound(action = NotFoundAction.IGNORE)
+    @JoinColumn(name = "host_id", nullable = true)
+    var ansibleHost: AnsibleHost? = null,
 
     @OneToMany(mappedBy = "server", cascade = [CascadeType.ALL], fetch = FetchType.EAGER, orphanRemoval = true)
     val clients: MutableList<WireGuardClient> = mutableListOf(),
@@ -72,6 +83,10 @@ class WireGuardServer(
     var updatedAt: LocalDateTime = LocalDateTime.now(),
 
 ) {
+    /** Ansible host id for API and routing; mirrors [ansibleHost]?.id. */
+    val hostId: UUID?
+        get() = ansibleHost?.id
+
     /**
      * Get the primary server address (first address)
      */

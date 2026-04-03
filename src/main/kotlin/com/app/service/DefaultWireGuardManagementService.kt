@@ -530,7 +530,8 @@ class DefaultWireGuardManagementService(
             dnsServers = original.dnsServers.toMutableList(),
             postUp = original.postUp,
             postDown = original.postDown,
-            enabled = original.enabled
+            enabled = original.enabled,
+            ansibleHost = original.ansibleHost,
         )
     }
 

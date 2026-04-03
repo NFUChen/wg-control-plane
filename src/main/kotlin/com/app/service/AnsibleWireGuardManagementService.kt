@@ -57,8 +57,7 @@ class AnsibleWireGuardManagementService(
         require(!serverRepository.existsByName(request.name)) { "Server with name '${request.name}' already exists" }
         require(!serverRepository.existsByListenPort(request.listenPort)) { "Port ${request.listenPort} is already in use" }
 
-        // Verify AnsibleHost exists and is usable
-        validateAndGetAnsibleHost(request.hostId)
+        val ansibleHost = validateAndGetAnsibleHost(request.hostId)
 
         val (privateKey, publicKey) = keyGenerator.generateKeyPair()
         val server = WireGuardServer(
@@ -71,7 +70,7 @@ class AnsibleWireGuardManagementService(
             dnsServers = request.dnsServers.map { IPAddress(it) }.toMutableList(),
             postUp = request.postUp?.trim()?.takeIf { it.isNotEmpty() },
             postDown = request.postDown?.trim()?.takeIf { it.isNotEmpty() },
-            hostId = request.hostId
+            ansibleHost = ansibleHost,
         )
 
         return serverRepository.save(server)

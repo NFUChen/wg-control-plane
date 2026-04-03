@@ -3,9 +3,7 @@ package com.app.service
 import com.app.model.AnsibleHost
 import com.app.model.GlobalConfig
 import com.app.model.WireGuardServer
-import com.app.repository.AnsibleHostRepository
 import com.app.service.WireGuardServerEndpointResolver.Companion.formatHostPort
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
 interface WireGuardServerEndpointResolver {
@@ -33,27 +31,14 @@ interface WireGuardServerEndpointResolver {
 
 /**
  * Resolves the WireGuard [Peer] Endpoint for client configs and API responses.
- * Local servers (no [WireGuardServer.hostId]) use the global public endpoint;
+ * Local servers (no [WireGuardServer.ansibleHost]) use the global public endpoint;
  * remote Ansible-backed servers use that host's actual IP and this server's listen port.
  */
 @Component
-class DefaultWireGuardServerEndpointResolver(
-    private val ansibleHostRepository: AnsibleHostRepository
-): WireGuardServerEndpointResolver {
-
-    private val log = LoggerFactory.getLogger(javaClass)
+class DefaultWireGuardServerEndpointResolver : WireGuardServerEndpointResolver {
 
     override fun resolve(server: WireGuardServer, globalConfig: GlobalConfig): String {
-        val hostId = server.hostId ?: return globalConfig.serverEndpoint
-        val host = ansibleHostRepository.findById(hostId).orElse(null)
-        if (host == null) {
-            log.warn(
-                "WireGuard server {} references missing Ansible host {}; using global server endpoint",
-                server.id,
-                hostId,
-            )
-            return globalConfig.serverEndpoint
-        }
+        val host = server.ansibleHost ?: return globalConfig.serverEndpoint
         return formatEndpoint(host, server.listenPort)
     }
 
