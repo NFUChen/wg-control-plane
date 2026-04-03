@@ -3,9 +3,12 @@ package com.app.service.ansible
 import com.app.model.AnsibleHost
 import com.app.model.AnsibleInventoryGroup
 import com.app.model.IPAddress
+import com.app.model.ClientDeploymentStatus
 import com.app.repository.AnsibleHostRepository
 import com.app.repository.AnsibleInventoryGroupRepository
 import com.app.repository.PrivateKeyRepository
+import com.app.repository.WireGuardClientRepository
+import com.app.repository.WireGuardServerRepository
 import com.app.view.ansible.CreateAnsibleHostRequest
 import com.app.view.ansible.CreateAnsibleInventoryGroupRequest
 import com.app.view.ansible.UpdateAnsibleHostRequest
@@ -26,6 +29,8 @@ class DefaultAnsibleService(
     private val ansibleHostRepository: AnsibleHostRepository,
     private val ansibleInventoryGroupRepository: AnsibleInventoryGroupRepository,
     private val privateKeyRepository: PrivateKeyRepository,
+    private val wireGuardServerRepository: WireGuardServerRepository,
+    private val wireGuardClientRepository: WireGuardClientRepository,
     private val ansibleInventoryGenerator: AnsibleInventoryGenerator,
     private val objectMapper: ObjectMapper
 ) : AnsibleService {
@@ -161,6 +166,8 @@ class DefaultAnsibleService(
         if (!ansibleHostRepository.existsById(id)) {
             throw NoSuchElementException("Host with ID $id not found")
         }
+        wireGuardServerRepository.clearAnsibleHostReference(id)
+        wireGuardClientRepository.clearAnsibleHostReference(id, ClientDeploymentStatus.NONE)
         ansibleHostRepository.deleteById(id)
     }
 

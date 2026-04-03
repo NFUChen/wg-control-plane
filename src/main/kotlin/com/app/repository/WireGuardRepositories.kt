@@ -1,8 +1,10 @@
 package com.app.repository
 
+import com.app.model.ClientDeploymentStatus
 import com.app.model.WireGuardClient
 import com.app.model.WireGuardServer
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
@@ -30,6 +32,11 @@ interface WireGuardServerRepository : JpaRepository<WireGuardServer, UUID> {
 
     @Query("SELECT s FROM WireGuardServer s LEFT JOIN FETCH s.clients WHERE s.id = :id")
     fun findByIdWithClients(@Param("id") id: UUID): WireGuardServer?
+
+    /** Clear dangling references when an Ansible host row is removed (no DB FK on this column). */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE WireGuardServer s SET s.hostId = null WHERE s.hostId = :hostId")
+    fun clearAnsibleHostReference(@Param("hostId") hostId: UUID): Int
 }
 
 /**
@@ -60,5 +67,14 @@ interface WireGuardClientRepository : JpaRepository<WireGuardClient, UUID> {
     fun existsByHostIdAndInterfaceName(hostId: UUID, interfaceName: String): Boolean
 
     fun existsByHostIdAndInterfaceNameAndIdNot(hostId: UUID, interfaceName: String, id: UUID): Boolean
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+        "UPDATE WireGuardClient c SET c.hostId = null, c.deploymentStatus = :noneStatus WHERE c.hostId = :hostId",
+    )
+    fun clearAnsibleHostReference(
+        @Param("hostId") hostId: UUID,
+        @Param("noneStatus") noneStatus: ClientDeploymentStatus,
+    ): Int
 }
 

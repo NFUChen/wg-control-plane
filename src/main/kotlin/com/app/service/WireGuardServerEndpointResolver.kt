@@ -5,6 +5,7 @@ import com.app.model.GlobalConfig
 import com.app.model.WireGuardServer
 import com.app.repository.AnsibleHostRepository
 import com.app.service.WireGuardServerEndpointResolver.Companion.formatHostPort
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
 interface WireGuardServerEndpointResolver {
@@ -40,10 +41,18 @@ class DefaultWireGuardServerEndpointResolver(
     private val ansibleHostRepository: AnsibleHostRepository
 ): WireGuardServerEndpointResolver {
 
+    private val log = LoggerFactory.getLogger(javaClass)
+
     override fun resolve(server: WireGuardServer, globalConfig: GlobalConfig): String {
         val hostId = server.hostId ?: return globalConfig.serverEndpoint
-        val host = ansibleHostRepository.findById(hostId).orElseThrow {
-            IllegalStateException("Ansible host not found for WireGuard server (hostId=$hostId)")
+        val host = ansibleHostRepository.findById(hostId).orElse(null)
+        if (host == null) {
+            log.warn(
+                "WireGuard server {} references missing Ansible host {}; using global server endpoint",
+                server.id,
+                hostId,
+            )
+            return globalConfig.serverEndpoint
         }
         return formatEndpoint(host, server.listenPort)
     }
