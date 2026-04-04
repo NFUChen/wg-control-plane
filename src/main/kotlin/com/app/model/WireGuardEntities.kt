@@ -82,6 +82,8 @@ class WireGuardServer(
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime = LocalDateTime.now(),
 
+    @Column(name = "agent_token", nullable = false, unique = true)
+    val agentToken: String
 ) {
     /** Ansible host id for API and routing; mirrors [ansibleHost]?.id. */
     val hostId: UUID?
@@ -192,6 +194,10 @@ class WireGuardClient(
     @UpdateTimestamp
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime = LocalDateTime.now(),
+
+
+    @Column(name = "agent_token", nullable = false, unique = true)
+    val agentToken: String
 ) {
 
     val plainTextAllowedIPs: String
