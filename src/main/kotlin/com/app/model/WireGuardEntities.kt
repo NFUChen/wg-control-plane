@@ -166,8 +166,17 @@ class WireGuardClient(
     @Column(name = "enabled", nullable = false)
     var enabled: Boolean = true,
 
-    @Column(name = "host_id")
-    var hostId: UUID? = null, // null = config file only; non-null = deploy to remote AnsibleHost
+    /**
+     * Remote deployment target on the control plane's Ansible inventory.
+     * Null means this server is managed locally on the control plane host.
+     * Many WG servers may reference the same host (e.g. wg0 / wg1 on one machine); EAGER avoids
+     * lazy issues when building API responses outside a repository call stack.
+     */
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.EAGER, optional = true)
+    @NotFound(action = NotFoundAction.IGNORE)
+    @JoinColumn(name = "host_id", nullable = true)
+    var ansibleHost: AnsibleHost? = null,
 
     @Column(name = "last_handshake")
     var lastHandshake: LocalDateTime? = null,
@@ -199,6 +208,10 @@ class WireGuardClient(
     @Column(name = "agent_token", nullable = false, unique = true)
     val agentToken: String
 ) {
+
+    /** Ansible host id for API and routing; mirrors [ansibleHost]?.id. */
+    val hostId: UUID?
+        get() = ansibleHost?.id
 
     val plainTextAllowedIPs: String
         get() = allowedIPs.joinToString(",") { it.address }

@@ -31,6 +31,7 @@ import java.util.*
 @Service("AnsibleWireGuardManagementService")
 @Transactional
 class AnsibleWireGuardManagementService(
+    private val agentTokenGenerator: AgentTokenGenerator,
     private val serverRepository: WireGuardServerRepository,
     private val clientRepository: WireGuardClientRepository,
     private val keyGenerator: WireGuardKeyGenerator,
@@ -48,6 +49,9 @@ class AnsibleWireGuardManagementService(
         /** Must match the group name in [AnsibleInventoryGenerator.inventoryForSinglePlaybookTarget]. */
         private const val ANSIBLE_INVENTORY_GROUP = "wireguard_servers"
     }
+
+    val SERVER_TOKEN_PREFIX = "wg"
+    val CLIENT_TOKEN_PREFIX = "wgc"
 
     // ========== Server Management ==========
 
@@ -71,6 +75,7 @@ class AnsibleWireGuardManagementService(
             postUp = request.postUp?.trim()?.takeIf { it.isNotEmpty() },
             postDown = request.postDown?.trim()?.takeIf { it.isNotEmpty() },
             ansibleHost = ansibleHost,
+            agentToken = agentTokenGenerator.generateToken(SERVER_TOKEN_PREFIX)
         )
 
         return serverRepository.save(server)
@@ -194,6 +199,8 @@ class AnsibleWireGuardManagementService(
             }
         }
 
+
+
         val trimmedPublic = request.clientPublicKey?.trim()?.takeIf { it.isNotEmpty() }
         val (privateKey, publicKey) = if (trimmedPublic == null) {
             keyGenerator.generateKeyPair()
@@ -202,6 +209,7 @@ class AnsibleWireGuardManagementService(
             // and does not match; the server peer uses [publicKey]. Do not use stored privateKey for client configs.
             Pair(keyGenerator.generatePrivateKey(), trimmedPublic)
         }
+        val ansibleHost = validateAndGetAnsibleHost(request.hostId)
 
         val globalConfig = globalConfigurationService.getCurrentConfig()
         val client = WireGuardClient(
@@ -211,13 +219,14 @@ class AnsibleWireGuardManagementService(
             privateKey = privateKey,
             allowedIPs = request.addresses.toMutableList(),
             presharedKey = request.presharedKey,
-            server = server
+            server = server,
+            ansibleHost = ansibleHost,
+            agentToken = agentTokenGenerator.generateToken(CLIENT_TOKEN_PREFIX)
         ).apply {
             persistentKeepalive = globalConfig.defaultPersistentKeepalive
         }
 
         server.addClient(client)
-        client.hostId = request.hostId
 
         val savedServer = serverRepository.save(server)
         val savedClient = savedServer.clients.find { it.id == client.id }
