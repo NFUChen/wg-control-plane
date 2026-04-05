@@ -31,6 +31,7 @@ import kotlin.jvm.optionals.getOrNull
 @Service
 @Transactional
 class DefaultWireGuardManagementService(
+    private val agentTokenGenerator: AgentTokenGenerator,
     private val serverRepository: WireGuardServerRepository,
     private val clientRepository: WireGuardClientRepository,
     private val keyGenerator: WireGuardKeyGenerator,
@@ -44,6 +45,9 @@ class DefaultWireGuardManagementService(
     companion object {
         private val logger = LoggerFactory.getLogger(DefaultWireGuardManagementService::class.java)
     }
+
+    val SERVER_TOKEN_PREFIX = "wg"
+    val CLIENT_TOKEN_PREFIX = "wgc"
 
     // Safe call that throws exception on failure
     private inline fun <T> safeCall(block: () -> T): T {
@@ -97,6 +101,7 @@ class DefaultWireGuardManagementService(
             dnsServers = request.dnsServers.map { IPAddress(it) }.toMutableList(),
             postUp = request.postUp?.trim()?.takeIf { it.isNotEmpty() },
             postDown = request.postDown?.trim()?.takeIf { it.isNotEmpty() },
+            agentToken = agentTokenGenerator.generateToken(SERVER_TOKEN_PREFIX)
         )
 
         return serverRepository.save(server)
@@ -131,7 +136,8 @@ class DefaultWireGuardManagementService(
             publicKey = publicKey,
             allowedIPs = request.addresses.toMutableList(),
             presharedKey = request.presharedKey,
-            server = server
+            server = server,
+            agentToken = agentTokenGenerator.generateToken(CLIENT_TOKEN_PREFIX)
         ).apply {
             // Apply global configuration defaults
             persistentKeepalive = globalConfig.defaultPersistentKeepalive
@@ -532,6 +538,7 @@ class DefaultWireGuardManagementService(
             postDown = original.postDown,
             enabled = original.enabled,
             ansibleHost = original.ansibleHost,
+            agentToken = original.agentToken
         )
     }
 
