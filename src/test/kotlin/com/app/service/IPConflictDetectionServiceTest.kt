@@ -46,6 +46,7 @@ class IPConflictDetectionServiceTest {
             interfaceName = "wg1",
             privateKey = "client1-private-key",
             publicKey = "client1-public-key",
+            peerIP = mutableListOf(IPAddress("10.0.0.2/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             server = testServer,
             agentToken = "client1-token"
@@ -56,6 +57,7 @@ class IPConflictDetectionServiceTest {
             interfaceName = "wg1",
             privateKey = "client2-private-key",
             publicKey = "client2-public-key",
+            peerIP = mutableListOf(IPAddress("10.0.0.3/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.3/32")),
             server = testServer,
             agentToken = "client2-token"

@@ -111,6 +111,7 @@ class AnsibleWireGuardManagementServiceTest {
             interfaceName = "wg1",
             privateKey = "client-private-key",
             publicKey = "client-public-key",
+            peerIP = mutableListOf(IPAddress("10.0.0.2/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             server = testServer,
             agentToken = "wgc-test-token"
@@ -322,7 +323,8 @@ class AnsibleWireGuardManagementServiceTest {
         val request = AddClientRequest(
             clientName = "New Client",
             interfaceName = "wg1",
-            addresses = listOf(IPAddress("10.0.0.3/32")),
+            peerIPs = listOf(IPAddress("10.0.0.3/32")),
+            allowedIPs = listOf(IPAddress("10.0.0.3/32")),
             hostId = testHost.id
         )
 

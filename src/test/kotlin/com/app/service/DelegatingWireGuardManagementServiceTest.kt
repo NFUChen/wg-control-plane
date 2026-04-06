@@ -95,6 +95,7 @@ class DelegatingWireGuardManagementServiceTest {
             name = "Test Client",
             privateKey = "clientPrivateKey",
             publicKey = "clientPublicKey",
+            peerIP = mutableListOf(IPAddress("10.0.0.2/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             server = localServer,
             agentToken = "client-token"
@@ -115,7 +116,8 @@ class DelegatingWireGuardManagementServiceTest {
         addClientRequest = AddClientRequest(
             clientName = "New Client",
             interfaceName = "wg1",
-            addresses = listOf(IPAddress("10.0.0.3/32"))
+            peerIPs = listOf(IPAddress("10.0.0.3/32")),
+            allowedIPs = listOf(IPAddress("10.0.0.3/32"))
         )
 
         updateClientRequest = UpdateClientRequest(
@@ -288,6 +290,7 @@ class DelegatingWireGuardManagementServiceTest {
             name = updateClientRequest.clientName!!,
             privateKey = testClient.privateKey,
             publicKey = testClient.publicKey,
+            peerIP = testClient.peerIP,
             allowedIPs = testClient.allowedIPs,
             server = testClient.server,
             agentToken = testClient.agentToken
@@ -315,6 +318,7 @@ class DelegatingWireGuardManagementServiceTest {
             name = updateClientRequest.clientName!!,
             privateKey = testClient.privateKey,
             publicKey = testClient.publicKey,
+            peerIP = testClient.peerIP,
             allowedIPs = testClient.allowedIPs,
             server = testClient.server,
             agentToken = testClient.agentToken
@@ -708,6 +712,7 @@ class DelegatingWireGuardManagementServiceTest {
             name = testClient.name,
             privateKey = testClient.privateKey,
             publicKey = testClient.publicKey,
+            peerIP = testClient.peerIP,
             allowedIPs = testClient.allowedIPs,
             server = testClient.server,
             agentToken = testClient.agentToken

@@ -50,6 +50,7 @@ class DefaultWireGuardCommandServiceTest {
             interfaceName = "wg1",
             privateKey = "client-private-key",
             publicKey = "client-public-key-example-123456789",
+            peerIP = mutableListOf(IPAddress("10.0.0.2/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             server = testServer,
             agentToken = "client-token"

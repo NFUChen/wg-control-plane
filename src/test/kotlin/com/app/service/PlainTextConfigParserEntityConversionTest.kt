@@ -191,8 +191,10 @@ class PlainTextConfigParserEntityConversionTest {
         assertEquals("wg0", clientEntity.interfaceName)
         assertEquals("client-private-key-67890", clientEntity.privateKey)
         assertEquals("server-public-key-xyz", clientEntity.publicKey)
-        assertEquals(1, clientEntity.allowedIPs.size)
-        assertEquals("10.0.0.5/32", clientEntity.allowedIPs[0].address)
+        assertEquals("10.0.0.5/32", clientEntity.primaryPeerIP)
+        assertEquals(2, clientEntity.allowedIPs.size)
+        assertEquals("0.0.0.0/0", clientEntity.allowedIPs[0].address)
+        assertEquals("::/0", clientEntity.allowedIPs[1].address)
         assertEquals(20, clientEntity.persistentKeepalive) // From interface section
         assertEquals("client-shared-secret", clientEntity.presharedKey)
         assertEquals(existingServer, clientEntity.server)
