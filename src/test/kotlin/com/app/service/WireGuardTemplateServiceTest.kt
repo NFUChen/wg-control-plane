@@ -9,8 +9,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.transaction.annotation.Transactional
-import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 @SpringBootTest
@@ -58,17 +58,33 @@ class WireGuardTemplateServiceTest {
         // Execute test
         val config = templateService.generateServerConfig(server)
 
-        // Verify result
-        assertContains(config, "[Interface]")
-        assertContains(config, "PrivateKey = ${server.privateKey}")
-        assertContains(config, "Address = 10.0.0.1/24")
-        assertContains(config, "ListenPort = 51820")
+        // Verify result using structured WireGuard config validation
+        val configSections = parseWireGuardConfig(config)
 
-        assertContains(config, "[Peer]")
-        assertContains(config, "PublicKey = BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=")
-        assertContains(config, "AllowedIPs = 10.0.0.2/32")
-        assertContains(config, "PublicKey = CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=")
-        assertContains(config, "AllowedIPs = 10.0.0.3/32")
+        // Verify Interface section
+        val interfaceSection = configSections["Interface"]
+        assertNotNull(interfaceSection, "Interface section should be present")
+        assertEquals(server.privateKey, interfaceSection["PrivateKey"])
+        assertEquals("10.0.0.1/24", interfaceSection["Address"])
+        assertEquals("51820", interfaceSection["ListenPort"])
+
+        // Verify both Peer sections exist
+        val peerSections = configSections.filter { (key, _) -> key.startsWith("Peer") }
+        assertEquals(2, peerSections.size, "Should have exactly 2 Peer sections")
+
+        // Verify client1 peer configuration
+        val client1Peer = peerSections.values.find { peerSection ->
+            peerSection["PublicKey"] == "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="
+        }
+        assertNotNull(client1Peer, "Client1 peer configuration should be present")
+        assertEquals("10.0.0.2/32", client1Peer["AllowedIPs"])
+
+        // Verify client2 peer configuration
+        val client2Peer = peerSections.values.find { peerSection ->
+            peerSection["PublicKey"] == "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC="
+        }
+        assertNotNull(client2Peer, "Client2 peer configuration should be present")
+        assertEquals("10.0.0.3/32", client2Peer["AllowedIPs"])
 
         println("Generated Server Config:")
         println(config)
@@ -105,15 +121,23 @@ class WireGuardTemplateServiceTest {
             allowAllTraffic = true
         )
 
-        // Verify result
-        assertContains(config, "[Interface]")
-        assertContains(config, "PrivateKey = $clientPrivateKey")
-        assertContains(config, "Address = 10.0.0.2/32")
+        // Verify result using structured WireGuard config validation
+        val configSections = parseWireGuardConfig(config)
 
-        assertContains(config, "[Peer]")
-        assertContains(config, "PublicKey = ${server.publicKey}")
-        assertContains(config, "AllowedIPs = 0.0.0.0/0, ::/0")
-        assertContains(config, "Endpoint = ")
+        // Verify Interface section
+        val interfaceSection = configSections["Interface"]
+        assertNotNull(interfaceSection, "Interface section should be present")
+        assertEquals(clientPrivateKey, interfaceSection["PrivateKey"])
+        assertEquals("10.0.0.2/32", interfaceSection["Address"])
+
+        // Verify single Peer section for client config
+        val peerSections = configSections.filter { (key, _) -> key.startsWith("Peer") }
+        assertEquals(1, peerSections.size, "Client config should have exactly 1 Peer section")
+
+        val peerSection = peerSections.values.first()
+        assertEquals(server.publicKey, peerSection["PublicKey"])
+        assertEquals("0.0.0.0/0, ::/0", peerSection["AllowedIPs"])
+        assertTrue(peerSection.containsKey("Endpoint"), "Endpoint should be present in peer section")
 
         println("Generated Client Config:")
         println(config)
@@ -149,8 +173,21 @@ class WireGuardTemplateServiceTest {
             allowAllTraffic = false // Only server network
         )
 
-        // Verify result
-        assertContains(config, "AllowedIPs = 10.0.0.1/24")
+        // Verify result using structured validation
+        val configSections = parseWireGuardConfig(config)
+
+        // Verify Interface section
+        val interfaceSection = configSections["Interface"]
+        assertNotNull(interfaceSection, "Interface section should be present")
+        assertEquals(clientPrivateKey, interfaceSection["PrivateKey"])
+        assertEquals("10.0.0.5/32", interfaceSection["Address"])
+
+        // Verify Peer section with limited traffic (only server network)
+        val peerSections = configSections.filter { (key, _) -> key.startsWith("Peer") }
+        assertEquals(1, peerSections.size, "Client config should have exactly 1 Peer section")
+
+        val peerSection = peerSections.values.first()
+        assertEquals("10.0.0.1/24", peerSection["AllowedIPs"], "Should only allow server network traffic")
 
         println("Generated Limited Client Config:")
         println(config)
@@ -220,5 +257,48 @@ class WireGuardTemplateServiceTest {
         assertEquals(128, ipv6PlainAddress.prefixLength)
 
         println("✓ Plain IP address validation test passed")
+    }
+
+    /**
+     * Parse WireGuard configuration into sections for structured validation
+     * Returns a map where keys are section names and values are maps of property-value pairs
+     */
+    private fun parseWireGuardConfig(config: String): Map<String, Map<String, String>> {
+        val sections = mutableMapOf<String, MutableMap<String, String>>()
+        var currentSection: String? = null
+        var peerCount = 0
+
+        config.lines().forEach { line ->
+            val trimmedLine = line.trim()
+
+            when {
+                trimmedLine.isEmpty() || trimmedLine.startsWith("#") -> {
+                    // Skip empty lines and comments
+                }
+                trimmedLine.startsWith("[") && trimmedLine.endsWith("]") -> {
+                    // Section header
+                    val sectionName = trimmedLine.removeSurrounding("[", "]")
+                    currentSection = if (sectionName == "Peer") {
+                        // Handle multiple Peer sections
+                        "Peer$peerCount"
+                    } else {
+                        sectionName
+                    }
+                    if (sectionName == "Peer") peerCount++
+                    sections[currentSection!!] = mutableMapOf()
+                }
+                trimmedLine.contains("=") && currentSection != null -> {
+                    // Property line
+                    val parts = trimmedLine.split("=", limit = 2)
+                    if (parts.size == 2) {
+                        val key = parts[0].trim()
+                        val value = parts[1].trim()
+                        sections[currentSection]!![key] = value
+                    }
+                }
+            }
+        }
+
+        return sections
     }
 }
