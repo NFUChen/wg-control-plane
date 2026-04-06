@@ -41,6 +41,7 @@ class WireGuardServerEndpointResolverTest {
             publicKey = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
             addresses = mutableListOf(IPAddress("10.0.0.1/24")),
             listenPort = 51820,
+            agentToken = "test-token"
         )
         val global = GlobalConfig(serverEndpoint = "ep.example.com:51820")
         assertEquals("ep.example.com:51820", resolver.resolve(server, global))
