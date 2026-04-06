@@ -1,6 +1,7 @@
 package com.app.service
 
 import com.app.model.IPAddress
+import com.app.model.WireGuardClient
 import com.app.model.WireGuardServer
 import inet.ipaddr.IPAddressString
 import org.slf4j.LoggerFactory
@@ -45,7 +46,7 @@ class IPConflictDetectionService {
             it.enabled && (excludeClientId == null || it.id != excludeClientId)
         }
 
-        logger.debug("Validating ${newClientIPs.size} new IPs against ${activeClients.size} existing clients")
+        logger.debug("Validating ${newClientIPs.size} new IPs against ${activeClients.size} existing clients and server addresses")
 
         // Parse new client IPs using IPAddress library
         val newAddresses = newClientIPs.map { ip ->
@@ -57,48 +58,113 @@ class IPConflictDetectionService {
             }
         }
 
-        // Validate each new IP
-        newClientIPs.forEachIndexed { index, newIP ->
-            val newAddr = newAddresses[index]
-
-            // Check for CIDR overlaps with existing clients
-            activeClients.forEach { existingClient ->
-                existingClient.allowedIPs.forEach { existingIP ->
-                    try {
-                        val existingAddr = IPAddressString(existingIP.address).address
-                            ?: throw IllegalArgumentException("Invalid existing IP: ${existingIP.address}")
-
-                        // Check for overlap in either direction
-                        when {
-                            // Exact match
-                            newAddr.equals(existingAddr) -> {
-                                throw IllegalArgumentException(
-                                    "IP ${newIP.address} exactly matches existing IP for client '${existingClient.name}'"
-                                )
-                            }
-                            // New IP contains existing (new is supernet)
-                            newAddr.contains(existingAddr) -> {
-                                throw IllegalArgumentException(
-                                    "IP ${newIP.address} would contain existing client '${existingClient.name}' IP ${existingIP.address}"
-                                )
-                            }
-                            // Existing contains new (new is subnet)
-                            existingAddr.contains(newAddr) -> {
-                                throw IllegalArgumentException(
-                                    "IP ${newIP.address} is contained within existing client '${existingClient.name}' IP ${existingIP.address}"
-                                )
-                            }
-                        }
-                    } catch (e: IllegalArgumentException) {
-                        throw e // Re-throw our validation errors
-                    } catch (e: Exception) {
-                        logger.warn("Failed to parse existing IP ${existingIP.address} for client ${existingClient.name}: ${e.message}")
-                        // Continue with next IP rather than failing completely
-                    }
-                }
-            }
+        // Validate each new IP against server addresses and existing clients
+        newClientIPs.zip(newAddresses) { newIP, newAddr ->
+            validateAgainstServerAddresses(newIP, newAddr, server)
+            validateAgainstExistingClients(newIP, newAddr, activeClients)
         }
 
         logger.debug("IP validation completed successfully")
+    }
+
+    /**
+     * Validate new IP against server addresses
+     */
+    private fun validateAgainstServerAddresses(
+        newIP: IPAddress,
+        newAddr: inet.ipaddr.IPAddress,
+        server: WireGuardServer
+    ) {
+        server.addresses.forEach { serverIP ->
+            parseAndCheckConflict(
+                existingIP = serverIP,
+                newIP = newIP,
+                newAddr = newAddr,
+                context = "server",
+                entityName = null
+            )
+        }
+    }
+
+    /**
+     * Validate new IP against existing client addresses
+     */
+    private fun validateAgainstExistingClients(
+        newIP: IPAddress,
+        newAddr: inet.ipaddr.IPAddress,
+        activeClients: List<WireGuardClient>
+    ) {
+        activeClients.forEach { existingClient ->
+            existingClient.allowedIPs.forEach { existingIP ->
+                parseAndCheckConflict(
+                    existingIP = existingIP,
+                    newIP = newIP,
+                    newAddr = newAddr,
+                    context = "client",
+                    entityName = existingClient.name
+                )
+            }
+        }
+    }
+
+    /**
+     * Parse existing IP and check for conflicts with new IP
+     */
+    private fun parseAndCheckConflict(
+        existingIP: IPAddress,
+        newIP: IPAddress,
+        newAddr: inet.ipaddr.IPAddress,
+        context: String,
+        entityName: String?
+    ) {
+        try {
+            val existingAddr = IPAddressString(existingIP.address).address
+                ?: throw IllegalArgumentException("Invalid $context IP: ${existingIP.address}")
+
+            checkIPAddressConflict(newIP, newAddr, existingIP, existingAddr, context, entityName)
+
+        } catch (e: IllegalArgumentException) {
+            throw e // Re-throw validation errors
+        } catch (e: Exception) {
+            val logContext = if (entityName != null) "$context $entityName" else context
+            logger.warn("Failed to parse $logContext IP ${existingIP.address}: ${e.message}")
+            // Continue with next IP rather than failing completely
+        }
+    }
+
+    /**
+     * Check for IP address conflicts between new and existing addresses
+     */
+    private fun checkIPAddressConflict(
+        newIP: IPAddress,
+        newAddr: inet.ipaddr.IPAddress,
+        existingIP: IPAddress,
+        existingAddr: inet.ipaddr.IPAddress,
+        context: String,
+        entityName: String?
+    ) {
+        when {
+            // Exact match
+            newAddr == existingAddr -> {
+                val target = if (context == "server") "server" else "client '$entityName'"
+                throw IllegalArgumentException(
+                    "IP address conflict: ${newIP.address} is already assigned to $target"
+                )
+            }
+            // New IP contains existing (new is supernet)
+            newAddr.contains(existingAddr) -> {
+                val target = if (context == "server") "server IP ${existingIP.address}" else "existing client '$entityName' IP ${existingIP.address}"
+                throw IllegalArgumentException(
+                    "IP address conflict: ${newIP.address} would ${if (context == "server") "contain" else "conflict with"} $target"
+                )
+            }
+            // Existing contains new (new is subnet)
+            existingAddr.contains(newAddr) -> {
+                val target = if (context == "server") "server IP range ${existingIP.address}" else "existing client '$entityName' IP ${existingIP.address}"
+                throw IllegalArgumentException(
+                    "IP address conflict: ${newIP.address} conflicts with $target"
+                )
+            }
+        }
     }
 }
