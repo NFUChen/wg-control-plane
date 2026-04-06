@@ -90,7 +90,7 @@ export interface AddClientRequest {
 export interface UpdateClientRequest {
   clientName?: string;
   interfaceName?: string;
-  addresses?: IPAddress[];
+  peerIPs?: IPAddress[];
   presharedKey?: string;
   persistentKeepalive?: number;
   enabled?: boolean;

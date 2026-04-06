@@ -38,7 +38,7 @@ class WireGuardTemplateServiceTest {
             name = "Test Client 1",
             privateKey = "Client1PrivateKeyAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             publicKey = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
-            peerIP = mutableListOf(IPAddress("10.0.0.2/32")),
+            peerIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             server = server,
             agentToken = "test-client1-token"
@@ -48,7 +48,7 @@ class WireGuardTemplateServiceTest {
             name = "Test Client 2",
             privateKey = "Client2PrivateKeyAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             publicKey = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC=",
-            peerIP = mutableListOf(IPAddress("10.0.0.3/32")),
+            peerIPs = mutableListOf(IPAddress("10.0.0.3/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.3/32")),
             server = server,
             agentToken = "test-client2-token"
@@ -108,7 +108,7 @@ class WireGuardTemplateServiceTest {
             name = "Test Client",
             privateKey = "ClientPrivateKeyDDDDDDDDDDDDDDDDDDDDDDDDDDDD=",
             publicKey = "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD=",
-            peerIP = mutableListOf(IPAddress("10.0.0.2/32")),
+            peerIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             server = server,
             agentToken = "test-client-token"
@@ -161,7 +161,7 @@ class WireGuardTemplateServiceTest {
             name = "Limited Client",
             privateKey = "ClientPrivateKeyHHHHHHHHHHHHHHHHHHHHHHHHHHHH=",
             publicKey = "HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH=",
-            peerIP = mutableListOf(IPAddress("10.0.0.5/32")),
+            peerIPs = mutableListOf(IPAddress("10.0.0.5/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.5/32")),
             server = server,
             agentToken = "test-limited-client-token"

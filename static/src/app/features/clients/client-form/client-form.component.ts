@@ -397,7 +397,7 @@ function optionalExtraAllowedCidrValidator(control: AbstractControl): Validation
                 <div>
                   <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Additional allowed IPs</h3>
                   <p class="text-sm text-gray-600 dark:text-gray-300">
-                    Extra prefixes routed to this peer on the <span class="font-medium">server</span> (e.g. remote site LANs for site-to-site VPN). May be outside the server tunnel subnet. Leave empty if not needed.
+                    Extra CIDRs routed to this peer on the <span class="font-medium">server</span> (beyond peer IP(s) above). Must still lie inside the same VPN network as the server. Leave empty if not needed.
                   </p>
                 </div>
                 <button
@@ -461,7 +461,8 @@ function optionalExtraAllowedCidrValidator(control: AbstractControl): Validation
                   <ul class="text-blue-700 dark:text-blue-300 space-y-1">
                     <li>• Use CIDR notation (e.g., 10.8.0.2/32)</li>
                     <li>
-                      • Peer IP(s) are usually taken from the server tunnel network ({{ getServerNetwork() }}). Additional CIDRs may be other subnets you route through this peer (site-to-site).
+                      • Peer IP(s) and every additional CIDR must fall under the server VPN network
+                      ({{ getServerNetwork() }}). For example, 10.3.5.0/24 is invalid if the server is 10.8.0.0/24.
                     </li>
                     <li>• Each client must use unique addresses across all peer IPs and extra routes</li>
                   </ul>
@@ -738,7 +739,7 @@ export class ClientFormComponent implements OnInit, OnDestroy {
       const body: UpdateClientRequest = {
         clientName: formValue.clientName.trim(),
         interfaceName: (formValue.interfaceName as string).trim(),
-        addresses: (formValue.allowedIPs as { address: string }[])
+        peerIPs: (formValue.peerIPs as { address: string }[])
           .map(a => a.address?.trim())
           .filter((a): a is string => !!a)
           .map(address => ({ address })),

@@ -59,7 +59,7 @@ sealed class ParsedConfig {
                     privateKey = "placeholder-private-key", // Not available in server config
                     publicKey = peerMap["PublicKey"]
                         ?: throw IllegalArgumentException("PublicKey is required in Peer section"),
-                    peerIP = allowedIPsList.toMutableList(),
+                    peerIPs = allowedIPsList.toMutableList(),
                     allowedIPs = allowedIPsList.toMutableList(),
                     persistentKeepalive = peerMap["PersistentKeepalive"]?.toIntOrNull() ?: 25,
                     server = server,
@@ -126,7 +126,7 @@ sealed class ParsedConfig {
                     ?: throw IllegalArgumentException("PrivateKey is required in Interface section"),
                 publicKey = peer["PublicKey"]
                     ?: throw IllegalArgumentException("PublicKey is required in Peer section"),
-                peerIP = mutableListOf(peerIP),
+                peerIPs = mutableListOf(peerIP),
                 allowedIPs = parseIPAddressList(peer["AllowedIPs"] ?: "").toMutableList(),
                 persistentKeepalive = interfaceSection["PersistentKeepalive"]?.toIntOrNull() ?: 25,
                 server = server,

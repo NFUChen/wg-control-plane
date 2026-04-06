@@ -19,7 +19,6 @@ import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import kotlin.test.assertFalse
 
 @ExtendWith(MockitoExtension::class)
 @ActiveProfiles("test")
@@ -111,7 +110,7 @@ class AnsibleWireGuardManagementServiceTest {
             interfaceName = "wg1",
             privateKey = "client-private-key",
             publicKey = "client-public-key",
-            peerIP = mutableListOf(IPAddress("10.0.0.2/32")),
+            peerIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             server = testServer,
             agentToken = "wgc-test-token"

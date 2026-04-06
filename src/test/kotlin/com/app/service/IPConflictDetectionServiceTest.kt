@@ -7,7 +7,6 @@ import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.junit.jupiter.params.provider.CsvSource
-import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.test.context.ActiveProfiles
@@ -46,7 +45,7 @@ class IPConflictDetectionServiceTest {
             interfaceName = "wg1",
             privateKey = "client1-private-key",
             publicKey = "client1-public-key",
-            peerIP = mutableListOf(IPAddress("10.0.0.2/32")),
+            peerIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             server = testServer,
             agentToken = "client1-token"
@@ -57,7 +56,7 @@ class IPConflictDetectionServiceTest {
             interfaceName = "wg1",
             privateKey = "client2-private-key",
             publicKey = "client2-public-key",
-            peerIP = mutableListOf(IPAddress("10.0.0.3/32")),
+            peerIPs = mutableListOf(IPAddress("10.0.0.3/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.3/32")),
             server = testServer,
             agentToken = "client2-token"

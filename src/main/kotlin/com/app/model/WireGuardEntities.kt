@@ -145,8 +145,8 @@ class WireGuardClient(
     var presharedKey: String? = null,
 
     @Convert(converter = IPAddressListConverter::class)
-    @Column(name = "peer_ip", nullable = false)
-    val peerIP: MutableList<IPAddress> = mutableListOf(),
+    @Column(name = "peer_ips", nullable = false)
+    val peerIPs: MutableList<IPAddress> = mutableListOf(),
 
     @Convert(converter = IPAddressListConverter::class)
     @Column(name = "allowed_ips", columnDefinition = "TEXT")
@@ -215,7 +215,7 @@ class WireGuardClient(
     val isAllTrafficAllowed: Boolean
         get() = allowedIPs.any { it.address == "0.0.0.0/0" || it.address == "::/0" }
 
-    val primaryPeerIP = peerIP.firstOrNull()?.address ?: ""
+    val primaryPeerIP = peerIPs.firstOrNull()?.address ?: ""
     /**
      * Check if client is currently online (based on recent handshake)
      */

@@ -16,7 +16,6 @@ import org.mockito.kotlin.*
 import org.springframework.test.context.ActiveProfiles
 import kotlin.test.*
 import org.junit.jupiter.api.assertThrows
-import org.mockito.Mockito.`when`
 import java.time.LocalDateTime
 import java.util.*
 
@@ -95,7 +94,7 @@ class DelegatingWireGuardManagementServiceTest {
             name = "Test Client",
             privateKey = "clientPrivateKey",
             publicKey = "clientPublicKey",
-            peerIP = mutableListOf(IPAddress("10.0.0.2/32")),
+            peerIPs = IPAddress("10.0.0.2/32"),
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             server = localServer,
             agentToken = "client-token"
@@ -116,7 +115,7 @@ class DelegatingWireGuardManagementServiceTest {
         addClientRequest = AddClientRequest(
             clientName = "New Client",
             interfaceName = "wg1",
-            peerIPs = listOf(IPAddress("10.0.0.3/32")),
+            peerIP = IPAddress("10.0.0.3/32"),
             allowedIPs = listOf(IPAddress("10.0.0.3/32"))
         )
 
@@ -290,7 +289,7 @@ class DelegatingWireGuardManagementServiceTest {
             name = updateClientRequest.clientName!!,
             privateKey = testClient.privateKey,
             publicKey = testClient.publicKey,
-            peerIP = testClient.peerIP,
+            peerIPs = testClient.peerIPs,
             allowedIPs = testClient.allowedIPs,
             server = testClient.server,
             agentToken = testClient.agentToken
@@ -318,7 +317,7 @@ class DelegatingWireGuardManagementServiceTest {
             name = updateClientRequest.clientName!!,
             privateKey = testClient.privateKey,
             publicKey = testClient.publicKey,
-            peerIP = testClient.peerIP,
+            peerIPs = testClient.peerIPs,
             allowedIPs = testClient.allowedIPs,
             server = testClient.server,
             agentToken = testClient.agentToken
@@ -712,7 +711,7 @@ class DelegatingWireGuardManagementServiceTest {
             name = testClient.name,
             privateKey = testClient.privateKey,
             publicKey = testClient.publicKey,
-            peerIP = testClient.peerIP,
+            peerIPs = testClient.peerIPs,
             allowedIPs = testClient.allowedIPs,
             server = testClient.server,
             agentToken = testClient.agentToken

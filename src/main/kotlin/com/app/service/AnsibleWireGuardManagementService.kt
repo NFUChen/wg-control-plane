@@ -219,7 +219,7 @@ class AnsibleWireGuardManagementService(
             interfaceName = interfaceName,
             publicKey = publicKey,
             privateKey = privateKey,
-            peerIP = request.peerIPs.toMutableList(),
+            peerIPs = request.peerIPs.toMutableList(),
             allowedIPs = request.allowedIPs.toMutableList(),
             presharedKey = request.presharedKey,
             server = server,
@@ -303,13 +303,18 @@ class AnsibleWireGuardManagementService(
             val clientTargetHost = validateAndGetAnsibleHost(client.hostId!!)
             removeRemoteClientConfiguration(client, clientTargetHost, cleanupInterfaceName = oldInterfaceName)
         }
-
         // Update client properties (hostId is set only when adding the client)
         request.clientName?.let { client.name = it }
         request.interfaceName?.let { client.interfaceName = newInterfaceName }
-        request.addresses?.let { addrs ->
-            ipConflictDetectionService.validateUpdatedClientIPs(server, clientId, addrs)
-            client.allowedIPs = addrs.toMutableList()
+        request.peerIPs?.let { peerIPs ->
+            ipConflictDetectionService.validateUpdatedClientIPs(server, clientId, peerIPs)
+            client.peerIPs.clear()
+            client.peerIPs.addAll(peerIPs)
+        }
+        request.allowedIPs?.let { allowedIPs ->
+            ipConflictDetectionService.validateUpdatedClientIPs(server, clientId, allowedIPs)
+            client.allowedIPs.clear()
+            client.allowedIPs.addAll(allowedIPs)
         }
         request.presharedKey?.let { client.presharedKey = it }
         request.persistentKeepalive?.let { client.persistentKeepalive = it }

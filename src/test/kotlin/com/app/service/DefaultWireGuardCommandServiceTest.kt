@@ -5,15 +5,10 @@ import com.app.model.WireGuardClient
 import com.app.model.WireGuardServer
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.test.context.ActiveProfiles
 import kotlin.test.*
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.PipedInputStream
-import java.io.PipedOutputStream
 
 /**
  * Tests for DefaultWireGuardCommandService
@@ -50,7 +45,7 @@ class DefaultWireGuardCommandServiceTest {
             interfaceName = "wg1",
             privateKey = "client-private-key",
             publicKey = "client-public-key-example-123456789",
-            peerIP = mutableListOf(IPAddress("10.0.0.2/32")),
+            peerIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             server = testServer,
             agentToken = "client-token"

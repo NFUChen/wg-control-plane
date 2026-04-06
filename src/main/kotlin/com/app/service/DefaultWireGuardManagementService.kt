@@ -135,7 +135,7 @@ class DefaultWireGuardManagementService(
             interfaceName = interfaceName,
             privateKey = privateKey,
             publicKey = publicKey,
-            peerIP = request.peerIPs.toMutableList(),
+            peerIPs = request.peerIPs.toMutableList(),
             allowedIPs = request.allowedIPs.toMutableList(),
             presharedKey = request.presharedKey,
             server = server,

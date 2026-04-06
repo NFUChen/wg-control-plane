@@ -111,7 +111,7 @@ class DefaultWireGuardManagementServiceGetConfigurationByAgentTokenTest {
             name = "Test Client",
             privateKey = "client-private-key",
             publicKey = "client-public-key",
-            peerIP = mutableListOf(IPAddress("10.0.0.2/32")),
+            peerIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             server = testServer,
             agentToken = clientAgentToken
@@ -200,7 +200,7 @@ class DefaultWireGuardManagementServiceGetConfigurationByAgentTokenTest {
             name = "Different Client",
             privateKey = "different-client-private-key",
             publicKey = "different-client-public-key",
-            peerIP = mutableListOf(IPAddress("172.16.0.10/32")),
+            peerIPs = mutableListOf(IPAddress("172.16.0.10/32")),
             allowedIPs = mutableListOf(IPAddress("172.16.0.10/32")),
             server = differentServer,
             agentToken = differentClientToken

@@ -118,7 +118,9 @@ data class UpdateClientRequest(
 
     val interfaceName: String? = null,
 
-    val addresses: List<IPAddress>? = null,
+    @field:NotEmpty(message = "At least one peer IP is required")
+    val peerIPs: List<IPAddress>?,
+    val allowedIPs: List<IPAddress>? = null,
     val presharedKey: String? = null,
     val persistentKeepalive: Int? = null,
     val enabled: Boolean? = null,
@@ -265,7 +267,7 @@ data class ClientResponse(
                 name = client.name,
                 interfaceName = client.interfaceName,
                 publicKey = client.publicKey,
-                peerIPs = client.peerIP.map { it.address },
+                peerIPs = client.peerIPs.map { it.address },
                 allowedIPs = client.allowedIPs.map { it.address },
                 persistentKeepalive = client.persistentKeepalive,
                 enabled = client.enabled,
