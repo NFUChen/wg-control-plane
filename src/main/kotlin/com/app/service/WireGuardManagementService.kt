@@ -93,4 +93,6 @@ interface WireGuardManagementService {
      * @return the updated client, or `null` if the client was deleted after successful cleanup.
      */
     fun retryClientDeployment(serverId: UUID, clientId: UUID): WireGuardClient?
+
+    fun getConfigurationByAgentToken(agentToken: String): String
 }

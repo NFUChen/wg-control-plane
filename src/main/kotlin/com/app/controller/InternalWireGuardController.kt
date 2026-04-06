@@ -9,6 +9,10 @@ import org.springframework.web.bind.annotation.*
 import java.util.*
 
 
+
+data class AgentTokenRequest(
+    val agentToken: String
+)
 // * Machine-to-machine endpoints secured by [com.app.security.web.filter.ApiKeyAuthenticationInterceptor]
 // * (X-API-Key / Bearer). `web.unprotected-routes` includes `/api/internal/**` so Spring Security does not require JWT.
 @RestController
@@ -29,5 +33,11 @@ class InternalWireGuardController(
             request.dataSent
         )
         return ResponseEntity.ok(ClientResponse.from(client))
+    }
+
+    @PostMapping("/configuration/agent-token")
+    fun getConfigurationByAgentToken(@RequestBody(required = true) agentTokenRequest: AgentTokenRequest): ResponseEntity<String> {
+        val config = wireGuardService.getConfigurationByAgentToken(agentToken = agentTokenRequest.agentToken)
+        return ResponseEntity.ok(config)
     }
 }

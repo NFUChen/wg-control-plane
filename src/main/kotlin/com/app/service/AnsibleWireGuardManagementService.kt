@@ -409,6 +409,10 @@ class AnsibleWireGuardManagementService(
         }
     }
 
+    override fun getConfigurationByAgentToken(agentToken: String): String {
+        throw UnsupportedOperationException("Retrieving configuration by agent token is not supported for Ansible-managed servers/clients")
+    }
+
     private fun retryDeploy(client: WireGuardClient): WireGuardClient {
         val server = getServerWithAnsibleHost(client.server.id)
         val clientTargetHost = validateAndGetAnsibleHost(client.hostId!!)

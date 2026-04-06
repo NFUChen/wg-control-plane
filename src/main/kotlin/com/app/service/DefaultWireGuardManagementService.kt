@@ -446,6 +446,21 @@ class DefaultWireGuardManagementService(
         throw UnsupportedOperationException("Retry deploy is only supported for Ansible-managed servers")
     }
 
+    override fun getConfigurationByAgentToken(agentToken: String): String {
+        val server = serverRepository.findByAgentToken(agentToken)
+        if (server != null) {
+            return wireGuardTemplateService.generateServerConfig(server)
+        }
+
+        val client = clientRepository.findByAgentToken(agentToken)
+        if (client != null) {
+            return wireGuardTemplateService.generateClientConfig(client, client.server)
+        }
+
+        throw IllegalArgumentException("No server or client found for the provided agent token")
+
+    }
+
     /**
      * Write server configuration file to local filesystem
      */
