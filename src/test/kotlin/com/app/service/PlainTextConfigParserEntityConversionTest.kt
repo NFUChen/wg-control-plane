@@ -252,15 +252,19 @@ class PlainTextConfigParserEntityConversionTest {
 
     @Test
     fun `should throw exception when required fields are missing in server config`() {
-        // Given - Config without PrivateKey
+        // Given - Config without PrivateKey (multiple peers to make it a server config)
         val invalidServerConfig = """
             [Interface]
             Address = 10.0.0.1/24
             ListenPort = 51820
 
             [Peer]
-            PublicKey = client-key
+            PublicKey = client-key-1
             AllowedIPs = 10.0.0.2/32
+
+            [Peer]
+            PublicKey = client-key-2
+            AllowedIPs = 10.0.0.3/32
         """.trimIndent()
 
         // When & Then
@@ -269,7 +273,7 @@ class PlainTextConfigParserEntityConversionTest {
             parsedConfig.toWireGuardServer()
         }
 
-        assertTrue(exception.message!!.contains("PrivateKey is required"))
+        assertTrue(exception.message!!.contains("PrivateKey is required in Interface section"))
     }
 
     @Test
