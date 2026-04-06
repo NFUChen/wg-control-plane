@@ -157,7 +157,21 @@ import {
               </div>
             </span>
 
-            <!-- Allowed IPs -->
+            <!-- Peer IP (VPN address) -->
+            <span *ngSwitchCase="'peerIPs'">
+              <div class="space-y-1">
+                @for (ip of item.peerIPs; track $index) {
+                  <div class="text-sm font-mono bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-1 rounded">
+                    {{ ip }}
+                  </div>
+                }
+                @if (!item.peerIPs?.length) {
+                  <div class="text-sm text-gray-500 dark:text-gray-400 italic">—</div>
+                }
+              </div>
+            </span>
+
+            <!-- Allowed IPs (extra server-side routes) -->
             <span *ngSwitchCase="'allowedIPs'">
               <div class="space-y-1">
                 @for (ip of item.allowedIPs; track $index) {
@@ -167,7 +181,7 @@ import {
                 }
                 @if (item.allowedIPs.length === 0) {
                   <div class="text-sm text-gray-500 dark:text-gray-400 italic">
-                    No IPs configured
+                    None
                   </div>
                 }
               </div>
@@ -326,6 +340,7 @@ export class ClientListComponent implements OnInit, OnDestroy {
     { key: 'interfaceName', label: 'Interface', sortable: true, type: 'text' },
     { key: 'status', label: 'Status', type: 'boolean' },
     { key: 'publicKey', label: 'Public Key', type: 'text' },
+    { key: 'peerIPs', label: 'Peer IP', type: 'text' },
     { key: 'allowedIPs', label: 'Allowed IPs', type: 'text' },
     { key: 'dataUsage', label: 'Data Usage', type: 'text' },
     { key: 'lastHandshake', label: 'Last Handshake', sortable: true, type: 'date' },
@@ -672,6 +687,7 @@ Endpoint: ${clientInfo.server.endpoint}
       client.name.toLowerCase().includes(query) ||
       client.interfaceName.toLowerCase().includes(query) ||
       client.publicKey.toLowerCase().includes(query) ||
+      (client.peerIPs ?? []).some(ip => ip.toLowerCase().includes(query)) ||
       client.allowedIPs.some(ip => ip.toLowerCase().includes(query))
     );
   }

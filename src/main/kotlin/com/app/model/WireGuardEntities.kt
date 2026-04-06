@@ -98,17 +98,6 @@ class WireGuardServer(
      * Add a client to this server
      */
     fun addClient(client: WireGuardClient) {
-        // Validate that client's allowed IPs are within server's network range
-        primaryAddress.let { serverAddr ->
-            client.allowedIPs.forEach { clientIP ->
-                if (!serverAddr.contains(clientIP)) {
-                    throw IllegalArgumentException(
-                        "Client allowed IP ${clientIP.address} is not within server's network range ${serverAddr.address}"
-                    )
-                }
-            }
-        }
-
         client.server = this
         clients.add(client)
     }
@@ -156,8 +145,13 @@ class WireGuardClient(
     var presharedKey: String? = null,
 
     @Convert(converter = IPAddressListConverter::class)
+    @Column(name = "peer_ip", nullable = false)
+    val peerIP: MutableList<IPAddress> = mutableListOf(),
+
+    @Convert(converter = IPAddressListConverter::class)
     @Column(name = "allowed_ips", columnDefinition = "TEXT")
-    var allowedIPs: MutableList<IPAddress> = mutableListOf(), // e.g., ["10.0.0.2/32"]
+    var allowedIPs: MutableList<IPAddress> = mutableListOf(),
+
 
     @Column(name = "persistent_keepalive")
     var persistentKeepalive: Int = 25,
@@ -221,6 +215,7 @@ class WireGuardClient(
     val isAllTrafficAllowed: Boolean
         get() = allowedIPs.any { it.address == "0.0.0.0/0" || it.address == "::/0" }
 
+    val primaryPeerIP = peerIP.firstOrNull()?.address ?: ""
     /**
      * Check if client is currently online (based on recent handshake)
      */

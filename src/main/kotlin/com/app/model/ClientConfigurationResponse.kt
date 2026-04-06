@@ -11,6 +11,8 @@ data class ClientConfigurationResponse(
     val name: String,
     val interfaceName: String,
     val publicKey: String,
+    /** VPN/tunnel address(es) for this client; distinct from [allowedIPs]. */
+    val peerIPs: List<String>,
     val allowedIPs: List<String>,
     val enabled: Boolean,
     val isOnline: Boolean,

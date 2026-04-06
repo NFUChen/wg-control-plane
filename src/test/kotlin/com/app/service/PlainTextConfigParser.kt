@@ -49,12 +49,18 @@ sealed class ParsedConfig {
             namePrefix: String = "Parsed Client"
         ): List<WireGuardClient> {
             return peers.mapIndexed { index, peerMap ->
+                val allowedIPsList = parseIPAddressList(peerMap["AllowedIPs"] ?: "")
+                if (allowedIPsList.isEmpty()) {
+                    throw IllegalArgumentException("At least one IP required in AllowedIPs for peer ${index + 1}")
+                }
+
                 WireGuardClient(
                     name = "$namePrefix ${index + 1}",
                     privateKey = "placeholder-private-key", // Not available in server config
                     publicKey = peerMap["PublicKey"]
                         ?: throw IllegalArgumentException("PublicKey is required in Peer section"),
-                    allowedIPs = parseIPAddressList(peerMap["AllowedIPs"] ?: ""),
+                    peerIP = allowedIPsList.toMutableList(),
+                    allowedIPs = allowedIPsList.toMutableList(),
                     persistentKeepalive = peerMap["PersistentKeepalive"]?.toIntOrNull() ?: 25,
                     server = server,
                     agentToken = UUID.randomUUID().toString(),
@@ -107,6 +113,12 @@ sealed class ParsedConfig {
             interfaceName: String = "wg0",
             agentToken: String = UUID.randomUUID().toString()
         ): WireGuardClient {
+            // Parse peer IP from Interface.Address (should be single IP)
+            val addressString = interfaceSection["Address"] ?:
+                throw IllegalArgumentException("Address is required in Interface section")
+            val peerIP = parseIPAddressList(addressString).firstOrNull()
+                ?: throw IllegalArgumentException("Valid peer IP address is required in Interface.Address")
+
             return WireGuardClient(
                 name = name,
                 interfaceName = interfaceName,
@@ -114,7 +126,8 @@ sealed class ParsedConfig {
                     ?: throw IllegalArgumentException("PrivateKey is required in Interface section"),
                 publicKey = peer["PublicKey"]
                     ?: throw IllegalArgumentException("PublicKey is required in Peer section"),
-                allowedIPs = parseIPAddressList(interfaceSection["Address"] ?: ""),
+                peerIP = mutableListOf(peerIP),
+                allowedIPs = parseIPAddressList(peer["AllowedIPs"] ?: "").toMutableList(),
                 persistentKeepalive = interfaceSection["PersistentKeepalive"]?.toIntOrNull() ?: 25,
                 server = server,
                 agentToken = agentToken,

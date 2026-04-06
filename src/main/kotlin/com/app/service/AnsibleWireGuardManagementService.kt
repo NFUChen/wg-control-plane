@@ -187,7 +187,9 @@ class AnsibleWireGuardManagementService(
         }
         val serverTargetHost = validateAndGetAnsibleHost(server.hostId!!)
 
-        ipConflictDetectionService.validateNewClientIPs(server, request.addresses.toMutableList())
+        // Check for IP conflicts before creating the client
+        val clientIPs = request.peerIPs.toMutableList().apply { addAll(request.allowedIPs) }
+        ipConflictDetectionService.validateNewClientIPs(server, clientIPs)
 
         val interfaceName = request.interfaceName.trim()
         require(interfaceName.isValidWireGuardInterfaceName()) {
@@ -217,7 +219,8 @@ class AnsibleWireGuardManagementService(
             interfaceName = interfaceName,
             publicKey = publicKey,
             privateKey = privateKey,
-            allowedIPs = request.addresses.toMutableList(),
+            peerIP = request.peerIPs.toMutableList(),
+            allowedIPs = request.allowedIPs.toMutableList(),
             presharedKey = request.presharedKey,
             server = server,
             ansibleHost = ansibleHost,

@@ -119,7 +119,8 @@ class DefaultWireGuardManagementService(
             ?: throw IllegalArgumentException("Server not found: $serverId")
 
         // Check for IP conflicts before creating the client
-        ipConflictDetectionService.validateNewClientIPs(server, request.addresses.toMutableList())
+        val clientIPs = request.peerIPs.toMutableList().apply { addAll(request.allowedIPs) }
+        ipConflictDetectionService.validateNewClientIPs(server, clientIPs)
 
         val interfaceName = request.interfaceName.trim()
         require(interfaceName.isValidWireGuardInterfaceName()) {
@@ -134,7 +135,8 @@ class DefaultWireGuardManagementService(
             interfaceName = interfaceName,
             privateKey = privateKey,
             publicKey = publicKey,
-            allowedIPs = request.addresses.toMutableList(),
+            peerIP = request.peerIPs.toMutableList(),
+            allowedIPs = request.allowedIPs.toMutableList(),
             presharedKey = request.presharedKey,
             server = server,
             agentToken = agentTokenGenerator.generateToken(CLIENT_TOKEN_PREFIX)
@@ -203,17 +205,7 @@ class DefaultWireGuardManagementService(
         }
 
         request.addresses?.let { addrs ->
-            require(addrs.isNotEmpty()) { "At least one IP address is required" }
             ipConflictDetectionService.validateUpdatedClientIPs(server, clientId, addrs)
-            server.primaryAddress.let { serverAddr ->
-                addrs.forEach { clientIP ->
-                    if (!serverAddr.contains(clientIP)) {
-                        throw IllegalArgumentException(
-                            "Client allowed IP ${clientIP.address} is not within server's network range ${serverAddr.address}"
-                        )
-                    }
-                }
-            }
             client.allowedIPs.clear()
             client.allowedIPs.addAll(addrs)
         }

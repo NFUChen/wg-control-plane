@@ -1,6 +1,14 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray } from '@angular/forms';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators
+} from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
@@ -16,6 +24,28 @@ import {
   LoadingState
 } from '../../../models/wireguard.interface';
 import { AnsibleHost } from '../../../models/ansible.interface';
+
+/** IPv4 + CIDR prefix; used for peer IP and optional extra routes. */
+const IPV4_CIDR = /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/;
+
+/** Required peer tunnel IP; trims whitespace so trailing spaces do not fail validation. */
+function peerIpCidrValidator(control: AbstractControl): ValidationErrors | null {
+  const v = (control.value ?? '').toString().trim();
+  if (!v) return { required: true };
+  if (!IPV4_CIDR.test(v)) return { pattern: true };
+  return null;
+}
+
+/**
+ * Optional row in “additional allowed IPs”: empty is valid; non-empty must be IPv4 CIDR.
+ * (Rows with `required` would keep the whole form invalid when the user adds a blank row.)
+ */
+function optionalExtraAllowedCidrValidator(control: AbstractControl): ValidationErrors | null {
+  const v = (control.value ?? '').toString().trim();
+  if (!v) return null;
+  if (!IPV4_CIDR.test(v)) return { pattern: true };
+  return null;
+}
 
 @Component({
   selector: 'app-client-form',
@@ -293,60 +323,132 @@ import { AnsibleHost } from '../../../models/ansible.interface';
             </div>
           }
 
-          <!-- IP Address Configuration -->
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">IP Addresses</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-300">Configure allowed IP addresses for this client</p>
-              </div>
-              <button
-                type="button"
-                (click)="addIPAddress()"
-                class="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40"
-              >
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Add IP Address
-              </button>
-            </div>
-
-            <div formArrayName="addresses" class="space-y-3">
-              @for (address of addresses.controls; track $index; let i = $index) {
-                <div class="space-y-2">
-                  <div [formGroupName]="i" class="flex items-start gap-3">
-                    <div class="flex-1">
-                      <input
-                        type="text"
-                        formControlName="address"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
-                        placeholder="e.g., 10.0.0.2/32"
-                      />
-                      @if (address.get('address')?.invalid && address.get('address')?.touched) {
-                        <div class="mt-1 text-sm text-red-600">
-                          @if (address.get('address')?.errors?.['required']) {
-                            <div>IP address is required</div>
-                          }
-                          @if (address.get('address')?.errors?.['pattern']) {
-                            <div>Invalid IP address format (use CIDR notation)</div>
-                          }
-                        </div>
-                      }
-                    </div>
+          <!-- Peer IP + additional allowed IPs (server-side routes) -->
+          <div class="space-y-6">
+            <div class="space-y-3">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Peer IP (VPN address)</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-300">
+                The address this client uses on the WireGuard tunnel (<code class="text-xs font-mono">Address</code> in the client config).
+                This is not the same as additional allowed IPs below, which add extra prefixes routed to this peer on the server.
+              </p>
+              @if (!isEditMode) {
+                <div class="space-y-3">
+                  <div class="flex flex-wrap items-end justify-between gap-3">
+                    <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">Peer IP(s) *</span>
                     <button
                       type="button"
-                      (click)="removeIPAddress(i)"
-                      class="flex-shrink-0 mt-2 text-red-600 hover:text-red-800"
-                      [disabled]="addresses.length === 1"
+                      (click)="addPeerIP()"
+                      class="inline-flex shrink-0 items-center px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40"
                     >
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
+                      Add address
                     </button>
+                  </div>
+                  <div formArrayName="peerIPs" class="space-y-3 max-w-lg">
+                    @for (row of peerIPs.controls; track $index; let i = $index) {
+                      <div [formGroupName]="i" class="flex items-start gap-3">
+                        <div class="flex-1">
+                          <input
+                            type="text"
+                            formControlName="address"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                            [attr.id]="i === 0 ? 'peerIP0' : null"
+                            placeholder="e.g., 10.8.0.2/32"
+                          />
+                          @if (row.get('address')?.invalid && row.get('address')?.touched) {
+                            <div class="mt-1 text-sm text-red-600">
+                              @if (row.get('address')?.errors?.['required']) {
+                                <div>Address is required</div>
+                              }
+                              @if (row.get('address')?.errors?.['pattern']) {
+                                <div>Invalid format (use CIDR, e.g. 10.8.0.2/32)</div>
+                              }
+                            </div>
+                          }
+                        </div>
+                        <button
+                          type="button"
+                          (click)="removePeerIP(i)"
+                          class="flex-shrink-0 mt-2 text-red-600 hover:text-red-800 disabled:opacity-30 disabled:cursor-not-allowed"
+                          [disabled]="peerIPs.length === 1"
+                          title="Remove address"
+                        >
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    }
                   </div>
                 </div>
               }
+              @if (isEditMode) {
+                <div
+                  class="w-full max-w-lg break-all rounded-md border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                >{{ peerIPDisplay }}</div>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Peer IP is fixed after the client is created.</p>
+              }
+            </div>
+
+            <div class="space-y-4">
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Additional allowed IPs</h3>
+                  <p class="text-sm text-gray-600 dark:text-gray-300">
+                    Extra prefixes routed to this peer on the <span class="font-medium">server</span> (e.g. remote site LANs for site-to-site VPN). May be outside the server tunnel subnet. Leave empty if not needed.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  (click)="addAllowedIP()"
+                  class="inline-flex shrink-0 items-center px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                >
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  Add CIDR
+                </button>
+              </div>
+
+              @if (allowedIPs.length === 0) {
+                <p class="text-sm text-gray-500 dark:text-gray-400 italic">No extra routes — server will use the peer IP only.</p>
+              }
+
+              <div formArrayName="allowedIPs" class="space-y-3">
+                @for (address of allowedIPs.controls; track $index; let i = $index) {
+                  <div class="space-y-2">
+                    <div [formGroupName]="i" class="flex items-start gap-3">
+                      <div class="flex-1">
+                        <input
+                          type="text"
+                          formControlName="address"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                          placeholder="e.g., 10.0.0.10/32"
+                        />
+                        @if (address.get('address')?.invalid && address.get('address')?.touched) {
+                          <div class="mt-1 text-sm text-red-600">
+                            @if (address.get('address')?.errors?.['pattern']) {
+                              <div>Invalid format (use CIDR, e.g. 10.0.0.10/32), or clear the field</div>
+                            }
+                          </div>
+                        }
+                      </div>
+                      <button
+                        type="button"
+                        (click)="removeAllowedIP(i)"
+                        class="flex-shrink-0 mt-2 text-red-600 hover:text-red-800"
+                        title="Remove this CIDR"
+                      >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
             </div>
 
             <div class="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-md p-4">
@@ -355,12 +457,13 @@ import { AnsibleHost } from '../../../models/ansible.interface';
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div class="text-sm">
-                  <p class="text-blue-800 dark:text-blue-200 font-medium mb-1">IP Address Guidelines</p>
+                  <p class="text-blue-800 dark:text-blue-200 font-medium mb-1">IP guidelines</p>
                   <ul class="text-blue-700 dark:text-blue-300 space-y-1">
-                    <li>• Use CIDR notation (e.g., 10.0.0.2/32 for a single IP)</li>
-                    <li>• Ensure IPs are within the server's network range: {{ getServerNetwork() }}</li>
-                    <li>• Each client should have unique IP addresses</li>
-                    <li>• /32 suffix is recommended for individual clients</li>
+                    <li>• Use CIDR notation (e.g., 10.8.0.2/32)</li>
+                    <li>
+                      • Peer IP(s) are usually taken from the server tunnel network ({{ getServerNetwork() }}). Additional CIDRs may be other subnets you route through this peer (site-to-site).
+                    </li>
+                    <li>• Each client must use unique addresses across all peer IPs and extra routes</li>
                   </ul>
                 </div>
               </div>
@@ -411,6 +514,8 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   publicKeyDisplay = '';
   /** For edit flow: wait for GET /api/private/wireguard/clients/:id before showing the form. */
   editDataReady = true;
+  /** Edit mode: read-only VPN/tunnel IPs from API (peer IP is immutable after create). */
+  peerIPDisplay = '';
   ansibleHosts: AnsibleHost[] = [];
   /** Resolved label for edit mode when client has hostId. */
   clientDeployHostSummary = '';
@@ -476,15 +581,33 @@ export class ClientFormComponent implements OnInit, OnDestroy {
       persistentKeepalive: [25, [Validators.min(0), Validators.max(65535)]],
       enabled: [true],
       clientDeployHostId: [''],
-      addresses: this.fb.array([])
+      peerIPs: this.fb.array([this.createPeerIpGroup('')]),
+      allowedIPs: this.fb.array([])
     });
-
-    // Add a default IP address
-    this.addIPAddress();
   }
 
-  get addresses(): FormArray {
-    return this.clientForm.get('addresses') as FormArray;
+  private createPeerIpGroup(value: string): FormGroup {
+    return this.fb.group({
+      address: [value, [peerIpCidrValidator]]
+    });
+  }
+
+  get peerIPs(): FormArray {
+    return this.clientForm.get('peerIPs') as FormArray;
+  }
+
+  get allowedIPs(): FormArray {
+    return this.clientForm.get('allowedIPs') as FormArray;
+  }
+
+  addPeerIP(value: string = ''): void {
+    this.peerIPs.push(this.createPeerIpGroup(value));
+  }
+
+  removePeerIP(index: number): void {
+    if (this.peerIPs.length > 1) {
+      this.peerIPs.removeAt(index);
+    }
   }
 
   loadServer(): void {
@@ -499,6 +622,7 @@ export class ClientFormComponent implements OnInit, OnDestroy {
         if (this.isEditMode && this.clientId) {
           this.loadClientForEdit();
         } else {
+          this.prepareAddClientForm();
           this.suggestNextAvailableIP();
         }
       },
@@ -517,10 +641,11 @@ export class ClientFormComponent implements OnInit, OnDestroy {
           console.warn('Client server id does not match route server id');
         }
         this.publicKeyDisplay = details.publicKey;
-        while (this.addresses.length) {
-          this.addresses.removeAt(0);
+        this.peerIPDisplay = details.peerIPs?.length ? details.peerIPs.join(', ') : '—';
+        while (this.allowedIPs.length) {
+          this.allowedIPs.removeAt(0);
         }
-        details.allowedIPs.forEach(ip => this.addIPAddress(ip));
+        details.allowedIPs.forEach(ip => this.addAllowedIP(ip));
         this.clientForm.patchValue({
           clientName: details.name,
           interfaceName: details.interfaceName,
@@ -530,6 +655,9 @@ export class ClientFormComponent implements OnInit, OnDestroy {
           presharedKey: '',
           removePresharedKey: false
         });
+        while (this.peerIPs.length) {
+          this.peerIPs.removeAt(0);
+        }
         if (!details.hostId) {
           this.clientDeployHostSummary = 'Configuration only (not deployed to a remote host)';
         } else {
@@ -555,17 +683,27 @@ export class ClientFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  addIPAddress(value: string = ''): void {
+  addAllowedIP(value: string = ''): void {
     const addressGroup = this.fb.group({
-      address: [value, [Validators.required, Validators.pattern(/^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/)]]
+      address: [value, [optionalExtraAllowedCidrValidator]]
     });
-    this.addresses.push(addressGroup);
+    this.allowedIPs.push(addressGroup);
   }
 
-  removeIPAddress(index: number): void {
-    if (this.addresses.length > 1) {
-      this.addresses.removeAt(index);
+  removeAllowedIP(index: number): void {
+    this.allowedIPs.removeAt(index);
+  }
+
+  /** Reset controls for “add client” when the route is create (or returning from edit). */
+  private prepareAddClientForm(): void {
+    while (this.peerIPs.length) {
+      this.peerIPs.removeAt(0);
     }
+    this.addPeerIP('');
+    while (this.allowedIPs.length) {
+      this.allowedIPs.removeAt(0);
+    }
+    this.peerIPDisplay = '';
   }
 
   private loadAnsibleHosts(): void {
@@ -600,9 +738,10 @@ export class ClientFormComponent implements OnInit, OnDestroy {
       const body: UpdateClientRequest = {
         clientName: formValue.clientName.trim(),
         interfaceName: (formValue.interfaceName as string).trim(),
-        addresses: formValue.addresses.map((addr: { address: string }) => ({
-          address: addr.address.trim()
-        })),
+        addresses: (formValue.allowedIPs as { address: string }[])
+          .map(a => a.address?.trim())
+          .filter((a): a is string => !!a)
+          .map(address => ({ address })),
         persistentKeepalive: formValue.persistentKeepalive,
         enabled: formValue.enabled
       };
@@ -627,11 +766,25 @@ export class ClientFormComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Create the request object
+    const raw = this.clientForm.getRawValue();
+    const peerList = (raw.peerIPs as { address: string }[])
+      .map(p => p.address?.trim())
+      .filter((a): a is string => !!a);
+    if (!peerList.length) {
+      this.submitting = false;
+      this.formSubmitError = 'At least one peer IP is required.';
+      return;
+    }
+
+    const extraAllowed = (formValue.allowedIPs as { address: string }[])
+      .map(a => a.address?.trim())
+      .filter((a): a is string => !!a);
+
     const addClientRequest: AddClientRequest = {
       clientName: formValue.clientName,
       interfaceName: (formValue.interfaceName as string).trim(),
-      addresses: formValue.addresses.map((addr: any) => ({ address: addr.address }))
+      peerIPs: peerList.map(address => ({ address })),
+      allowedIPs: extraAllowed.map(address => ({ address }))
     };
 
     // Add optional fields if provided
@@ -721,17 +874,19 @@ export class ClientFormComponent implements OnInit, OnDestroy {
       if (networkParts.length === 4) {
         // Simple logic: increment the last octet
         const baseNetwork = `${networkParts[0]}.${networkParts[1]}.${networkParts[2]}`;
-        const usedIPs = this.server.clients?.map(client =>
-          client.allowedIPs.map(ip => ip.split('/')[0])
-        ).flat() || [];
+        const usedIPs =
+          this.server.clients?.flatMap(client => [
+            ...(client.peerIPs ?? []).map(ip => ip.split('/')[0]),
+            ...client.allowedIPs.map(ip => ip.split('/')[0])
+          ]) ?? [];
 
         // Find next available IP starting from .2 (assuming .1 is the server)
         for (let i = 2; i <= 254; i++) {
           const candidateIP = `${baseNetwork}.${i}`;
           if (!usedIPs.includes(candidateIP)) {
-            // Update the first address field if it's empty
-            if (this.addresses.length > 0 && !this.addresses.at(0)?.get('address')?.value) {
-              this.addresses.at(0)?.get('address')?.setValue(`${candidateIP}/32`);
+            const firstPeer = this.peerIPs.at(0)?.get('address');
+            if (firstPeer && !firstPeer.value?.toString().trim()) {
+              firstPeer.setValue(`${candidateIP}/32`);
             }
             break;
           }

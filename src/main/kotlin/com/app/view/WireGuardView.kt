@@ -101,7 +101,10 @@ data class AddClientRequest(
 
     val presharedKey: String? = null,
 
-    val addresses: List<IPAddress>,
+    @field:NotEmpty(message = "At least one peer IP is required")
+    val peerIPs: List<IPAddress>,
+
+    val allowedIPs: List<IPAddress> = emptyList(),
 
     val hostId: UUID? = null // null = config file only; non-null = deploy to remote AnsibleHost
 )
@@ -240,6 +243,8 @@ data class ClientResponse(
     val name: String,
     val interfaceName: String,
     val publicKey: String,
+    /** VPN/tunnel address(es) for this client (`Address` in client .conf); distinct from [allowedIPs]. */
+    val peerIPs: List<String>,
     val allowedIPs: List<String>,
     val persistentKeepalive: Int,
     val enabled: Boolean,
@@ -260,6 +265,7 @@ data class ClientResponse(
                 name = client.name,
                 interfaceName = client.interfaceName,
                 publicKey = client.publicKey,
+                peerIPs = client.peerIP.map { it.address },
                 allowedIPs = client.allowedIPs.map { it.address },
                 persistentKeepalive = client.persistentKeepalive,
                 enabled = client.enabled,

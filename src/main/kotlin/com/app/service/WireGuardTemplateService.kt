@@ -19,11 +19,21 @@ class WireGuardTemplateService(
             "privateKey" to server.privateKey,
             "address" to server.addresses.joinToString(", ") { it.address },
             "listenPort" to server.listenPort,
-            "dnsServers" to server.dnsServers.joinToString(", ") { it.IP },
+            "dnsServers" to server.dnsServers.joinToString(", ") { it.address },
             "mtu" to (server.mtu ?: ""),
             "postUp" to (server.postUp ?: ""),
             "postDown" to (server.postDown ?: ""),
-            "clients" to server.clients.filter { it.enabled }.map { it.toTemplateMap() }
+            "clients" to server.clients.filter { it.enabled }.map { client ->
+                mapOf(
+                    "name" to client.name,
+                    "publicKey" to client.publicKey,
+                    "peerIP" to client.peerIP.joinToString(", ") { it.address },
+                    "allowedIPs" to client.plainTextAllowedIPs,
+                    "persistentKeepalive" to client.persistentKeepalive,
+                    "presharedKey" to client.presharedKey,
+                    "enabled" to client.enabled
+                )
+            }
         )
 
         return templateService.processTemplate("wg/server-config.ftl", dataModel)
@@ -48,8 +58,8 @@ class WireGuardTemplateService(
 
         val dataModel = mutableMapOf<String, Any>(
             "privateKey" to "", // Client should provide their own private key
-            "address" to (client.allowedIPs.joinToString(", ") { it.address }),
-            "dnsServers" to server.dnsServers.joinToString(", ") { it.IP },
+            "peerIP" to client.peerIP.joinToString(", ") { it.address },
+            "dnsServers" to server.dnsServers.joinToString(", ") { it.address },
             "serverPublicKey" to server.publicKey,
             "serverEndpoint" to serverEndpoint,
             "allowedIPs" to allowedIPs.joinToString(", "),
@@ -83,8 +93,8 @@ class WireGuardTemplateService(
 
         val dataModel = mutableMapOf<String, Any>(
             "privateKey" to clientPrivateKey,
-            "address" to (client.allowedIPs.joinToString(", ") { it.address }),
-            "dnsServers" to server.dnsServers.joinToString(", ") { it.IP },
+            "peerIP" to client.peerIP.joinToString(", ") { it.address },
+            "dnsServers" to server.dnsServers.joinToString(", ") { it.address },
             "serverPublicKey" to server.publicKey,
             "serverEndpoint" to serverEndpoint,
             "allowedIPs" to allowedIPs.joinToString(", "),
@@ -139,6 +149,7 @@ class WireGuardTemplateService(
 private fun WireGuardClient.toTemplateMap(): Map<String, Any> = mapOf(
     "name" to name,
     "publicKey" to publicKey,
+    "peerIP" to peerIP.joinToString(", ") { it.address },
     "allowedIPs" to allowedIPs.joinToString(", ") { it.address },
     "presharedKey" to (presharedKey ?: ""),
     "persistentKeepalive" to persistentKeepalive,

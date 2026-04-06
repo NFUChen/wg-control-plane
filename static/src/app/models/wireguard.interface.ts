@@ -75,7 +75,13 @@ export interface AddClientRequest {
   interfaceName: string;
   clientPublicKey?: string;
   presharedKey?: string;
-  addresses: IPAddress[];
+  /** This client's address(es) on the WireGuard tunnel (`Address` in client .conf); multiple = comma-separated in generated config). */
+  peerIPs: IPAddress[];
+  /**
+   * Extra prefixes routed to this peer on the server (in addition to [peerIP]);
+   * distinct from the client-side “which traffic uses the tunnel” setting in generated .conf.
+   */
+  allowedIPs: IPAddress[];
   /** Optional: deploy client config to this Ansible host (only for Ansible-managed servers). Immutable after create. */
   hostId?: string | null;
 }
@@ -96,6 +102,8 @@ export interface ClientDetailResponse {
   name: string;
   interfaceName: string;
   publicKey: string;
+  /** VPN/tunnel address(es); immutable after create. */
+  peerIPs: string[];
   allowedIPs: string[];
   enabled: boolean;
   isOnline: boolean;
@@ -118,6 +126,7 @@ export interface ClientResponse {
   name: string;
   interfaceName: string;
   publicKey: string;
+  peerIPs: string[];
   allowedIPs: string[];
   persistentKeepalive: number;
   enabled: boolean;

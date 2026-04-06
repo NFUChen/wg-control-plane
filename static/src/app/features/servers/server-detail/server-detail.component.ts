@@ -216,6 +216,20 @@ import {
                 </div>
               </span>
 
+              <!-- Peer IP -->
+              <span *ngSwitchCase="'peerIPs'">
+                <div class="space-y-1">
+                  @for (ip of item.peerIPs; track $index) {
+                    <div class="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-gray-100">
+                      {{ ip }}
+                    </div>
+                  }
+                  @if (!item.peerIPs?.length) {
+                    <span class="text-sm text-gray-500 dark:text-gray-400">—</span>
+                  }
+                </div>
+              </span>
+
               <!-- Allowed IPs -->
               <span *ngSwitchCase="'allowedIPs'">
                 <div class="space-y-1">
@@ -223,6 +237,9 @@ import {
                     <div class="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-gray-100">
                       {{ ip }}
                     </div>
+                  }
+                  @if (item.allowedIPs.length === 0) {
+                    <span class="text-sm text-gray-500 dark:text-gray-400 italic">None</span>
                   }
                 </div>
               </span>
@@ -385,6 +402,7 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
     { key: 'name', label: 'Client Name', sortable: true, type: 'text' },
     { key: 'interfaceName', label: 'Interface', sortable: true, type: 'text' },
     { key: 'status', label: 'Status', type: 'boolean' },
+    { key: 'peerIPs', label: 'Peer IP', type: 'text' },
     { key: 'allowedIPs', label: 'Allowed IPs', type: 'text' },
     { key: 'dataUsage', label: 'Data Usage', type: 'text' },
     { key: 'lastHandshake', label: 'Last Handshake', sortable: true, type: 'date' },

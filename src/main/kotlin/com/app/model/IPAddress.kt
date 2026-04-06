@@ -11,7 +11,6 @@ import java.net.UnknownHostException
  */
 @Embeddable
 class IPAddress(
-    @Column(nullable = false)
     val address: String = ""  // e.g., "10.0.0.1/24"
 ) {
     val IP: String

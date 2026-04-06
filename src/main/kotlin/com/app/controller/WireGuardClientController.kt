@@ -37,6 +37,7 @@ class WireGuardClientController(
             name = client.name,
             interfaceName = client.interfaceName,
             publicKey = client.publicKey,
+            peerIPs = client.peerIP.map { it.address },
             allowedIPs = client.allowedIPs.map { it.address },
             enabled = client.enabled,
             isOnline = client.isOnline,
