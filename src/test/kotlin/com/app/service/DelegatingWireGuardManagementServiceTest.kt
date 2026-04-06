@@ -1,6 +1,8 @@
 package com.app.service
 
+import com.app.model.AnsibleHost
 import com.app.model.IPAddress
+import com.app.model.PrivateKey
 import com.app.model.WireGuardClient
 import com.app.model.WireGuardServer
 import com.app.repository.WireGuardServerRepository
@@ -63,6 +65,21 @@ class DelegatingWireGuardManagementServiceTest {
             // Local server - no Ansible host (ansibleHost stays null)
         )
 
+        // Setup test PrivateKey and AnsibleHost for remote server
+        val testPrivateKey = PrivateKey(
+            name = "test-ssh-key",
+            content = "test-ssh-private-key-content",
+            enabled = true
+        )
+
+        val testAnsibleHost = AnsibleHost(
+            hostname = "remote-test.example.com",
+            ipAddress = "192.168.1.100",
+            sshUsername = "ansible-user",
+            sshPrivateKey = testPrivateKey,
+            enabled = true
+        )
+
         ansibleServer = WireGuardServer(
             name = "Remote Test Server",
             privateKey = "remoteServerPrivateKey",
@@ -71,8 +88,7 @@ class DelegatingWireGuardManagementServiceTest {
             listenPort = 51821,
             agentToken = "remote-server-token"
         ).apply {
-            // Simulate Ansible-managed server by setting ansibleHost
-            // In real test, we would create an actual AnsibleHost entity
+            ansibleHost = testAnsibleHost
         }
 
         testClient = WireGuardClient(

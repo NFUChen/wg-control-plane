@@ -91,8 +91,11 @@ class DefaultGlobalConfigurationServiceTest {
         whenever(repository.hasAnyConfiguration()).thenThrow(RuntimeException("Database not ready"))
 
         // When & Then - should not throw exception
-        assertDoesNotFail {
+        try {
             configurationService.initializeDefaultConfiguration()
+            // Test passes if no exception is thrown
+        } catch (e: Exception) {
+            fail("Expected no exception but got: ${e.message}")
         }
     }
 
@@ -215,16 +218,17 @@ class DefaultGlobalConfigurationServiceTest {
     @Test
     fun `createConfiguration should validate config before saving`() {
         // Given
-        val invalidConfig = testConfig.copy(defaultMtu = 0) // Invalid MTU
+        val invalidConfig = testConfig.copy(defaultMtu = 0) // Invalid MTU (below minimum of 1280)
 
-        // Mock the validate method to return errors for invalid config
-        // Note: This assumes GlobalConfig.validate() exists. We'll need to adjust based on actual implementation.
-
-        // When & Then
-        // This test will need to be adjusted based on the actual validation logic in GlobalConfig
-        assertDoesNotFail {
+        // When & Then - should throw exception due to validation failure
+        val exception = assertThrows<IllegalArgumentException> {
             configurationService.createConfiguration(invalidConfig, "user", "Invalid config")
         }
+
+        assertTrue(exception.message!!.contains("Configuration validation failed"))
+        assertTrue(exception.message!!.contains("MTU"))
+        // Verify that repository.save was never called due to validation failure
+        verify(repository, never()).save(any<GlobalConfiguration>())
     }
 
     // ========== Update Configuration Tests ==========
@@ -399,17 +403,21 @@ class DefaultGlobalConfigurationServiceTest {
 
     @Test
     fun `createDefaultConfigurationIfMissing should handle repository save failures`() {
-        // Given
-        whenever(repository.getLatestVersion()).thenThrow(RuntimeException("Database error"))
-        whenever(repository.save(any<GlobalConfiguration>())).thenThrow(RuntimeException("Save failed"))
+        // Given - Simulate database not available
         whenever(repository.findCurrent()).thenReturn(null)
+        whenever(repository.getLatestVersion()).thenThrow(RuntimeException("Database error"))
 
         // When
         val result = configurationService.getCurrentConfiguration()
 
-        // Then
+        // Then - Should return in-memory fallback when database operations fail
         assertNotNull(result)
         assertEquals("system-fallback", result.createdBy)
+        assertEquals("In-memory fallback configuration", result.changeDescription)
+        verify(repository).findCurrent()
+        verify(repository).getLatestVersion()
+        // save() should never be called because getLatestVersion() throws exception first
+        verify(repository, never()).save(any<GlobalConfiguration>())
     }
 
     // ========== Integration-style Tests ==========
@@ -419,7 +427,6 @@ class DefaultGlobalConfigurationServiceTest {
         // Given - Initial state
         whenever(repository.hasAnyConfiguration()).thenReturn(false)
         whenever(repository.getLatestVersion()).thenReturn(null, 1L, 2L)
-        whenever(repository.findCurrent()).thenReturn(testConfiguration)
 
         var savedConfigurations = mutableListOf<GlobalConfiguration>()
         whenever(repository.save(any<GlobalConfiguration>())).thenAnswer { invocation ->
@@ -443,12 +450,4 @@ class DefaultGlobalConfigurationServiceTest {
     }
 
     // ========== Helper Methods ==========
-
-    private fun assertDoesNotFail(block: () -> Unit) {
-        try {
-            block()
-        } catch (e: Exception) {
-            fail("Expected no exception but got: ${e.message}")
-        }
-    }
 }
