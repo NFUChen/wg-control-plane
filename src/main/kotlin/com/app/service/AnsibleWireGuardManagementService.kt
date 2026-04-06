@@ -194,7 +194,7 @@ class AnsibleWireGuardManagementService(
             "Client interface name must be wg0 through wg99"
         }
         if (request.hostId != null) {
-            require(!clientRepository.existsByHostIdAndInterfaceName(request.hostId, interfaceName)) {
+            require(!clientRepository.existsByAnsibleHostIdAndInterfaceName(request.hostId, interfaceName)) {
                 "Interface '$interfaceName' is already in use on the selected Ansible host"
             }
         }
@@ -282,7 +282,7 @@ class AnsibleWireGuardManagementService(
             }
             if (client.hostId != null) {
                 require(
-                    !clientRepository.existsByHostIdAndInterfaceNameAndIdNot(
+                    !clientRepository.existsByAnsibleHostIdAndInterfaceNameAndIdNot(
                         client.hostId!!,
                         newInterfaceName,
                         clientId,

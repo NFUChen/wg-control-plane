@@ -64,13 +64,13 @@ interface WireGuardClientRepository : JpaRepository<WireGuardClient, UUID> {
 
     fun deleteByServerId(serverId: UUID)
 
-    fun existsByHostIdAndInterfaceName(hostId: UUID, interfaceName: String): Boolean
+    fun existsByAnsibleHostIdAndInterfaceName(hostId: UUID, interfaceName: String): Boolean
 
-    fun existsByHostIdAndInterfaceNameAndIdNot(hostId: UUID, interfaceName: String, id: UUID): Boolean
+    fun existsByAnsibleHostIdAndInterfaceNameAndIdNot(hostId: UUID, interfaceName: String, id: UUID): Boolean
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(
-        "UPDATE WireGuardClient c SET c.hostId = null, c.deploymentStatus = :noneStatus WHERE c.hostId = :hostId",
+        "UPDATE WireGuardClient c SET c.ansibleHost = null, c.deploymentStatus = :noneStatus WHERE c.ansibleHost.id = :hostId",
     )
     fun clearAnsibleHostReference(
         @Param("hostId") hostId: UUID,
