@@ -296,12 +296,10 @@ export class WireguardService {
    * Preview client configuration (same generated text as download, including PrivateKey line).
    */
   getClientConfigurationPreview(
-    clientId: string,
-    allowAllTraffic: boolean = false
+    clientId: string
   ): Observable<ConfigurationPreview> {
-    const q = allowAllTraffic ? '?allowAllTraffic=true' : '';
     return this.http
-      .get<ConfigurationPreview>(`${this.clientBaseUrl}/${clientId}/preview${q}`)
+      .get<ConfigurationPreview>(`${this.clientBaseUrl}/${clientId}/preview`)
       .pipe(catchError(error => this.handleError(error)));
   }
 
@@ -309,12 +307,10 @@ export class WireguardService {
    * Download full client configuration (includes private key)
    */
   downloadClientConfig(
-    clientId: string,
-    allowAllTraffic: boolean = false
+    clientId: string
   ): Observable<{ content: string; fileName: string }> {
-    const q = allowAllTraffic ? '?allowAllTraffic=true' : '';
     return this.http
-      .get(`${this.clientBaseUrl}/${clientId}/download${q}`, {
+      .get(`${this.clientBaseUrl}/${clientId}/download`, {
         responseType: 'text',
         observe: 'response'
       })

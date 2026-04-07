@@ -51,7 +51,6 @@ data class ConfigurationMetadata(
     val clientId: UUID,
     val serverName: String,
     val createdAt: LocalDateTime,
-    val allowAllTraffic: Boolean,
     val configHash: String,
     val validationErrors: List<String> = emptyList()
 )
@@ -60,6 +59,5 @@ data class ConfigurationMetadata(
  * Request parameters for configuration generation
  */
 data class ConfigurationRequest(
-    val allowAllTraffic: Boolean = false,
     val includePresharedKey: Boolean = true
 )

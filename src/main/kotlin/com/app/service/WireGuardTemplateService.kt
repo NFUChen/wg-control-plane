@@ -45,16 +45,19 @@ class WireGuardTemplateService(
     fun generateClientConfig(
         client: WireGuardClient,
         server: WireGuardServer,
-        allowAllTraffic: Boolean = false
     ): String {
-        val allowedIPs = if (allowAllTraffic) {
-            listOf("0.0.0.0/0", "::/0")
-        } else {
-            server.addresses.map { it.address }
-        }
-
         val globalConfig = globalConfigurationService.getCurrentConfig()
         val serverEndpoint = wireGuardServerEndpointResolver.resolve(server, globalConfig)
+
+        val tunnelAllowedIPs = mutableSetOf<String>()
+        client.server.addresses.forEach {
+            tunnelAllowedIPs.add(it.address)
+        }
+
+        client.allowedIPs.forEach {
+            tunnelAllowedIPs.add(it.address)
+        }
+
 
         val dataModel = mutableMapOf<String, Any>(
             "privateKey" to "", // Client should provide their own private key
@@ -62,13 +65,11 @@ class WireGuardTemplateService(
             "dnsServers" to server.dnsServers.joinToString(", ") { it.address },
             "serverPublicKey" to server.publicKey,
             "serverEndpoint" to serverEndpoint,
-            "allowedIPs" to allowedIPs.joinToString(", "),
-            "persistentKeepalive" to client.persistentKeepalive
+            "allowedIPs" to tunnelAllowedIPs.joinToString(", "),
+            "persistentKeepalive" to client.persistentKeepalive,
+            "mtu" to (server.mtu ?: 20)
         )
 
-        if (server.mtu != null) {
-            dataModel["mtu"] = server.mtu!!
-        }
 
         return templateService.processTemplate("wg/client-config.ftl", dataModel)
     }
@@ -80,16 +81,20 @@ class WireGuardTemplateService(
         clientPrivateKey: String,
         client: WireGuardClient,
         server: WireGuardServer,
-        allowAllTraffic: Boolean = false
     ): String {
-        val allowedIPs = if (allowAllTraffic) {
-            listOf("0.0.0.0/0", "::/0")
-        } else {
-            server.addresses.map { it.address }
-        }
+
 
         val globalConfig = globalConfigurationService.getCurrentConfig()
         val serverEndpoint = wireGuardServerEndpointResolver.resolve(server, globalConfig)
+
+        val tunnelAllowedIPs = mutableSetOf<String>()
+        client.server.addresses.forEach {
+            tunnelAllowedIPs.add(it.address)
+        }
+
+        client.allowedIPs.forEach {
+            tunnelAllowedIPs.add(it.address)
+        }
 
         val dataModel = mutableMapOf<String, Any>(
             "privateKey" to clientPrivateKey,
@@ -97,13 +102,10 @@ class WireGuardTemplateService(
             "dnsServers" to server.dnsServers.joinToString(", ") { it.address },
             "serverPublicKey" to server.publicKey,
             "serverEndpoint" to serverEndpoint,
-            "allowedIPs" to allowedIPs.joinToString(", "),
-            "persistentKeepalive" to client.persistentKeepalive
+            "allowedIPs" to tunnelAllowedIPs.joinToString(", "),
+            "persistentKeepalive" to client.persistentKeepalive,
+            "mtu" to (server.mtu ?: 20)
         )
-
-        if (server.mtu != null) {
-            dataModel["mtu"] = server.mtu!!
-        }
 
         return templateService.processTemplate("wg/client-config.ftl", dataModel)
     }

@@ -8,4 +8,4 @@ Address = ${peerIP}
 PublicKey = ${serverPublicKey}
 AllowedIPs = ${allowedIPs}
 Endpoint = ${serverEndpoint}
-<#if persistentKeepalive gt 0>PersistentKeepalive = ${persistentKeepalive?c}</#if>
+<#if persistentKeepalive?number gt 0>PersistentKeepalive = ${persistentKeepalive?c}</#if>

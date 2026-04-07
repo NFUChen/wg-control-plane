@@ -682,8 +682,7 @@ class AnsibleWireGuardManagementService(
         val clientConfig = wireGuardTemplateService.generateClientConfigWithPrivateKey(
             clientPrivateKey = client.privateKey,
             client = client,
-            server = server,
-            allowAllTraffic = false
+            server = server
         )
 
         val extraVars = mapOf(

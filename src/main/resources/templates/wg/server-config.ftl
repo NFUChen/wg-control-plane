@@ -12,7 +12,7 @@ Address = ${address}
 [Peer]
 PublicKey = ${client.publicKey}
 AllowedIPs = ${client.peerIP}, ${client.allowedIPs}
-<#if client.persistentKeepalive gt 0>PersistentKeepalive = ${client.persistentKeepalive?c}</#if>
+<#if client.persistentKeepalive?number gt 0>PersistentKeepalive = ${client.persistentKeepalive?c}</#if>
 <#if client.presharedKey?has_content>PresharedKey = ${client.presharedKey}</#if>
 
 

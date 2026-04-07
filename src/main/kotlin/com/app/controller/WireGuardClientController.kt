@@ -62,10 +62,9 @@ class WireGuardClientController(
      */
     @GetMapping("/{clientId}/preview")
     fun getConfigurationPreview(
-        @PathVariable clientId: UUID,
-        @RequestParam(defaultValue = "false") allowAllTraffic: Boolean = false
+        @PathVariable clientId: UUID
     ): ResponseEntity<ConfigurationPreview> {
-        val configContent = generateClientConfiguration(clientId, allowAllTraffic)
+        val configContent = generateClientConfiguration(clientId)
         val client = managementService.getClientById(clientId)
         val server = managementService.getServerById(client.server.id)
 
@@ -82,7 +81,6 @@ class WireGuardClientController(
                 clientId = client.id,
                 serverName = server.name,
                 createdAt = LocalDateTime.now(),
-                allowAllTraffic = allowAllTraffic,
                 configHash = configHash,
                 validationErrors = validationErrors
             )
@@ -97,9 +95,8 @@ class WireGuardClientController(
     @GetMapping("/{clientId}/download")
     fun downloadConfiguration(
         @PathVariable clientId: UUID,
-        @RequestParam(defaultValue = "false") allowAllTraffic: Boolean = false
     ): ResponseEntity<String> {
-        val configContent = generateClientConfiguration(clientId, allowAllTraffic)
+        val configContent = generateClientConfiguration(clientId)
         val client = managementService.getClientById(clientId)
         val sanitizedFileName = sanitizeFileName(client.name)
 
@@ -117,7 +114,7 @@ class WireGuardClientController(
      */
     @GetMapping("/{clientId}/validate")
     fun validateConfiguration(@PathVariable clientId: UUID): ResponseEntity<Map<String, Any>> {
-        val configContent = generateClientConfiguration(clientId, allowAllTraffic = false)
+        val configContent = generateClientConfiguration(clientId)
         val client = managementService.getClientById(clientId)
 
         val validationErrors = templateService.validateConfigFormat(configContent)
@@ -136,7 +133,7 @@ class WireGuardClientController(
     /**
      * Generate client configuration content (shared logic)
      */
-    private fun generateClientConfiguration(clientId: UUID, allowAllTraffic: Boolean): String {
+    private fun generateClientConfiguration(clientId: UUID): String {
         val client = managementService.getClientById(clientId)
 
         if (!client.enabled) {
@@ -148,8 +145,7 @@ class WireGuardClientController(
         return templateService.generateClientConfigWithPrivateKey(
             clientPrivateKey = client.privateKey,
             client = client,
-            server = server,
-            allowAllTraffic = allowAllTraffic
+            server = server
         )
     }
 

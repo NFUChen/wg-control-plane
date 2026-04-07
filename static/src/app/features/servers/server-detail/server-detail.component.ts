@@ -295,16 +295,6 @@ import {
               class="max-h-[min(28rem,60vh)] overflow-auto whitespace-pre-wrap break-words rounded-md border border-gray-200 bg-gray-50 p-4 font-mono text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 sm:text-sm"
             >{{ configPreview.content }}</pre>
 
-            <label class="flex cursor-pointer items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-              <input
-                type="checkbox"
-                [checked]="configPreviewAllowAllTraffic"
-                (change)="onConfigPreviewAllowAllChange($any($event.target).checked)"
-                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600"
-              />
-              Route all traffic through VPN (AllowAllTraffic)
-            </label>
-
             <div class="space-y-1 text-xs text-gray-500 dark:text-gray-400">
               <div>Server: {{ configPreview.metadata.serverName }}</div>
               <div class="truncate font-mono" title="{{ configPreview.metadata.configHash }}">
@@ -387,7 +377,6 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
   configPreviewError: string | null = null;
   configPreview: ConfigurationPreview | null = null;
   previewClientId: string | null = null;
-  configPreviewAllowAllTraffic = false;
 
   private destroy$ = new Subject<void>();
 
@@ -535,8 +524,8 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  downloadClientConfig(clientId: string, allowAllTraffic = false): void {
-    this.wireguardService.downloadClientConfig(clientId, allowAllTraffic).subscribe({
+  downloadClientConfig(clientId: string): void {
+    this.wireguardService.downloadClientConfig(clientId).subscribe({
       next: ({ content, fileName }) => {
         const blob = new Blob([content], { type: 'text/plain' });
         const url = window.URL.createObjectURL(blob);
@@ -546,8 +535,7 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
         link.click();
         window.URL.revokeObjectURL(url);
 
-        const trafficType = allowAllTraffic ? ' (all traffic)' : '';
-        this.successMessage = `Configuration downloaded successfully${trafficType}`;
+        this.successMessage = 'Configuration downloaded successfully';
       },
       error: (error) => {
         console.error('Error downloading client config:', error);
@@ -557,7 +545,6 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
 
   openConfigPreview(clientId: string): void {
     this.previewClientId = clientId;
-    this.configPreviewAllowAllTraffic = false;
     this.configPreviewModalOpen = true;
     this.configPreviewError = null;
     this.configPreview = null;
@@ -577,7 +564,7 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
     this.configPreviewLoading = true;
     this.configPreviewError = null;
     this.wireguardService
-      .getClientConfigurationPreview(this.previewClientId, this.configPreviewAllowAllTraffic)
+      .getClientConfigurationPreview(this.previewClientId)
       .subscribe({
         next: preview => {
           this.configPreview = preview;
@@ -588,13 +575,6 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
           this.configPreviewError = this.previewHttpErrorMessage(error);
         }
       });
-  }
-
-  onConfigPreviewAllowAllChange(checked: boolean): void {
-    this.configPreviewAllowAllTraffic = checked;
-    if (this.configPreviewModalOpen && this.previewClientId) {
-      this.loadConfigPreview();
-    }
   }
 
   copyConfigPreviewToClipboard(): void {
@@ -611,7 +591,7 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
 
   downloadFullConfigFromPreview(): void {
     if (!this.previewClientId) return;
-    this.downloadClientConfig(this.previewClientId, this.configPreviewAllowAllTraffic);
+    this.downloadClientConfig(this.previewClientId);
   }
 
   private previewHttpErrorMessage(error: HttpErrorResponse): string {

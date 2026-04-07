@@ -184,7 +184,6 @@ export interface ConfigurationMetadata {
   clientId: string;
   serverName: string;
   createdAt: string;
-  allowAllTraffic: boolean;
   configHash: string;
   validationErrors: string[];
 }
