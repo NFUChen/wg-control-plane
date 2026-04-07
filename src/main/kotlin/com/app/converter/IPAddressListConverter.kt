@@ -17,7 +17,9 @@ class IPAddressListConverter : AttributeConverter<MutableList<IPAddress>, String
     private val objectMapper = ObjectMapper()
 
     override fun convertToDatabaseColumn(attribute: MutableList<IPAddress>?): String? {
-        if (attribute.isNullOrEmpty()) return null
+        // Return null only if attribute is null, not when empty
+        // Empty list should be stored as "[]" to satisfy NOT NULL constraints
+        if (attribute == null) return null
 
         return try {
             // Convert list of IPAddress to list of address strings

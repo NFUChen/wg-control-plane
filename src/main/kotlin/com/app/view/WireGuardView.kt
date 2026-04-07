@@ -1,13 +1,9 @@
 package com.app.view
 
-import com.app.model.ClientDeploymentStatus
-import com.app.model.GOOGLE_DNS
-import com.app.model.IPAddress
-import com.app.model.WireGuardClient
-import com.app.model.WireGuardServer
+import com.app.model.*
 import jakarta.validation.constraints.*
 import java.time.LocalDateTime
-import java.util.UUID
+import java.util.*
 
 
 /**
@@ -102,7 +98,7 @@ data class AddClientRequest(
     val presharedKey: String? = null,
 
     @field:NotEmpty(message = "At least one peer IP is required")
-    val peerIPs: List<IPAddress>,
+    val peerIPs: List<IPAddress> = emptyList(),
 
     val allowedIPs: List<IPAddress> = emptyList(),
 
@@ -111,6 +107,7 @@ data class AddClientRequest(
 
 /**
  * Request DTO for updating an existing client. Omitted fields are left unchanged.
+ * [peerIPs]: null = no change; non-null = update to new value (must not be empty)
  * [presharedKey]: omit to leave unchanged; send empty string to clear the pre-shared key.
  */
 data class UpdateClientRequest(
@@ -118,8 +115,8 @@ data class UpdateClientRequest(
 
     val interfaceName: String? = null,
 
-    @field:NotEmpty(message = "At least one peer IP is required")
-    val peerIPs: List<IPAddress>?,
+    @field:NotEmpty(message = "At least one peer IP is required when updating peerIPs")
+    val peerIPs: List<IPAddress>? = null,
     val allowedIPs: List<IPAddress>? = null,
     val presharedKey: String? = null,
     val persistentKeepalive: Int? = null,
