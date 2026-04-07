@@ -15,7 +15,8 @@ import {
   ServerStatisticsResponse,
   ClientInfo,
   LoadingState,
-  ConfigurationPreview
+  ConfigurationPreview,
+  ServerConfigurationPreview
 } from '../models/wireguard.interface';
 
 @Injectable({
@@ -165,6 +166,41 @@ export class WireguardService {
     return this.http.post<void>(`${this.baseUrl}/servers/${serverId}/stop`, {}).pipe(
       catchError(error => this.handleError(error))
     );
+  }
+
+  /**
+   * Preview server configuration (full generated WireGuard server config).
+   */
+  getServerConfigurationPreview(
+    serverId: string
+  ): Observable<ServerConfigurationPreview> {
+    return this.http
+      .get<ServerConfigurationPreview>(`${this.baseUrl}/servers/${serverId}/preview`)
+      .pipe(catchError(error => this.handleError(error)));
+  }
+
+  /**
+   * Download full server configuration.
+   */
+  downloadServerConfig(
+    serverId: string
+  ): Observable<{ content: string; fileName: string }> {
+    return this.http
+      .get(`${this.baseUrl}/servers/${serverId}/download`, {
+        responseType: 'text',
+        observe: 'response'
+      })
+      .pipe(
+        map(response => {
+          const body = response.body ?? '';
+          const fileName = this.parseContentDispositionFileName(
+            response.headers.get('Content-Disposition'),
+            `server-${serverId}.conf`
+          );
+          return { content: body, fileName };
+        }),
+        catchError(error => this.handleError(error))
+      );
   }
 
   // ==================== Client Operations ====================

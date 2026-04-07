@@ -1,13 +1,19 @@
 package com.app.controller
 
 import com.app.view.*
+import com.app.model.ServerConfigurationMetadata
+import com.app.model.ServerConfigurationPreview
 import com.app.service.GlobalConfigurationService
 import com.app.service.WireGuardManagementService
 import com.app.service.WireGuardServerEndpointResolver
+import com.app.service.WireGuardTemplateService
+import com.app.utils.ConfigFileNameSanitizer
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.time.LocalDateTime
 import java.util.*
 
 @RestController
@@ -15,7 +21,8 @@ import java.util.*
 class WireGuardController(
     private val wireGuardService: WireGuardManagementService,
     private val globalConfigurationService: GlobalConfigurationService,
-    private val wireGuardServerEndpointResolver: WireGuardServerEndpointResolver
+    private val wireGuardServerEndpointResolver: WireGuardServerEndpointResolver,
+    private val templateService: WireGuardTemplateService
 ) {
 
     /**
@@ -92,6 +99,62 @@ class WireGuardController(
         val stats = wireGuardService.getServerStatistics(serverId)
             ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(stats)
+    }
+
+    /**
+     * Get server configuration preview (JSON format with complete configuration including private key).
+     */
+    @GetMapping("/servers/{serverId}/preview")
+    fun getServerConfigurationPreview(
+        @PathVariable serverId: UUID
+    ): ResponseEntity<ServerConfigurationPreview> {
+        val server = wireGuardService.getServerById(serverId)
+        val configContent = templateService.generateServerConfig(server)
+        val validationErrors = templateService.validateConfigFormat(configContent)
+        val configHash = templateService.generateConfigHash(configContent)
+
+        val sanitizedFileName = ConfigFileNameSanitizer.sanitize(
+            originalName = server.name,
+            reservedNamePrefix = "server",
+            fallback = "server_config"
+        )
+        val preview = ServerConfigurationPreview(
+            fileName = "${sanitizedFileName}.conf",
+            content = configContent,
+            metadata = ServerConfigurationMetadata(
+                serverId = server.id,
+                serverName = server.name,
+                createdAt = LocalDateTime.now(),
+                configHash = configHash,
+                validationErrors = validationErrors
+            )
+        )
+
+        return ResponseEntity.ok(preview)
+    }
+
+    /**
+     * Download full server configuration file.
+     */
+    @GetMapping("/servers/{serverId}/download")
+    fun downloadServerConfiguration(
+        @PathVariable serverId: UUID
+    ): ResponseEntity<String> {
+        val server = wireGuardService.getServerById(serverId)
+        val configContent = templateService.generateServerConfig(server)
+        val sanitizedFileName = ConfigFileNameSanitizer.sanitize(
+            originalName = server.name,
+            reservedNamePrefix = "server",
+            fallback = "server_config"
+        )
+
+        return ResponseEntity.ok()
+            .contentType(MediaType.TEXT_PLAIN)
+            .header("Content-Disposition", "attachment; filename=\"${sanitizedFileName}.conf\"")
+            .header("Cache-Control", "no-cache, no-store, must-revalidate")
+            .header("Pragma", "no-cache")
+            .header("Expires", "0")
+            .body(configContent)
     }
 
     /**
@@ -186,4 +249,5 @@ class WireGuardController(
             ResponseEntity.noContent().build()
         }
     }
+
 }

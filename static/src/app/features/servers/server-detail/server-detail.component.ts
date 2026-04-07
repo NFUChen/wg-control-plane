@@ -16,7 +16,8 @@ import {
   ClientResponse,
   TableColumn,
   LoadingState,
-  ConfigurationPreview
+  ConfigurationPreview,
+  ServerConfigurationPreview
 } from '../../../models/wireguard.interface';
 
 @Component({
@@ -71,6 +72,17 @@ import {
               <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Server Configuration Details</p>
             </div>
             <div class="flex items-center gap-3">
+              <button
+                type="button"
+                (click)="openServerConfigPreview()"
+                [disabled]="!serverId"
+                class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Preview Server Config
+              </button>
               <app-status-badge
                 [variant]="getServerStatusVariant(server.enabled)"
                 [label]="server.enabled ? 'Active' : 'Inactive'"
@@ -270,6 +282,67 @@ import {
         </app-data-table>
       }
 
+      <!-- Server config preview -->
+      <app-modal
+        [isOpen]="serverConfigPreviewModalOpen"
+        [title]="serverConfigPreviewTitle"
+        size="xl"
+        [hasFooter]="true"
+        [hasCustomFooter]="true"
+        [showCloseButton]="true"
+        cancelLabel="Close"
+        [showCancelButton]="false"
+        [showConfirmButton]="false"
+        (closeModal)="closeServerConfigPreviewModal()"
+      >
+        @if (serverConfigPreviewLoading) {
+          <div class="flex justify-center py-12">
+            <app-loading-spinner [showText]="true" loadingText="Loading preview..." />
+          </div>
+        } @else if (serverConfigPreviewError) {
+          <app-alert type="error" title="Preview failed" [message]="serverConfigPreviewError" />
+        } @else if (serverConfigPreview) {
+          <div class="space-y-4">
+            <pre
+              class="max-h-[min(28rem,60vh)] overflow-auto whitespace-pre-wrap break-words rounded-md border border-gray-200 bg-gray-50 p-4 font-mono text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 sm:text-sm"
+            >{{ serverConfigPreview.content }}</pre>
+
+            <div class="space-y-1 text-xs text-gray-500 dark:text-gray-400">
+              <div>Server: {{ serverConfigPreview.metadata.serverName }}</div>
+              <div class="truncate font-mono" title="{{ serverConfigPreview.metadata.configHash }}">
+                Hash: {{ serverConfigPreview.metadata.configHash }}
+              </div>
+            </div>
+          </div>
+        }
+
+        <div slot="footer" class="flex w-full flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            (click)="copyServerConfigPreviewToClipboard()"
+            [disabled]="!serverConfigPreview || serverConfigPreviewLoading"
+            class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            Copy preview
+          </button>
+          <button
+            type="button"
+            (click)="downloadServerConfigFromPreview()"
+            [disabled]="!serverId || serverConfigPreviewLoading"
+            class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          >
+            Download full config
+          </button>
+          <button
+            type="button"
+            (click)="closeServerConfigPreviewModal()"
+            class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            Close
+          </button>
+        </div>
+      </app-modal>
+
       <!-- Config preview: same body as download; full .conf including PrivateKey -->
       <app-modal
         [isOpen]="configPreviewModalOpen"
@@ -378,12 +451,24 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
   configPreview: ConfigurationPreview | null = null;
   previewClientId: string | null = null;
 
+  /** Server WireGuard config preview modal */
+  serverConfigPreviewModalOpen = false;
+  serverConfigPreviewLoading = false;
+  serverConfigPreviewError: string | null = null;
+  serverConfigPreview: ServerConfigurationPreview | null = null;
+
   private destroy$ = new Subject<void>();
 
   get configPreviewTitle(): string {
     return this.configPreview?.fileName
       ? `Config preview — ${this.configPreview.fileName}`
       : 'Config preview';
+  }
+
+  get serverConfigPreviewTitle(): string {
+    return this.serverConfigPreview?.fileName
+      ? `Server config preview — ${this.serverConfigPreview.fileName}`
+      : 'Server config preview';
   }
 
   // Client table configuration
@@ -539,6 +624,73 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Error downloading client config:', error);
+      }
+    });
+  }
+
+  openServerConfigPreview(): void {
+    if (!this.serverId) return;
+    this.serverConfigPreviewModalOpen = true;
+    this.serverConfigPreviewError = null;
+    this.serverConfigPreview = null;
+    this.loadServerConfigPreview();
+  }
+
+  closeServerConfigPreviewModal(): void {
+    this.serverConfigPreviewModalOpen = false;
+    this.serverConfigPreview = null;
+    this.serverConfigPreviewError = null;
+    this.serverConfigPreviewLoading = false;
+  }
+
+  loadServerConfigPreview(): void {
+    if (!this.serverId) return;
+    this.serverConfigPreviewLoading = true;
+    this.serverConfigPreviewError = null;
+    this.wireguardService.getServerConfigurationPreview(this.serverId).subscribe({
+      next: preview => {
+        this.serverConfigPreview = preview;
+        this.serverConfigPreviewLoading = false;
+      },
+      error: (error: HttpErrorResponse) => {
+        this.serverConfigPreviewLoading = false;
+        this.serverConfigPreviewError = this.previewHttpErrorMessage(error);
+      }
+    });
+  }
+
+  copyServerConfigPreviewToClipboard(): void {
+    if (!this.serverConfigPreview) return;
+    void navigator.clipboard.writeText(this.serverConfigPreview.content).then(
+      () => {
+        this.successMessage = 'Server preview copied to clipboard.';
+      },
+      () => {
+        this.successMessage = '';
+      }
+    );
+  }
+
+  downloadServerConfigFromPreview(): void {
+    if (!this.serverId) return;
+    this.downloadServerConfig(this.serverId);
+  }
+
+  downloadServerConfig(serverId: string): void {
+    this.wireguardService.downloadServerConfig(serverId).subscribe({
+      next: ({ content, fileName }) => {
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        link.click();
+        window.URL.revokeObjectURL(url);
+
+        this.successMessage = 'Server configuration downloaded successfully';
+      },
+      error: (error) => {
+        console.error('Error downloading server config:', error);
       }
     });
   }

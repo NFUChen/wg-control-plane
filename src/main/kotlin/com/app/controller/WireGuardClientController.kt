@@ -5,6 +5,7 @@ import com.app.service.GlobalConfigurationService
 import com.app.service.WireGuardManagementService
 import com.app.service.WireGuardServerEndpointResolver
 import com.app.service.WireGuardTemplateService
+import com.app.utils.ConfigFileNameSanitizer
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -72,7 +73,11 @@ class WireGuardClientController(
         val validationErrors = templateService.validateConfigFormat(configContent)
         val configHash = templateService.generateConfigHash(configContent)
 
-        val sanitizedFileName = sanitizeFileName(client.name)
+        val sanitizedFileName = ConfigFileNameSanitizer.sanitize(
+            originalName = client.name,
+            reservedNamePrefix = "client",
+            fallback = "client_config"
+        )
 
         val preview = ConfigurationPreview(
             fileName = "${sanitizedFileName}.conf",
@@ -98,7 +103,11 @@ class WireGuardClientController(
     ): ResponseEntity<String> {
         val configContent = generateClientConfiguration(clientId)
         val client = managementService.getClientById(clientId)
-        val sanitizedFileName = sanitizeFileName(client.name)
+        val sanitizedFileName = ConfigFileNameSanitizer.sanitize(
+            originalName = client.name,
+            reservedNamePrefix = "client",
+            fallback = "client_config"
+        )
 
         return ResponseEntity.ok()
             .contentType(MediaType.TEXT_PLAIN)
@@ -149,25 +158,4 @@ class WireGuardClientController(
         )
     }
 
-    /**
-     * Sanitize filename for safe download
-     */
-    private fun sanitizeFileName(originalName: String): String {
-        val illegalChars = setOf('.', ',', '/', '?', '<', '>', '\\', ':', '*', '|', '"', '\n', '\r', '\t')
-        val reservedNames = setOf("con", "nul", "prn", "aux", "com1", "com2", "com3", "com4",
-                                 "com5", "com6", "com7", "com8", "com9", "lpt1", "lpt2",
-                                 "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9")
-
-        var sanitized = originalName
-            .replace(Regex("\\s+"), "_") // Replace spaces with underscores
-            .filter { it !in illegalChars } // Remove illegal characters
-            .take(50) // Limit length
-
-        // Replace reserved names
-        if (sanitized.lowercase() in reservedNames) {
-            sanitized = "client_$sanitized"
-        }
-
-        return sanitized.ifBlank { "client_config" }
-    }
 }

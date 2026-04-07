@@ -194,6 +194,20 @@ export interface ConfigurationPreview {
   metadata: ConfigurationMetadata;
 }
 
+export interface ServerConfigurationMetadata {
+  serverId: string;
+  serverName: string;
+  createdAt: string;
+  configHash: string;
+  validationErrors: string[];
+}
+
+export interface ServerConfigurationPreview {
+  fileName: string;
+  content: string;
+  metadata: ServerConfigurationMetadata;
+}
+
 // API response wrapper
 export interface ApiResponse<T> {
   success: boolean;
