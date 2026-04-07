@@ -1,6 +1,6 @@
 [Interface]
 PrivateKey = ${privateKey}
-Address = ${address}
+Address = ${peerIP}
 <#if dnsServers?has_content>DNS = ${dnsServers}</#if>
 <#if mtu?has_content>MTU = ${mtu?c}</#if>
 
