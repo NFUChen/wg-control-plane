@@ -94,7 +94,7 @@ class DelegatingWireGuardManagementServiceTest {
             name = "Test Client",
             privateKey = "clientPrivateKey",
             publicKey = "clientPublicKey",
-            peerIPs = IPAddress("10.0.0.2/32"),
+            peerIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             allowedIPs = mutableListOf(IPAddress("10.0.0.2/32")),
             server = localServer,
             agentToken = "client-token"
@@ -115,12 +115,13 @@ class DelegatingWireGuardManagementServiceTest {
         addClientRequest = AddClientRequest(
             clientName = "New Client",
             interfaceName = "wg1",
-            peerIP = IPAddress("10.0.0.3/32"),
+            peerIPs = listOf(IPAddress("10.0.0.3/32")),
             allowedIPs = listOf(IPAddress("10.0.0.3/32"))
         )
 
         updateClientRequest = UpdateClientRequest(
             clientName = "Updated Client",
+            peerIPs = null,
             enabled = false
         )
     }

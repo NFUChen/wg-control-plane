@@ -5,6 +5,7 @@ import com.app.model.GOOGLE_DNS
 import com.app.model.IPAddress
 import com.app.model.WireGuardClient
 import com.app.model.WireGuardServer
+import com.fasterxml.jackson.annotation.JsonAlias
 import jakarta.validation.constraints.*
 import java.time.LocalDateTime
 import java.util.UUID
@@ -119,6 +120,7 @@ data class UpdateClientRequest(
     val interfaceName: String? = null,
 
     @field:NotEmpty(message = "At least one peer IP is required")
+    @field:JsonAlias("addresses")
     val peerIPs: List<IPAddress>?,
     val allowedIPs: List<IPAddress>? = null,
     val presharedKey: String? = null,

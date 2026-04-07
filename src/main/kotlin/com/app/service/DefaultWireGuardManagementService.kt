@@ -179,7 +179,8 @@ class DefaultWireGuardManagementService(
         val hadNoChanges =
             request.clientName == null &&
                 request.interfaceName == null &&
-                request.addresses == null &&
+                request.peerIPs == null &&
+                request.allowedIPs == null &&
                 request.presharedKey == null &&
                 request.persistentKeepalive == null &&
                 request.enabled == null
@@ -204,10 +205,15 @@ class DefaultWireGuardManagementService(
             client.interfaceName = trimmed
         }
 
-        request.addresses?.let { addrs ->
-            ipConflictDetectionService.validateUpdatedClientIPs(server, clientId, addrs)
+        request.peerIPs?.let { peerIPs ->
+            ipConflictDetectionService.validateUpdatedClientIPs(server, clientId, peerIPs)
+            client.peerIPs.clear()
+            client.peerIPs.addAll(peerIPs)
+        }
+        request.allowedIPs?.let { allowedIPs ->
+            ipConflictDetectionService.validateUpdatedClientIPs(server, clientId, allowedIPs)
             client.allowedIPs.clear()
-            client.allowedIPs.addAll(addrs)
+            client.allowedIPs.addAll(allowedIPs)
         }
 
         request.presharedKey?.let { psk ->
