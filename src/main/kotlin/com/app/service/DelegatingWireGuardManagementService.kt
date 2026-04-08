@@ -55,6 +55,11 @@ class DelegatingWireGuardManagementService(
         return impl.updateServer(serverId, request)
     }
 
+    override fun deleteServer(serverId: UUID) {
+        val (impl, _) = implForServer(serverId)
+        impl.deleteServer(serverId)
+    }
+
     override fun addClientToServer(serverId: UUID, request: AddClientRequest): WireGuardClient {
         val (impl, _) = implForServer(serverId)
         return impl.addClientToServer(serverId, request)

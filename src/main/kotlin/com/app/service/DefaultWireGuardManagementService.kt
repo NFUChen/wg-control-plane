@@ -12,6 +12,7 @@ import com.app.model.isValidWireGuardInterfaceName
 import com.app.repository.WireGuardClientRepository
 import com.app.repository.WireGuardServerRepository
 import com.app.security.config.WireGuardProperties
+import com.app.utils.ErrorHandlingUtils
 import com.app.utils.WireGuardKeyGenerator
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -49,34 +50,12 @@ class DefaultWireGuardManagementService(
     val SERVER_TOKEN_PREFIX = "wg"
     val CLIENT_TOKEN_PREFIX = "wgc"
 
-    // Safe call that throws exception on failure
-    private inline fun <T> safeCall(block: () -> T): T {
-        return try {
-            block()
-        } catch (e: Exception) {
-            logger.error("Operation failed: ${e.message}", e)
-            throw e
-        }
-    }
+    // Safe call helpers that use the class logger
+    private inline fun <T> safeCall(errorMessage: String, block: () -> T): T =
+        ErrorHandlingUtils.safeCall(logger, errorMessage, block)
 
-    // Safe call that only logs errors (for rollback operations)
-    private inline fun safeCallSilent(block: () -> Unit) {
-        try {
-            block()
-        } catch (e: Exception) {
-            logger.error("Operation failed: ${e.message}", e)
-        }
-    }
-
-    // Safe call with custom error message
-    private inline fun <T> safeCall(errorMessage: String, block: () -> T): T {
-        return try {
-            block()
-        } catch (e: Exception) {
-            logger.error("$errorMessage: ${e.message}", e)
-            throw RuntimeException(errorMessage, e)
-        }
-    }
+    private inline fun safeCallSilent(block: () -> Unit) =
+        ErrorHandlingUtils.safeCallSilent(logger, block)
 
     /**
      * Create a new WireGuard server
@@ -272,6 +251,38 @@ class DefaultWireGuardManagementService(
 
         return updatedServer.clients.find { it.id == clientId }
             ?: throw IllegalStateException("Failed to reload client after update")
+    }
+
+    /**
+     * Delete a WireGuard server
+     */
+    @Transactional
+    override fun deleteServer(serverId: UUID) {
+        val server = serverRepository.findByIdWithClients(serverId)
+            ?: throw IllegalArgumentException("Server not found: $serverId")
+
+        logger.info("Starting deletion of server: ${server.name} (ID: ${server.id})")
+
+        // Stop the interface if it's running
+        if (wireGuardCommandService.isInterfaceRunning(server.interfaceName)) {
+            safeCall("Cannot delete server: failed to stop WireGuard interface") {
+                wireGuardCommandService.stopWireGuardInterface(server.interfaceName)
+                logger.info("Successfully stopped WireGuard interface: ${server.interfaceName}")
+            }
+        }
+
+        // Delete configuration file from filesystem
+        safeCallSilent {
+            val configFile = Paths.get(wireGuardProperties.config.directory, "${server.interfaceName}.conf")
+            if (Files.exists(configFile)) {
+                Files.delete(configFile)
+                logger.info("Successfully deleted configuration file: $configFile")
+            }
+        }
+
+        // Delete from database (cascade will delete associated clients due to orphanRemoval = true)
+        serverRepository.delete(server)
+        logger.info("Successfully deleted server from database: ${server.name} (ID: ${server.id})")
     }
 
     /**

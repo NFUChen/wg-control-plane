@@ -174,6 +174,14 @@ class WireGuardController(
         )
     }
 
+    /**
+     * Delete a WireGuard server
+     */
+    @DeleteMapping("/servers/{serverId}")
+    fun deleteServer(@PathVariable serverId: UUID): ResponseEntity<Void> {
+        wireGuardService.deleteServer(serverId)
+        return ResponseEntity.noContent().build()
+    }
 
     /**
      * Add existing client to server

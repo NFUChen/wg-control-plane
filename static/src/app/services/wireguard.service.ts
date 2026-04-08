@@ -154,6 +154,26 @@ export class WireguardService {
   }
 
   /**
+   * Delete server
+   */
+  deleteServer(serverId: string): Observable<void> {
+    this.setServersLoading(true);
+    return this.http.delete<void>(`${this.baseUrl}/servers/${serverId}`).pipe(
+      tap(() => {
+        // Remove from cache
+        const currentServers = this.serversCache.getValue();
+        const updatedServers = currentServers.filter(server => server.id !== serverId);
+        this.serversCache.next(updatedServers);
+        this.setServersLoading(false);
+      }),
+      catchError(error => {
+        this.setServersLoading(false, this.getErrorMessage(error));
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
    * Launch server
    */
   launchServer(serverId: string): Observable<void> {

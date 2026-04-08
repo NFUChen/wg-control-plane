@@ -1,7 +1,9 @@
 package com.app.service
 
+import com.app.model.ClientDeploymentStatus
+import com.app.model.WireGuardClient
+import com.app.model.WireGuardServer
 import com.app.view.*
-import com.app.model.*
 import java.time.LocalDateTime
 import java.util.*
 
@@ -16,6 +18,11 @@ interface WireGuardManagementService {
      * Update an existing WireGuard server
      */
     fun updateServer(serverId: UUID, request: UpdateServerRequest): WireGuardServer?
+
+    /**
+     * Delete a WireGuard server
+     */
+    fun deleteServer(serverId: UUID)
 
     /**
      * Add a client to a server

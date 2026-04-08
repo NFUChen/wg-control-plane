@@ -299,9 +299,18 @@ export class ServerListComponent implements OnInit, OnDestroy {
 
   deleteServer(server: ServerResponse): void {
     if (confirm(`Are you sure you want to delete server "${server.name}"? This action cannot be undone.`)) {
-      // Note: The backend doesn't seem to have a delete server endpoint
-      // This would need to be implemented on the backend
-      console.log('Delete server not implemented in backend');
+      this.wireguardService.deleteServer(server.id).subscribe({
+        next: () => {
+          this.successMessage = `Server "${server.name}" deleted successfully`;
+          this.loadServers();
+        },
+        error: (error) => {
+          this.loadingState = {
+            isLoading: false,
+            error: `Failed to delete server: ${error.message || 'Unknown error'}`
+          };
+        }
+      });
     }
   }
 

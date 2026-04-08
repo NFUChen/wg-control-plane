@@ -1,22 +1,14 @@
 package com.app.service
 
-import com.app.view.AddClientRequest
-import com.app.view.CreateServerRequest
-import com.app.view.UpdateClientRequest
-import com.app.view.UpdateServerRequest
-import com.app.view.ServerStatisticsResponse
-import com.app.model.AnsibleHost
-import com.app.model.ClientDeploymentStatus
-import com.app.model.IPAddress
-import com.app.model.WireGuardClient
-import com.app.model.WireGuardServer
-import com.app.model.isValidWireGuardInterfaceName
+import com.app.model.*
 import com.app.repository.WireGuardClientRepository
 import com.app.repository.WireGuardServerRepository
 import com.app.service.ansible.AnsibleInventoryGenerator
 import com.app.service.ansible.AnsiblePlaybookExecutor
 import com.app.service.ansible.AnsibleService
+import com.app.utils.ErrorHandlingUtils
 import com.app.utils.WireGuardKeyGenerator
+import com.app.view.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -52,6 +44,13 @@ class AnsibleWireGuardManagementService(
 
     val SERVER_TOKEN_PREFIX = "wg"
     val CLIENT_TOKEN_PREFIX = "wgc"
+
+    // Safe call helpers that use the class logger
+    private inline fun <T> safeCall(errorMessage: String, block: () -> T): T =
+        ErrorHandlingUtils.safeCall(logger, errorMessage, block)
+
+    private inline fun safeCallSilent(block: () -> Unit) =
+        ErrorHandlingUtils.safeCallSilent(logger, block)
 
     // ========== Server Management ==========
 
@@ -94,6 +93,25 @@ class AnsibleWireGuardManagementService(
         request.postDown?.let { server.postDown = it }
 
         return serverRepository.save(server)
+    }
+
+    override fun deleteServer(serverId: UUID) {
+        logger.info("Deleting Ansible-managed WireGuard server: $serverId")
+
+        val server = serverRepository.findByIdWithClients(serverId)
+            ?: throw IllegalArgumentException("Server not found: $serverId")
+
+        // For Ansible-managed servers, we should stop the server first if it exists
+        // Note: This is a best-effort cleanup. The actual interface on the remote host
+        // will need to be managed separately via Ansible if needed.
+        safeCall("Failed to stop server before deletion") {
+            if (server.enabled) {
+                stopServer(serverId)
+            }
+        }
+        // Delete from database (cascade will delete associated clients due to orphanRemoval = true)
+        serverRepository.delete(server)
+        logger.info("Successfully deleted Ansible-managed server from database: ${server.name} (ID: ${server.id})")
     }
 
     override fun launchServer(serverId: UUID) {
