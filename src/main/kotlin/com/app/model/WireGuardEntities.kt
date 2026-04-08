@@ -80,9 +80,6 @@ class WireGuardServer(
     @UpdateTimestamp
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime = LocalDateTime.now(),
-
-    @Column(name = "agent_token", unique = true, columnDefinition = "TEXT")
-    val agentToken: String? = null
 ) {
     /** Ansible host id for API and routing; mirrors [ansibleHost]?.id. */
     val hostId: UUID?

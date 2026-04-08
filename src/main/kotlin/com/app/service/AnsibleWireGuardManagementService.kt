@@ -43,7 +43,6 @@ class AnsibleWireGuardManagementService(
         private const val ANSIBLE_INVENTORY_GROUP = "wireguard_servers"
     }
 
-    val SERVER_TOKEN_PREFIX = "wg"
     val CLIENT_TOKEN_PREFIX = "wgc"
 
     // Safe call helpers that use the class logger
@@ -74,8 +73,7 @@ class AnsibleWireGuardManagementService(
             dnsServers = request.dnsServers.map { IPAddress(it) }.toMutableList(),
             postUp = request.postUp?.trim()?.takeIf { it.isNotEmpty() },
             postDown = request.postDown?.trim()?.takeIf { it.isNotEmpty() },
-            ansibleHost = ansibleHost,
-            agentToken = agentTokenGenerator.generateToken(SERVER_TOKEN_PREFIX)
+            ansibleHost = ansibleHost
         )
 
         return serverRepository.save(server)

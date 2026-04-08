@@ -45,7 +45,6 @@ class DefaultWireGuardManagementService(
         private val logger = LoggerFactory.getLogger(DefaultWireGuardManagementService::class.java)
     }
 
-    val SERVER_TOKEN_PREFIX = "wg"
     val CLIENT_TOKEN_PREFIX = "wgc"
 
     // Safe call helpers that use the class logger
@@ -77,8 +76,7 @@ class DefaultWireGuardManagementService(
             listenPort = request.listenPort,
             dnsServers = request.dnsServers.map { IPAddress(it) }.toMutableList(),
             postUp = request.postUp?.trim()?.takeIf { it.isNotEmpty() },
-            postDown = request.postDown?.trim()?.takeIf { it.isNotEmpty() },
-            agentToken = agentTokenGenerator.generateToken(SERVER_TOKEN_PREFIX)
+            postDown = request.postDown?.trim()?.takeIf { it.isNotEmpty() }
         )
 
         return serverRepository.save(server)
@@ -580,8 +578,7 @@ class DefaultWireGuardManagementService(
             postUp = original.postUp,
             postDown = original.postDown,
             enabled = original.enabled,
-            ansibleHost = original.ansibleHost,
-            agentToken = original.agentToken
+            ansibleHost = original.ansibleHost
         )
     }
 

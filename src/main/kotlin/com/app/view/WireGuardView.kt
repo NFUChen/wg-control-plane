@@ -261,6 +261,10 @@ data class ClientResponse(
     /** When set, client config is (or was) deployed to this Ansible host. Immutable after create. */
     val hostId: String?,
     val deploymentStatus: ClientDeploymentStatus,
+    /** Deployment mode: LOCAL, ANSIBLE, or AGENT */
+    val deploymentMode: ClientDeploymentMode,
+    /** Agent token for self-service config retrieval (only for AGENT mode) */
+    val agentToken: String?,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 ) {
@@ -281,6 +285,8 @@ data class ClientResponse(
                 dataSent = client.dataSent,
                 hostId = client.hostId?.toString(),
                 deploymentStatus = client.deploymentStatus,
+                deploymentMode = client.deploymentMode,
+                agentToken = client.agentToken,
                 createdAt = client.createdAt,
                 updatedAt = client.updatedAt
             )
