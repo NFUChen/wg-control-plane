@@ -30,18 +30,11 @@
         - wg_client_interface_name is defined
       register: config_deployed
 
-    - name: Stop WireGuard interface before restart
-      ansible.builtin.command:
-        cmd: "wg-quick down {{ wg_client_interface_name }}"
-      ignore_errors: true
-      when:
-        - config_deployed.changed
-        - wg_restart_after_deploy | default(true)
-        - wg_client_interface_name is defined
-
-    - name: Start WireGuard interface after configuration update
-      ansible.builtin.command:
-        cmd: "wg-quick up {{ wg_client_interface_name }}"
+    - name: Restart WireGuard service after configuration update
+      ansible.builtin.systemd:
+        name: "wg-quick@{{ wg_client_interface_name }}"
+        state: restarted
+      ignore_errors: true  # Ignore if service was not running
       when:
         - config_deployed.changed
         - wg_restart_after_deploy | default(true)
@@ -52,6 +45,7 @@
         name: "wg-quick@{{ wg_client_interface_name }}"
         enabled: "{{ wg_enable_on_boot | default(true) }}"
         state: started
+      ignore_errors: true  # Ignore if interface already exists or conflicts with monitor script
       when:
         - not (config_deployed.changed | default(false))  # Only start via systemd if config wasn't changed
         - wg_restart_after_deploy | default(true)
@@ -61,9 +55,115 @@
       ansible.builtin.systemd:
         name: "wg-quick@{{ wg_client_interface_name }}"
         enabled: "{{ wg_enable_on_boot | default(true) }}"
+      ignore_errors: true  # Ignore if service conflicts with monitor script
       when:
         - config_deployed.changed | default(false)  # Just enable service after manual restart
         - wg_client_interface_name is defined
+
+    - name: Create WireGuard auto-reconnect script (systemd-based)
+      ansible.builtin.copy:
+        content: |
+          #!/bin/bash
+          # WireGuard Auto-Reconnect Script (using systemctl)
+          INTERFACE="{{ wg_client_interface_name }}"
+          SERVICE_NAME="wg-quick@${INTERFACE}.service"
+          LOG_FILE="/var/log/wireguard-${INTERFACE}-monitor.log"
+
+          log_message() {
+              echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+          }
+
+          check_connection() {
+              # Check if systemd service is active
+              if ! systemctl is-active "$SERVICE_NAME" >/dev/null 2>&1; then
+                  log_message "Service $SERVICE_NAME is not active"
+                  return 1
+              fi
+
+              # Check if interface exists
+              if ! ip link show "$INTERFACE" &>/dev/null; then
+                  log_message "Interface $INTERFACE does not exist"
+                  return 1
+              fi
+
+              # Extract server tunnel IP from config and test connectivity
+              local server_tunnel_ip
+              if [ -f "/etc/wireguard/${INTERFACE}.conf" ]; then
+                  server_tunnel_ip=$(awk '/^\[Peer\]/{flag=1; next} /^\[/{flag=0} flag && /^AllowedIPs/{print $3}' "/etc/wireguard/${INTERFACE}.conf" | head -n1 | cut -d',' -f1 | cut -d'/' -f1 | tr -d ' ')
+              fi
+
+              # Try to ping server tunnel IP
+              if [ -n "$server_tunnel_ip" ] && [[ "$server_tunnel_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                  if timeout 5 ping -c 1 -W 2 "$server_tunnel_ip" &>/dev/null; then
+                      return 0
+                  fi
+                  log_message "Failed to ping server tunnel IP: $server_tunnel_ip"
+              fi
+
+              return 1
+          }
+
+          restart_interface() {
+              log_message "Connection lost, restarting $SERVICE_NAME"
+
+              if systemctl restart "$SERVICE_NAME"; then
+                  log_message "Service $SERVICE_NAME restarted successfully"
+                  sleep 5  # Wait for interface to fully initialize
+                  return 0
+              else
+                  log_message "Failed to restart $SERVICE_NAME"
+                  return 1
+              fi
+          }
+
+          # Main monitoring loop
+          while true; do
+              if ! check_connection; then
+                  log_message "Connection check failed, attempting restart"
+                  restart_interface
+              fi
+              sleep {{ wg_monitor_interval | default(30) }}
+          done
+        dest: "/usr/local/bin/wireguard-monitor-{{ wg_client_interface_name }}.sh"
+        owner: root
+        group: root
+        mode: "0755"
+      when: wg_client_interface_name is defined
+
+    - name: Create WireGuard monitor systemd service
+      ansible.builtin.copy:
+        content: |
+          [Unit]
+          Description=WireGuard Connection Monitor for {{ wg_client_interface_name }}
+          After=network.target
+          # Monitor will manage wg-quick service, no direct dependency
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/local/bin/wireguard-monitor-{{ wg_client_interface_name }}.sh
+          Restart=always
+          RestartSec=10
+          User=root
+          StandardOutput=journal
+          StandardError=journal
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: "/etc/systemd/system/wireguard-monitor-{{ wg_client_interface_name }}.service"
+        owner: root
+        group: root
+        mode: "0644"
+      when: wg_client_interface_name is defined
+
+    - name: Enable and start WireGuard monitor service
+      ansible.builtin.systemd:
+        name: "wireguard-monitor-{{ wg_client_interface_name }}"
+        enabled: "true"
+        state: started
+        daemon_reload: "true"
+      when:
+        - wg_client_interface_name is defined
+        - wg_enable_auto_reconnect | default(true)
 
     - name: Log deployment completion
       ansible.builtin.debug:
