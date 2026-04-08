@@ -1,7 +1,25 @@
 ---
-- name: Bootstrap managed hosts for Ansible
+- name: Bootstrap managed hosts for Ansible and collect metadata
   hosts: "{{ wg_target_hosts }}"
   gather_facts: true
   become: true
+
+  vars:
+    # Enable metadata collection
+    wg_bootstrap_get_metadata: true
+    wg_bootstrap_save_metadata: true
+    wg_bootstrap_debug: "{{ wg_debug | default(false) }}"
+    wg_bootstrap_metadata_dir: "{{ playbook_dir }}/../output/metadata"
+
   roles:
     - role: wg_bootstrap
+
+  post_tasks:
+    - name: Display collected metadata summary
+      debug:
+        msg: |
+          Host: {{ inventory_hostname }}
+          Cloud: {{ wg_host_metadata.cloud_provider | upper }}
+          Network Interface: {{ wg_host_metadata.network_interface_id }}
+          Terraform Variable: {{ wg_host_metadata.terraform_var_name }} = "{{ wg_host_metadata.terraform_var_value }}"
+      when: wg_host_metadata is defined and (wg_debug | default(false))

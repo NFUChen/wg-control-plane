@@ -1,0 +1,91 @@
+---
+# Get cloud provider metadata for WireGuard configuration
+
+- name: Detect cloud provider (try AWS first)
+  uri:
+    url: "http://169.254.169.254/latest/meta-data/instance-id"
+    method: GET
+    timeout: 3
+    status_code: [200, 401, 404]
+  register: aws_detection
+  failed_when: false
+  ignore_errors: true
+
+- name: Set cloud provider fact
+  set_fact:
+    wg_cloud_provider: "{{ 'aws' if aws_detection.status in [200, 401] else 'azure' }}"
+
+- name: Get AWS metadata using script
+  block:
+    - name: Copy AWS metadata script
+      template:
+        src: get_aws_metadata.sh.j2
+        dest: /tmp/get_aws_metadata.sh
+        mode: '0755'
+
+    - name: Execute AWS metadata script
+      command: /tmp/get_aws_metadata.sh
+      register: aws_metadata_result
+      failed_when: aws_metadata_result.rc != 0
+
+    - name: Debug script output
+      debug:
+        msg: |
+          Script return code: {{ aws_metadata_result.rc }}
+          Script stdout: {{ aws_metadata_result.stdout }}
+          Script stderr: {{ aws_metadata_result.stderr }}
+      when: wg_bootstrap_debug | default(false) or aws_metadata_result.rc != 0
+
+    - name: Parse AWS metadata JSON
+      set_fact:
+        wg_host_metadata: "{{ aws_metadata_result.stdout | from_json }}"
+      when: aws_metadata_result.rc == 0 and aws_metadata_result.stdout | length > 0
+
+    - name: Display collected metadata
+      debug:
+        msg: |
+          Raw script output: {{ aws_metadata_result.stdout }}
+          Parsed metadata: {{ wg_host_metadata }}
+
+    - name: Clean up metadata script
+      file:
+        path: /tmp/get_aws_metadata.sh
+        state: absent
+
+  when: wg_cloud_provider == "aws"
+
+- name: Get Azure metadata
+  block:
+    - name: Get Azure instance metadata
+      uri:
+        url: "http://169.254.169.254/metadata/instance?api-version=2021-02-01"
+        method: GET
+        headers:
+          Metadata: "true"
+        timeout: 5
+      register: azure_metadata_result
+
+    - name: Parse Azure metadata
+      set_fact:
+        azure_parsed: "{{ azure_metadata_result.content | from_json }}"
+
+    - name: Set Azure metadata facts
+      set_fact:
+        wg_host_metadata:
+          cloud_provider: azure
+          network_interface_id: "{{ azure_parsed.network.interface[0].resourceId }}"
+          instance_id: "{{ azure_parsed.compute.vmId }}"
+          private_ip: "{{ azure_parsed.network.interface[0].ipv4.ipAddress[0].privateIpAddress }}"
+          mac_address: "{{ azure_parsed.network.interface[0].macAddress }}"
+          location: "{{ azure_parsed.compute.location }}"
+          resource_group: "{{ azure_parsed.compute.resourceGroupName }}"
+          subscription_id: "{{ azure_parsed.compute.subscriptionId }}"
+          terraform_var_name: "wireguard_nic_id"
+          terraform_var_value: "{{ azure_parsed.network.interface[0].resourceId }}"
+
+  when: wg_cloud_provider == "azure"
+
+- name: Debug collected metadata
+  debug:
+    var: wg_host_metadata
+  when: wg_bootstrap_debug | default(false)

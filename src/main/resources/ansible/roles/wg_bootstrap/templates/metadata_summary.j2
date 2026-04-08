@@ -1,0 +1,85 @@
+# WireGuard Hosts Metadata Summary
+
+Generated: {{ ansible_date_time.iso8601 }}
+
+## Collected Hosts
+
+{% for host in groups['all'] %}
+{% if hostvars[host]['wg_host_metadata'] is defined %}
+### {{ host }}
+
+**Cloud Provider:** {{ hostvars[host]['wg_host_metadata']['cloud_provider'] | upper }}
+**Network Interface ID:** `{{ hostvars[host]['wg_host_metadata']['network_interface_id'] }}`
+**Instance ID:** `{{ hostvars[host]['wg_host_metadata']['instance_id'] }}`
+**Private IP:** {{ hostvars[host]['wg_host_metadata']['private_ip'] }}
+{% if hostvars[host]['wg_host_metadata']['cloud_provider'] == "aws" %}
+**Region:** {{ hostvars[host]['wg_host_metadata']['region'] }}
+**Availability Zone:** {{ hostvars[host]['wg_host_metadata']['availability_zone'] }}
+{% elif hostvars[host]['wg_host_metadata']['cloud_provider'] == "azure" %}
+**Location:** {{ hostvars[host]['wg_host_metadata']['location'] }}
+**Resource Group:** {{ hostvars[host]['wg_host_metadata']['resource_group'] }}
+{% endif %}
+
+**Terraform Variable:**
+```hcl
+{{ hostvars[host]['wg_host_metadata']['terraform_var_name'] }} = "{{ hostvars[host]['wg_host_metadata']['terraform_var_value'] }}"
+```
+
+---
+
+{% endif %}
+{% endfor %}
+
+## Terraform Module Usage
+
+### AWS Hosts
+```hcl
+{% for host in groups['all'] %}
+{% if hostvars[host]['wg_host_metadata'] is defined and hostvars[host]['wg_host_metadata']['cloud_provider'] == "aws" %}
+module "{{ host | replace('-', '_') }}_routing" {
+  source = "./modules/aws"
+
+  wireguard_eni_id = "{{ hostvars[host]['wg_host_metadata']['terraform_var_value'] }}"
+
+  destination_cidrs = [
+    "10.0.0.0/16",
+    "192.168.0.0/16"
+  ]
+
+  route_table_name = "{{ host }}-wireguard-routes"
+
+  tags = {
+    Host = "{{ host }}"
+    Environment = "production"
+  }
+}
+
+{% endif %}
+{% endfor %}
+```
+
+### Azure Hosts
+```hcl
+{% for host in groups['all'] %}
+{% if hostvars[host]['wg_host_metadata'] is defined and hostvars[host]['wg_host_metadata']['cloud_provider'] == "azure" %}
+module "{{ host | replace('-', '_') }}_routing" {
+  source = "./modules/azure"
+
+  wireguard_nic_id = "{{ hostvars[host]['wg_host_metadata']['terraform_var_value'] }}"
+
+  destination_cidrs = [
+    "10.0.0.0/16",
+    "192.168.0.0/16"
+  ]
+
+  route_table_name = "{{ host }}-wireguard-routes"
+
+  tags = {
+    Host = "{{ host }}"
+    Environment = "production"
+  }
+}
+
+{% endif %}
+{% endfor %}
+```
