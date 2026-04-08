@@ -15,11 +15,6 @@ output "wireguard_eni_id" {
   value       = var.wireguard_eni_id
 }
 
-output "wireguard_eni_private_ip" {
-  description = "Private IP address of WireGuard ENI"
-  value       = data.aws_network_interface.wireguard.private_ip
-}
-
 # Route table
 output "route_table_id" {
   description = "WireGuard route table ID"
