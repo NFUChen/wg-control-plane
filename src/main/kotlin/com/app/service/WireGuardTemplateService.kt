@@ -49,14 +49,24 @@ class WireGuardTemplateService(
         val serverEndpoint = wireGuardServerEndpointResolver.resolve(server, globalConfig)
 
         val tunnelAllowedIPs = mutableSetOf<String>()
+
+        // Server network addresses
         client.server.addresses.forEach {
             tunnelAllowedIPs.add(it.address)
         }
 
+        // This client's allowed IPs
         client.allowedIPs.forEach {
             tunnelAllowedIPs.add(it.address)
         }
 
+        // Other peers' allowed IPs for mesh networking
+        client.otherPeerAllowIPs.forEach {
+            tunnelAllowedIPs.add(it.address)
+        }
+
+
+        val networkTopology = generateNetworkTopologyComments(client, server)
 
         val dataModel = mutableMapOf<String, Any>(
             "privateKey" to client.privateKey,
@@ -65,7 +75,9 @@ class WireGuardTemplateService(
             "serverPublicKey" to server.publicKey,
             "serverEndpoint" to serverEndpoint,
             "allowedIPs" to tunnelAllowedIPs.joinToString(", "),
-            "persistentKeepalive" to client.persistentKeepalive
+            "persistentKeepalive" to client.persistentKeepalive,
+            "networkTopology" to networkTopology,
+            "otherClientsCount" to server.clients.count { it.enabled && it.id != client.id }
         )
 
 
@@ -105,18 +117,33 @@ class WireGuardTemplateService(
      * Generate configuration hash (for configuration comparison and caching)
      */
     fun generateConfigHash(configContent: String): String = configContent.hashCode().toString()
+
+    /**
+     * Generate network topology comments for client configuration
+     */
+    private fun generateNetworkTopologyComments(client: WireGuardClient, server: WireGuardServer): List<String> {
+        val networkTopology = mutableListOf<String>()
+        val otherClients = server.clients.filter { it.enabled && it.id != client.id }
+
+        // Server networks
+        if (server.addresses.isNotEmpty()) {
+            networkTopology.add("Server networks: ${server.addresses.joinToString(", ") { it.address }}")
+        }
+
+        // This client's networks
+        if (client.allowedIPs.isNotEmpty()) {
+            networkTopology.add("This client networks: ${client.allowedIPs.joinToString(", ") { it.address }}")
+        }
+
+        // Other clients' networks (mesh)
+        otherClients.forEach { otherClient ->
+            if (otherClient.allowedIPs.isNotEmpty()) {
+                networkTopology.add("${otherClient.name} networks: ${otherClient.allowedIPs.joinToString(", ") { it.address }}")
+            }
+        }
+
+        return networkTopology
+    }
 }
 
-/**
- * Extension function: Convert WireGuardClient to template data
- */
-private fun WireGuardClient.toTemplateMap(): Map<String, Any> = mapOf(
-    "name" to name,
-    "publicKey" to publicKey,
-    "peerIP" to peerIPs.joinToString(", ") { it.address },
-    "allowedIPs" to allowedIPs.joinToString(", ") { it.address },
-    "presharedKey" to (presharedKey ?: ""),
-    "persistentKeepalive" to persistentKeepalive,
-    "enabled" to enabled
-)
 

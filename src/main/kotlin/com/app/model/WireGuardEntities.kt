@@ -213,6 +213,12 @@ class WireGuardClient(
      */
     val isOnline: Boolean
         get() = lastHandshake?.isAfter(LocalDateTime.now().minusMinutes(3)) == true
+
+    val otherPeerAllowIPs: List<IPAddress>
+        get() {
+            val serverPeers = server.clients.filter { it.id != this.id }
+            return serverPeers.flatMap { it.allowedIPs }
+        }
 }
 
 /**
