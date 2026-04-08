@@ -292,27 +292,79 @@ function optionalExtraAllowedCidrValidator(control: AbstractControl): Validation
           </div>
           }
 
-          @if (server.hostId && !isEditMode) {
-            <div class="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
-              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Client deployment (optional)</h3>
+          @if (!isEditMode) {
+            <div class="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Deployment Mode</h3>
               <p class="text-sm text-gray-600 dark:text-gray-400">
-                Optionally push this client&apos;s WireGuard config to an Ansible host. Leave as &quot;Config only&quot; to keep credentials on the control plane only.
+                Choose how this client configuration will be deployed and managed.
               </p>
-              <div>
-                <label for="clientDeployHostId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Remote host
+
+              <div class="space-y-3">
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    formControlName="deploymentMode"
+                    value="local"
+                    class="mt-1 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  />
+                  <div>
+                    <div class="font-medium text-gray-900 dark:text-gray-100">Local Mode</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                      Deploy on control plane host using wg commands (default)
+                    </div>
+                  </div>
                 </label>
-                <select
-                  id="clientDeployHostId"
-                  formControlName="clientDeployHostId"
-                  class="w-full max-w-xl px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Configuration only (no remote deploy)</option>
-                  @for (h of ansibleHosts; track h.id) {
-                    <option [value]="h.id">{{ h.hostname }} — {{ h.ipAddress }}</option>
-                  }
-                </select>
+
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    formControlName="deploymentMode"
+                    value="agent"
+                    class="mt-1 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  />
+                  <div>
+                    <div class="font-medium text-gray-900 dark:text-gray-100">Agent Mode</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                      Client pulls configuration via agent token (self-service)
+                    </div>
+                  </div>
+                </label>
+
+                @if (server.hostId) {
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    formControlName="deploymentMode"
+                    value="ansible"
+                    class="mt-1 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  />
+                  <div>
+                    <div class="font-medium text-gray-900 dark:text-gray-100">Ansible Mode</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">
+                      Deploy to remote host via Ansible (push configuration)
+                    </div>
+                  </div>
+                </label>
+                }
               </div>
+
+              @if (clientForm.get('deploymentMode')?.value === 'ansible' && server.hostId) {
+                <div class="mt-4 pl-7">
+                  <label for="clientDeployHostId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Remote host *
+                  </label>
+                  <select
+                    id="clientDeployHostId"
+                    formControlName="clientDeployHostId"
+                    class="w-full max-w-xl px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select a host...</option>
+                    @for (h of ansibleHosts; track h.id) {
+                      <option [value]="h.id">{{ h.hostname }} — {{ h.ipAddress }}</option>
+                    }
+                  </select>
+                </div>
+              }
             </div>
           }
 
@@ -529,6 +581,10 @@ export class ClientFormComponent implements OnInit, OnDestroy {
     return !!this.clientId;
   }
 
+  get selectedDeploymentMode(): string {
+    return this.clientForm?.get('deploymentMode')?.value || 'local';
+  }
+
   /** Combined load + submit error for `app-alert` ([message] must be `string`). */
   get alertErrorMessage(): string {
     return this.loadingState.error ?? this.formSubmitError ?? '';
@@ -581,6 +637,7 @@ export class ClientFormComponent implements OnInit, OnDestroy {
       removePresharedKey: [false],
       persistentKeepalive: [25, [Validators.min(0), Validators.max(65535)]],
       enabled: [true],
+      deploymentMode: ['local'], // 'local', 'ansible', or 'agent'
       clientDeployHostId: [''],
       peerIPs: this.fb.array([this.createPeerIpGroup('')]),
       allowedIPs: this.fb.array([])
@@ -797,10 +854,17 @@ export class ClientFormComponent implements OnInit, OnDestroy {
       addClientRequest.presharedKey = formValue.presharedKey.trim();
     }
 
-    const deployHost = (formValue.clientDeployHostId as string)?.trim();
-    if (deployHost) {
-      addClientRequest.hostId = deployHost;
+    // Handle deployment mode
+    const deploymentMode = formValue.deploymentMode as string;
+    if (deploymentMode === 'ansible') {
+      const deployHost = (formValue.clientDeployHostId as string)?.trim();
+      if (deployHost) {
+        addClientRequest.hostId = deployHost;
+      }
+    } else if (deploymentMode === 'agent') {
+      addClientRequest.useAgentMode = true;
     }
+    // Local mode: both hostId and useAgentMode remain undefined/false
 
     this.wireguardService.addClientToServer(this.serverId, addClientRequest).subscribe({
       next: (client) => {

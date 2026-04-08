@@ -1,7 +1,9 @@
 package com.app.service
 
+import com.app.model.ClientDeploymentMode
 import com.app.model.WireGuardClient
 import com.app.model.WireGuardServer
+import com.app.repository.WireGuardClientRepository
 import com.app.repository.WireGuardServerRepository
 import com.app.view.AddClientRequest
 import com.app.view.CreateServerRequest
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
 import java.util.*
+import kotlin.jvm.optionals.getOrNull
 
 /**
  * Routes WireGuard operations to [DefaultWireGuardManagementService] (local interfaces) or
@@ -26,6 +29,7 @@ class DelegatingWireGuardManagementService(
     private val defaultWireGuardManagementService: DefaultWireGuardManagementService,
     private val ansibleWireGuardManagementService: AnsibleWireGuardManagementService,
     private val serverRepository: WireGuardServerRepository,
+    private val clientRepository: WireGuardClientRepository,
 ) : WireGuardManagementService {
 
     companion object {
@@ -34,16 +38,51 @@ class DelegatingWireGuardManagementService(
 
     private fun isAnsibleManaged(server: WireGuardServer): Boolean = server.hostId != null
 
+    /**
+     * Route to service implementation based on server location
+     */
     private fun implForServer(serverId: UUID): Pair<WireGuardManagementService, WireGuardServer> {
-        val server = serverRepository.findById(serverId).orElse(null)
-            ?: throw IllegalArgumentException("Server not found: $serverId")
+        val server = serverRepository.findById(serverId).getOrNull() ?: throw IllegalArgumentException("Server not found: $serverId")
         val impl = if (isAnsibleManaged(server)) ansibleWireGuardManagementService else defaultWireGuardManagementService
         return impl to server
     }
 
+    /**
+     * Route to service implementation based on client deployment mode and server location.
+     *
+     * Routing logic:
+     * - ANSIBLE mode client → AnsibleWireGuardManagementService
+     * - AGENT/LOCAL mode client on Ansible server → AnsibleWireGuardManagementService
+     * - AGENT/LOCAL mode client on local server → DefaultWireGuardManagementService
+     */
+    private fun implForClient(clientId: UUID): Pair<WireGuardManagementService, WireGuardClient> {
+        val client = clientRepository.findById(clientId).orElse(null)
+            ?: throw IllegalArgumentException("Client not found: $clientId")
+
+        val impl = when {
+            // ANSIBLE mode clients are always managed by AnsibleWireGuardManagementService
+            client.deploymentMode == ClientDeploymentMode.ANSIBLE -> {
+                logger.debug("Routing ANSIBLE mode client $clientId to AnsibleWireGuardManagementService")
+                ansibleWireGuardManagementService
+            }
+            // AGENT/LOCAL mode clients: route based on server location
+            isAnsibleManaged(client.server) -> {
+                logger.debug("Routing ${client.deploymentMode} mode client $clientId to AnsibleWireGuardManagementService (server is Ansible-managed)")
+                ansibleWireGuardManagementService
+            }
+            else -> {
+                logger.debug("Routing {} mode client {} to DefaultWireGuardManagementService",
+                    client.deploymentMode, clientId)
+                defaultWireGuardManagementService
+            }
+        }
+
+        return impl to client
+    }
+
     override fun createServer(request: CreateServerRequest): WireGuardServer {
         return if (request.hostId != null) {
-            logger.debug("createServer: Ansible-managed (hostId={})", request.hostId)
+            logger.debug("createServer: Ansible-managed (hostId=${request.hostId})", )
             ansibleWireGuardManagementService.createServer(request)
         } else {
             defaultWireGuardManagementService.createServer(request)
@@ -66,12 +105,16 @@ class DelegatingWireGuardManagementService(
     }
 
     override fun updateClient(serverId: UUID, clientId: UUID, request: UpdateClientRequest): WireGuardClient {
-        val (impl, _) = implForServer(serverId)
+        // Route based on client deployment mode
+        val (impl, client) = implForClient(clientId)
+        logger.debug("updateClient: client '${client.name}' (mode=${client.deploymentMode}) routed to ${impl.javaClass.simpleName}")
         return impl.updateClient(serverId, clientId, request)
     }
 
     override fun removeClientFromServer(serverId: UUID, clientId: UUID) {
-        val (impl, _) = implForServer(serverId)
+        // Route based on client deployment mode
+        val (impl, client) = implForClient(clientId)
+        logger.debug("removeClientFromServer: client '${client.name}' (mode=${client.deploymentMode}) routed to ${impl.javaClass.simpleName}")
         impl.removeClientFromServer(serverId, clientId)
     }
 
@@ -141,7 +184,9 @@ class DelegatingWireGuardManagementService(
     }
 
     override fun retryClientDeployment(serverId: UUID, clientId: UUID): WireGuardClient? {
-        val (impl, _) = implForServer(serverId)
+        // Route based on client deployment mode
+        val (impl, client) = implForClient(clientId)
+        logger.debug("retryClientDeployment: client '${client.name}' (mode=${client.deploymentMode}) routed to ${impl.javaClass.simpleName}")
         return impl.retryClientDeployment(serverId, clientId)
     }
 

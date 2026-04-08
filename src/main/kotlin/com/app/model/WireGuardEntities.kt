@@ -193,6 +193,16 @@ class WireGuardClient(
     @Column(name = "deployment_status", nullable = false)
     var deploymentStatus: ClientDeploymentStatus = ClientDeploymentStatus.NONE,
 
+    /**
+     * Deployment mode - how this client configuration is deployed/managed:
+     * - LOCAL: Direct wg commands on control plane host
+     * - ANSIBLE: Pushed to remote host via Ansible
+     * - AGENT: Client pulls configuration using agentToken
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "deployment_mode", nullable = false)
+    var deploymentMode: ClientDeploymentMode = ClientDeploymentMode.LOCAL,
+
     @UpdateTimestamp
     @Column(name = "updated_at")
     var updatedAt: LocalDateTime = LocalDateTime.now(),
@@ -240,6 +250,20 @@ enum class ClientDeploymentStatus {
     DEPLOYED,
     DEPLOY_FAILED,
     PENDING_REMOVAL
+}
+
+/**
+ * Client deployment mode - how the client configuration is deployed/managed
+ */
+enum class ClientDeploymentMode {
+    /** Local deployment on control plane host using wg commands */
+    LOCAL,
+
+    /** Remote deployment via Ansible to a managed host */
+    ANSIBLE,
+
+    /** Agent mode - client pulls configuration using agent token */
+    AGENT
 }
 
 /** Same allowed form as [WireGuardServer.interfaceName]: `wg0` … `wg99`. */

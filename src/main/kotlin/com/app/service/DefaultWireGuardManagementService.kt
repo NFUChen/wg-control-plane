@@ -1,14 +1,11 @@
 package com.app.service
 
+import com.app.model.*
 import com.app.view.AddClientRequest
 import com.app.view.CreateServerRequest
 import com.app.view.UpdateClientRequest
 import com.app.view.UpdateServerRequest
 import com.app.view.ServerStatisticsResponse
-import com.app.model.IPAddress
-import com.app.model.WireGuardClient
-import com.app.model.WireGuardServer
-import com.app.model.isValidWireGuardInterfaceName
 import com.app.repository.WireGuardClientRepository
 import com.app.repository.WireGuardServerRepository
 import com.app.security.config.WireGuardProperties
@@ -40,7 +37,8 @@ class DefaultWireGuardManagementService(
     private val wireGuardTemplateService: WireGuardTemplateService,
     private val ipConflictDetectionService: IPConflictDetectionService,
     private val globalConfigurationService: GlobalConfigurationService,
-    private val wireGuardProperties: WireGuardProperties
+    private val wireGuardProperties: WireGuardProperties,
+    private val deploymentModeResolver: ClientDeploymentModeResolver
 ) : WireGuardManagementService {
 
     companion object {
@@ -91,11 +89,14 @@ class DefaultWireGuardManagementService(
      */
     @Transactional
     override fun addClientToServer(serverId: UUID, request: AddClientRequest): WireGuardClient {
-        require(request.hostId == null) {
-            "Binding a client to an Ansible host for remote deploy is only supported for Ansible-managed servers"
-        }
         val server = serverRepository.findByIdWithClients(serverId)
             ?: throw IllegalArgumentException("Server not found: $serverId")
+
+        // Resolve deployment mode using resolver
+        val deploymentMode = deploymentModeResolver.resolve(request, server)
+        deploymentModeResolver.validateCompatibility(deploymentMode, server, isAnsibleService = false)
+
+        logger.info("Creating client '${request.clientName}' in $deploymentMode mode for server: ${server.name}")
 
         // Check for IP conflicts before creating the client
         val clientIPs = request.peerIPs.toMutableList().apply { addAll(request.allowedIPs) }
@@ -118,29 +119,47 @@ class DefaultWireGuardManagementService(
             allowedIPs = request.allowedIPs.toMutableList(),
             presharedKey = request.presharedKey,
             server = server,
-            agentToken = agentTokenGenerator.generateToken(CLIENT_TOKEN_PREFIX)
+            deploymentMode = deploymentMode,
+            agentToken = deploymentModeResolver.generateAgentTokenIfNeeded(
+                deploymentMode,
+                agentTokenGenerator,
+                CLIENT_TOKEN_PREFIX
+            )
         ).apply {
             // Apply global configuration defaults
             persistentKeepalive = globalConfig.defaultPersistentKeepalive
         }
 
-        // First try to add peer to WireGuard interface (if server is enabled)
-        if (server.enabled && wireGuardCommandService.isInterfaceRunning(server.interfaceName)) {
-            safeCall("Cannot add client: failed to add peer to WireGuard interface") {
-                wireGuardCommandService.addPeerToInterface(server.interfaceName, client)
-                logger.info("Successfully added peer to WireGuard interface, proceeding with database save")
+        // Handle deployment based on mode
+        when (deploymentMode) {
+            ClientDeploymentMode.LOCAL -> {
+                // Add peer to WireGuard interface (if server is enabled)
+                if (server.enabled && wireGuardCommandService.isInterfaceRunning(server.interfaceName)) {
+                    safeCall("Cannot add client: failed to add peer to WireGuard interface") {
+                        wireGuardCommandService.addPeerToInterface(server.interfaceName, client)
+                        logger.info("Successfully added peer to WireGuard interface")
+                    }
+                }
+                // Update local configuration file
+                safeCall("Cannot add client: failed to update configuration file") {
+                    writeServerConfigFile(server)
+                    logger.info("Successfully updated configuration file with new client")
+                }
+            }
+            ClientDeploymentMode.AGENT -> {
+                // Agent mode: client will pull config via agentToken
+                logger.info("Client created in AGENT mode. Token: ${client.agentToken}")
+                // No immediate deployment - client will fetch config later
+            }
+            ClientDeploymentMode.ANSIBLE -> {
+                // Should not reach here due to earlier check
+                throw IllegalStateException("ANSIBLE mode should be handled by AnsibleWireGuardManagementService")
             }
         }
 
-        // Only save to database if WireGuard command succeeded (or server is disabled)
+        // Save to database
         server.addClient(client)
         val savedServer = serverRepository.save(server)
-
-        // Update local configuration file to include the new client
-        safeCall("Cannot add client: failed to update configuration file") {
-            writeServerConfigFile(savedServer)
-            logger.info("Successfully updated configuration file with new client")
-        }
 
         // Return the persisted client
         return savedServer.clients.find { it.name == client.name && it.privateKey == client.privateKey }

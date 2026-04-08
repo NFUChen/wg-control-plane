@@ -102,7 +102,14 @@ data class AddClientRequest(
 
     val allowedIPs: List<IPAddress> = emptyList(),
 
-    val hostId: UUID? = null // null = config file only; non-null = deploy to remote AnsibleHost
+    /**
+     * Deployment mode selection:
+     * - hostId != null → ANSIBLE mode (deploy to remote host)
+     * - useAgentMode = true → AGENT mode (client pulls config via agentToken)
+     * - both null/false → LOCAL mode (deploy on control plane host)
+     */
+    val hostId: UUID? = null,
+    val useAgentMode: Boolean? = false
 )
 
 /**

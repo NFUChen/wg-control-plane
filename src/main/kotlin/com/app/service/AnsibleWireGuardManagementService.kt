@@ -33,6 +33,7 @@ class AnsibleWireGuardManagementService(
     private val wireGuardTemplateService: WireGuardTemplateService,
     private val ipConflictDetectionService: IPConflictDetectionService,
     private val globalConfigurationService: GlobalConfigurationService,
+    private val deploymentModeResolver: ClientDeploymentModeResolver
 ) : WireGuardManagementService {
 
     companion object {
@@ -196,13 +197,15 @@ class AnsibleWireGuardManagementService(
     // ========== Client Management ==========
 
     override fun addClientToServer(serverId: UUID, request: AddClientRequest): WireGuardClient {
-        logger.info("Adding client to WireGuard server via Ansible: $serverId")
-
         val server = serverRepository.findByIdWithClients(serverId)
             ?: throw IllegalArgumentException("Server not found: $serverId")
-        if (server.hostId == null) {
-            throw IllegalStateException("Server $serverId is not configured for Ansible deployment (no AnsibleHost assigned)")
-        }
+
+        // Resolve deployment mode using resolver
+        val deploymentMode = deploymentModeResolver.resolve(request, server)
+        deploymentModeResolver.validateCompatibility(deploymentMode, server, isAnsibleService = true)
+
+        logger.info("Adding client '${request.clientName}' to server ${server.name} with deployment mode: $deploymentMode")
+
         val serverTargetHost = validateAndGetAnsibleHost(server.hostId!!)
 
         // Check for IP conflicts before creating the client
@@ -213,13 +216,13 @@ class AnsibleWireGuardManagementService(
         require(interfaceName.isValidWireGuardInterfaceName()) {
             "Client interface name must be wg0 through wg99"
         }
-        if (request.hostId != null) {
+
+        // Validate interface uniqueness for ANSIBLE mode
+        if (deploymentMode == ClientDeploymentMode.ANSIBLE && request.hostId != null) {
             require(!clientRepository.existsByAnsibleHostIdAndInterfaceName(request.hostId, interfaceName)) {
                 "Interface '$interfaceName' is already in use on the selected Ansible host"
             }
         }
-
-
 
         val trimmedPublic = request.clientPublicKey?.trim()?.takeIf { it.isNotEmpty() }
         val (privateKey, publicKey) = if (trimmedPublic == null) {
@@ -229,7 +232,6 @@ class AnsibleWireGuardManagementService(
             // and does not match; the server peer uses [publicKey]. Do not use stored privateKey for client configs.
             Pair(keyGenerator.generatePrivateKey(), trimmedPublic)
         }
-        val ansibleHost = validateAndGetAnsibleHost(request.hostId)
 
         val globalConfig = globalConfigurationService.getCurrentConfig()
         val client = WireGuardClient(
@@ -241,8 +243,15 @@ class AnsibleWireGuardManagementService(
             allowedIPs = request.allowedIPs.toMutableList(),
             presharedKey = request.presharedKey,
             server = server,
-            ansibleHost = ansibleHost,
-            agentToken = agentTokenGenerator.generateToken(CLIENT_TOKEN_PREFIX)
+            deploymentMode = deploymentMode,
+            ansibleHost = if (deploymentMode == ClientDeploymentMode.ANSIBLE) {
+                validateAndGetAnsibleHost(request.hostId)
+            } else null,
+            agentToken = deploymentModeResolver.generateAgentTokenIfNeeded(
+                deploymentMode,
+                agentTokenGenerator,
+                CLIENT_TOKEN_PREFIX
+            )
         ).apply {
             persistentKeepalive = globalConfig.defaultPersistentKeepalive
         }
