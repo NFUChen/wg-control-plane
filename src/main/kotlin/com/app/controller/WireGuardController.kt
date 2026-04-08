@@ -16,6 +16,19 @@ import org.springframework.web.bind.annotation.*
 import java.time.LocalDateTime
 import java.util.*
 
+
+@RestController
+@RequestMapping("/api/public/wireguard")
+class PublicWireGuardController(
+    private val wireGuardService: WireGuardManagementService
+){
+    @PostMapping("/configuration/agent-token")
+    fun getConfigurationByAgentToken(@RequestBody(required = true) agentTokenRequest: AgentTokenRequest): ResponseEntity<String> {
+        val config = wireGuardService.getConfigurationByAgentToken(agentToken = agentTokenRequest.agentToken)
+        return ResponseEntity.ok(config)
+    }
+}
+
 @RestController
 @RequestMapping("/api/private/wireguard")
 class WireGuardController(

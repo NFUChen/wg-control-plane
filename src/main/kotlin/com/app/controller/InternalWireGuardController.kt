@@ -34,10 +34,4 @@ class InternalWireGuardController(
         )
         return ResponseEntity.ok(ClientResponse.from(client))
     }
-
-    @PostMapping("/configuration/agent-token")
-    fun getConfigurationByAgentToken(@RequestBody(required = true) agentTokenRequest: AgentTokenRequest): ResponseEntity<String> {
-        val config = wireGuardService.getConfigurationByAgentToken(agentToken = agentTokenRequest.agentToken)
-        return ResponseEntity.ok(config)
-    }
 }

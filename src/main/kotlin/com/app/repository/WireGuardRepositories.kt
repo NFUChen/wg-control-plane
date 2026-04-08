@@ -37,8 +37,6 @@ interface WireGuardServerRepository : JpaRepository<WireGuardServer, UUID> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE WireGuardServer s SET s.ansibleHost = null WHERE s.ansibleHost.id = :hostId")
     fun clearAnsibleHostReference(@Param("hostId") hostId: UUID): Int
-
-    fun findByAgentToken(token: String): WireGuardServer?
 }
 
 /**

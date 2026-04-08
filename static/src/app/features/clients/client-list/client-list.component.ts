@@ -13,6 +13,7 @@ import { ModalComponent } from '../../../shared/components/modal/modal.component
 import {
   ClientResponse,
   ClientDeploymentStatus,
+  ClientDeploymentMode,
   ServerDetailResponse,
   TableColumn,
   LoadingState,
@@ -293,6 +294,73 @@ import {
           </button>
         </div>
       </app-modal>
+
+      <!-- Agent Token Modal -->
+      <app-modal
+        [isOpen]="agentTokenModalOpen"
+        title="Agent Token"
+        size="lg"
+        [hasFooter]="true"
+        [hasCustomFooter]="true"
+        [showCloseButton]="true"
+        (closeModal)="closeAgentTokenModal()"
+      >
+        <div class="space-y-4">
+          <div class="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+            <div class="flex items-start">
+              <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div class="text-sm">
+                <p class="text-blue-800 dark:text-blue-200 font-medium mb-1">Agent Token for "{{ selectedClientName }}"</p>
+                <p class="text-blue-700 dark:text-blue-300">
+                  The client can use this token to retrieve its WireGuard configuration. You can view this token anytime.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Token
+            </label>
+            <div class="flex gap-2">
+              <div class="flex-1 px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-950 font-mono text-sm break-all text-gray-900 dark:text-gray-100">
+                {{ selectedAgentToken }}
+              </div>
+              <button
+                type="button"
+                (click)="copyAgentToken()"
+                class="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                title="Copy to clipboard"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="text-sm text-gray-600 dark:text-gray-400">
+            <p class="font-medium mb-1">How to use this token:</p>
+            <ol class="list-decimal list-inside space-y-1 ml-2">
+              <li>Share this token securely with the client administrator</li>
+              <li>The client can retrieve their configuration using: <code class="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">GET /api/public/agent/config?token=[TOKEN]</code></li>
+              <li>Once retrieved, the client can save the configuration and connect to the VPN</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="modal-footer flex justify-end gap-3">
+          <button
+            type="button"
+            (click)="closeAgentTokenModal()"
+            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+          >
+            Close
+          </button>
+        </div>
+      </app-modal>
     </div>
   `
 })
@@ -314,6 +382,11 @@ export class ClientListComponent implements OnInit, OnDestroy {
   configPreviewError: string | null = null;
   configPreview: ConfigurationPreview | null = null;
   previewClientId: string | null = null;
+
+  /** Agent token modal */
+  agentTokenModalOpen = false;
+  selectedAgentToken: string | null = null;
+  selectedClientName: string | null = null;
 
   private destroy$ = new Subject<void>();
 
@@ -347,6 +420,12 @@ export class ClientListComponent implements OnInit, OnDestroy {
       label: 'Edit',
       icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
       action: 'edit',
+      variant: 'secondary'
+    },
+    {
+      label: 'View Token',
+      icon: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z',
+      action: 'viewToken',
       variant: 'secondary'
     },
     {
@@ -431,6 +510,9 @@ export class ClientListComponent implements OnInit, OnDestroy {
         if (this.serverId) {
           this.router.navigate(['/servers', this.serverId, 'clients', item.id, 'edit']);
         }
+        break;
+      case 'viewToken':
+        this.viewAgentToken(item);
         break;
       case 'preview':
         this.openConfigPreview(item.id);
@@ -531,6 +613,53 @@ export class ClientListComponent implements OnInit, OnDestroy {
         console.error('Error downloading client config:', error);
       }
     });
+  }
+
+  viewAgentToken(client: ClientResponse): void {
+    if (client.deploymentMode !== ClientDeploymentMode.AGENT) {
+      this.loadingState = {
+        isLoading: false,
+        error: `Client "${client.name}" is not in AGENT mode. Only AGENT mode clients have tokens.`
+      };
+      return;
+    }
+
+    if (!client.agentToken) {
+      this.loadingState = {
+        isLoading: false,
+        error: `No agent token found for client "${client.name}".`
+      };
+      return;
+    }
+
+    this.selectedAgentToken = client.agentToken;
+    this.selectedClientName = client.name;
+    this.agentTokenModalOpen = true;
+  }
+
+  closeAgentTokenModal(): void {
+    this.agentTokenModalOpen = false;
+    this.selectedAgentToken = null;
+    this.selectedClientName = null;
+  }
+
+  copyAgentToken(): void {
+    if (this.selectedAgentToken) {
+      navigator.clipboard.writeText(this.selectedAgentToken).then(
+        () => {
+          this.successMessage = 'Agent token copied to clipboard';
+          setTimeout(() => {
+            this.successMessage = '';
+          }, 3000);
+        },
+        () => {
+          this.loadingState = {
+            isLoading: false,
+            error: 'Failed to copy token to clipboard'
+          };
+        }
+      );
+    }
   }
 
   viewClientInfo(clientId: string): void {

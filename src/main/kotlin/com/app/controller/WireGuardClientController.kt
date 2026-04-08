@@ -151,8 +151,7 @@ class WireGuardClientController(
 
         val server = managementService.getServerById(client.server.id)
 
-        return templateService.generateClientConfigWithPrivateKey(
-            clientPrivateKey = client.privateKey,
+        return templateService.generateClientConfig(
             client = client,
             server = server
         )

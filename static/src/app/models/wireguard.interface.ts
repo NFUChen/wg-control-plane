@@ -2,6 +2,12 @@
 
 export type ClientDeploymentStatus = 'NONE' | 'DEPLOYED' | 'DEPLOY_FAILED' | 'PENDING_REMOVAL';
 
+export enum ClientDeploymentMode {
+  LOCAL = 'LOCAL',
+  ANSIBLE = 'ANSIBLE',
+  AGENT = 'AGENT'
+}
+
 export interface IPAddress {
   address: string; // e.g., "10.0.0.1/24"
 }
@@ -143,6 +149,10 @@ export interface ClientResponse {
   /** When set, client config is deployed to this Ansible host. */
   hostId: string | null;
   deploymentStatus: ClientDeploymentStatus;
+  /** Deployment mode: LOCAL, ANSIBLE, or AGENT */
+  deploymentMode: ClientDeploymentMode;
+  /** Agent token for self-service config retrieval (only for AGENT mode) */
+  agentToken?: string | null;
   createdAt: string;
   updatedAt: string;
 }

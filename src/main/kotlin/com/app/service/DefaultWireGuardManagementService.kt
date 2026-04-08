@@ -473,10 +473,6 @@ class DefaultWireGuardManagementService(
     }
 
     override fun getConfigurationByAgentToken(agentToken: String): String {
-        val server = serverRepository.findByAgentToken(agentToken)
-        if (server != null) {
-            return wireGuardTemplateService.generateServerConfig(server)
-        }
 
         val client = clientRepository.findByAgentToken(agentToken)
         if (client != null) {

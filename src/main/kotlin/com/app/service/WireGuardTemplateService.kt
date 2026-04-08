@@ -60,7 +60,7 @@ class WireGuardTemplateService(
 
 
         val dataModel = mutableMapOf<String, Any>(
-            "privateKey" to "", // Client should provide their own private key
+            "privateKey" to client.privateKey,
             "peerIP" to client.peerIPs.joinToString(", ") { it.address },
             "dnsServers" to server.dnsServers.joinToString(", ") { it.address },
             "serverPublicKey" to server.publicKey,
@@ -70,42 +70,6 @@ class WireGuardTemplateService(
             "mtu" to (server.mtu ?: 20)
         )
 
-
-        return templateService.processTemplate("wg/client-config.ftl", dataModel)
-    }
-
-    /**
-     * Generate client configuration with custom private key
-     */
-    fun generateClientConfigWithPrivateKey(
-        clientPrivateKey: String,
-        client: WireGuardClient,
-        server: WireGuardServer,
-    ): String {
-
-
-        val globalConfig = globalConfigurationService.getCurrentConfig()
-        val serverEndpoint = wireGuardServerEndpointResolver.resolve(server, globalConfig)
-
-        val tunnelAllowedIPs = mutableSetOf<String>()
-        client.server.addresses.forEach {
-            tunnelAllowedIPs.add(it.address)
-        }
-
-        client.allowedIPs.forEach {
-            tunnelAllowedIPs.add(it.address)
-        }
-
-        val dataModel = mutableMapOf<String, Any>(
-            "privateKey" to clientPrivateKey,
-            "peerIP" to client.peerIPs.joinToString(", ") { it.address },
-            "dnsServers" to server.dnsServers.joinToString(", ") { it.address },
-            "serverPublicKey" to server.publicKey,
-            "serverEndpoint" to serverEndpoint,
-            "allowedIPs" to tunnelAllowedIPs.joinToString(", "),
-            "persistentKeepalive" to client.persistentKeepalive,
-            "mtu" to (server.mtu ?: 20)
-        )
 
         return templateService.processTemplate("wg/client-config.ftl", dataModel)
     }

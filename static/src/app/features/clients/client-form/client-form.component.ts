@@ -21,7 +21,8 @@ import {
   AddClientRequest,
   UpdateClientRequest,
   ServerDetailResponse,
-  LoadingState
+  LoadingState,
+  ClientDeploymentMode
 } from '../../../models/wireguard.interface';
 import { AnsibleHost } from '../../../models/ansible.interface';
 
@@ -869,8 +870,12 @@ export class ClientFormComponent implements OnInit, OnDestroy {
     this.wireguardService.addClientToServer(this.serverId, addClientRequest).subscribe({
       next: (client) => {
         // Navigate to the client list with success message
+        const successMsg = client.deploymentMode === ClientDeploymentMode.AGENT
+          ? `Client "${client.name}" created. Use "View Token" action to see the agent token.`
+          : `Client "${client.name}" added successfully`;
+
         this.router.navigate(['/servers', this.serverId, 'clients'], {
-          queryParams: { success: `Client "${client.name}" added successfully` }
+          queryParams: { success: successMsg }
         });
       },
       error: (error) => {

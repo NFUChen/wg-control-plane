@@ -704,8 +704,7 @@ class AnsibleWireGuardManagementService(
         val inventoryContent = ansibleInventoryGenerator.inventoryForSinglePlaybookTarget(clientTargetHost, ANSIBLE_INVENTORY_GROUP)
 
         // Generate client configuration content
-        val clientConfig = wireGuardTemplateService.generateClientConfigWithPrivateKey(
-            clientPrivateKey = client.privateKey,
+        val clientConfig = wireGuardTemplateService.generateClientConfig(
             client = client,
             server = server
         )
