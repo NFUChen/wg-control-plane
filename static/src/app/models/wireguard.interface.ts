@@ -82,8 +82,14 @@ export interface AddClientRequest {
    * distinct from the client-side “which traffic uses the tunnel” setting in generated .conf.
    */
   allowedIPs: IPAddress[];
-  /** Optional: deploy client config to this Ansible host (only for Ansible-managed servers). Immutable after create. */
+  /**
+   * Deployment mode selection:
+   * - hostId != null → ANSIBLE mode (deploy to remote host)
+   * - useAgentMode = true → AGENT mode (client pulls config via agentToken)
+   * - both null/false → LOCAL mode (deploy on control plane host)
+   */
   hostId?: string | null;
+  useAgentMode?: boolean;
 }
 
 /** PUT /api/private/wireguard/servers/{serverId}/clients/{clientId} — omitted fields unchanged; presharedKey: '' clears PSK */
