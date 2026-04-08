@@ -442,7 +442,7 @@ class AnsibleWireGuardManagementService(
         }
     }
 
-    override fun getConfigurationByAgentToken(agentToken: String): String {
+    override fun getConfigurationByAgentToken(agentToken: String): AgentConfigurationResponse {
         throw UnsupportedOperationException("Retrieving configuration by agent token is not supported for Ansible-managed servers/clients")
     }
 

@@ -10,6 +10,7 @@ import org.hibernate.annotations.NotFoundAction
 import org.hibernate.annotations.UpdateTimestamp
 import java.time.LocalDateTime
 import java.util.*
+import kotlin.jvm.Transient
 
 const val GOOGLE_DNS = "8.8.8.8"
 
@@ -45,9 +46,6 @@ class WireGuardServer(
     @Convert(converter = IPAddressListConverter::class)
     @Column(name = "dns_servers", columnDefinition = "TEXT")
     val dnsServers: MutableList<IPAddress> = mutableListOf(IPAddress(GOOGLE_DNS)),
-
-    @Column(name = "mtu")
-    val mtu: Int? = null,
 
     @Column(name = "post_up")
     var postUp: String? = null, // iptables rules for NAT, etc.
@@ -97,13 +95,6 @@ class WireGuardServer(
     fun addClient(client: WireGuardClient) {
         client.server = this
         clients.add(client)
-    }
-
-    /**
-     * Remove a client from this server
-     */
-    fun removeClient(clientId: UUID) {
-        clients.removeIf { it.id == clientId }
     }
 }
 
@@ -216,21 +207,12 @@ class WireGuardClient(
     val plainTextAllowedIPs: String
         get() = allowedIPs.joinToString(",") { it.address }
 
-    /**
-     * Check if routing all traffic is allowed
-     */
-    val isAllTrafficAllowed: Boolean
-        get() = allowedIPs.any { it.address == "0.0.0.0/0" || it.address == "::/0" }
-
-    val primaryPeerIP = peerIPs.firstOrNull()?.address ?: ""
+    val primaryPeerIP: String get() = peerIPs.firstOrNull()?.address ?: ""
     /**
      * Check if client is currently online (based on recent handshake)
      */
     val isOnline: Boolean
         get() = lastHandshake?.isAfter(LocalDateTime.now().minusMinutes(3)) == true
-
-    val needsRetryDeploy: Boolean
-        get() = deploymentStatus in listOf(ClientDeploymentStatus.DEPLOY_FAILED, ClientDeploymentStatus.PENDING_REMOVAL)
 }
 
 /**

@@ -3,10 +3,7 @@ package com.app.controller
 import com.app.view.*
 import com.app.model.ServerConfigurationMetadata
 import com.app.model.ServerConfigurationPreview
-import com.app.service.GlobalConfigurationService
-import com.app.service.WireGuardManagementService
-import com.app.service.WireGuardServerEndpointResolver
-import com.app.service.WireGuardTemplateService
+import com.app.service.*
 import com.app.utils.ConfigFileNameSanitizer
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -23,7 +20,7 @@ class PublicWireGuardController(
     private val wireGuardService: WireGuardManagementService
 ){
     @PostMapping("/configuration/agent-token")
-    fun getConfigurationByAgentToken(@RequestBody(required = true) agentTokenRequest: AgentTokenRequest): ResponseEntity<String> {
+    fun getConfigurationByAgentToken(@RequestBody(required = true) agentTokenRequest: AgentTokenRequest): ResponseEntity<AgentConfigurationResponse> {
         val config = wireGuardService.getConfigurationByAgentToken(agentToken = agentTokenRequest.agentToken)
         return ResponseEntity.ok(config)
     }
@@ -215,7 +212,7 @@ class WireGuardController(
     fun updateClient(
         @PathVariable serverId: UUID,
         @PathVariable clientId: UUID,
-        @RequestBody request: UpdateClientRequest
+        @Valid @RequestBody request: UpdateClientRequest
     ): ResponseEntity<ClientResponse> {
         val client = wireGuardService.updateClient(serverId, clientId, request)
         return ResponseEntity.ok(ClientResponse.from(client))

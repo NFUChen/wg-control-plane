@@ -7,6 +7,11 @@ import com.app.view.*
 import java.time.LocalDateTime
 import java.util.*
 
+data class AgentConfigurationResponse(
+    val interfaceName: String,
+    val configuration: String
+)
+
 interface WireGuardManagementService {
 
     /**
@@ -101,5 +106,5 @@ interface WireGuardManagementService {
      */
     fun retryClientDeployment(serverId: UUID, clientId: UUID): WireGuardClient?
 
-    fun getConfigurationByAgentToken(agentToken: String): String
+    fun getConfigurationByAgentToken(agentToken: String): AgentConfigurationResponse
 }

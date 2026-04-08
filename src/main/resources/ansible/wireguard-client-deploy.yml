@@ -28,6 +28,24 @@
       when:
         - wg_config_content is defined
         - wg_client_interface_name is defined
+      register: config_deployed
+
+    - name: Stop WireGuard interface before restart
+      ansible.builtin.command:
+        cmd: "wg-quick down {{ wg_client_interface_name }}"
+      ignore_errors: true
+      when:
+        - config_deployed.changed
+        - wg_restart_after_deploy | default(true)
+        - wg_client_interface_name is defined
+
+    - name: Start WireGuard interface after configuration update
+      ansible.builtin.command:
+        cmd: "wg-quick up {{ wg_client_interface_name }}"
+      when:
+        - config_deployed.changed
+        - wg_restart_after_deploy | default(true)
+        - wg_client_interface_name is defined
 
     - name: Enable WireGuard client interface on boot
       ansible.builtin.systemd:
@@ -35,7 +53,16 @@
         enabled: "{{ wg_enable_on_boot | default(true) }}"
         state: started
       when:
+        - not (config_deployed.changed | default(false))  # Only start via systemd if config wasn't changed
         - wg_restart_after_deploy | default(true)
+        - wg_client_interface_name is defined
+
+    - name: Enable WireGuard client interface on boot (after restart)
+      ansible.builtin.systemd:
+        name: "wg-quick@{{ wg_client_interface_name }}"
+        enabled: "{{ wg_enable_on_boot | default(true) }}"
+      when:
+        - config_deployed.changed | default(false)  # Just enable service after manual restart
         - wg_client_interface_name is defined
 
     - name: Log deployment completion

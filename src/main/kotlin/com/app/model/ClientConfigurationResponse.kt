@@ -32,7 +32,6 @@ data class ServerInfo(
     val endpoint: String,
     val publicKey: String,
     val dnsServers: List<String>,
-    val mtu: Int?
 )
 
 /**

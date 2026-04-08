@@ -20,7 +20,6 @@ class WireGuardTemplateService(
             "address" to server.addresses.joinToString(", ") { it.address },
             "listenPort" to server.listenPort,
             "dnsServers" to server.dnsServers.joinToString(", ") { it.address },
-            "mtu" to (server.mtu ?: ""),
             "postUp" to (server.postUp ?: ""),
             "postDown" to (server.postDown ?: ""),
             "clients" to server.clients.filter { it.enabled }.map { client ->
@@ -66,8 +65,7 @@ class WireGuardTemplateService(
             "serverPublicKey" to server.publicKey,
             "serverEndpoint" to serverEndpoint,
             "allowedIPs" to tunnelAllowedIPs.joinToString(", "),
-            "persistentKeepalive" to client.persistentKeepalive,
-            "mtu" to (server.mtu ?: 20)
+            "persistentKeepalive" to client.persistentKeepalive
         )
 
 

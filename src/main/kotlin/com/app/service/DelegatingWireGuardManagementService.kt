@@ -190,7 +190,7 @@ class DelegatingWireGuardManagementService(
         return impl.retryClientDeployment(serverId, clientId)
     }
 
-    override fun getConfigurationByAgentToken(agentToken: String): String {
+    override fun getConfigurationByAgentToken(agentToken: String): AgentConfigurationResponse {
         return defaultWireGuardManagementService.getConfigurationByAgentToken(agentToken)
     }
 }

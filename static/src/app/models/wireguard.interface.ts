@@ -103,6 +103,7 @@ export interface UpdateClientRequest {
   clientName?: string;
   interfaceName?: string;
   peerIPs?: IPAddress[];
+  allowedIPs?: IPAddress[];
   presharedKey?: string;
   persistentKeepalive?: number;
   enabled?: boolean;
