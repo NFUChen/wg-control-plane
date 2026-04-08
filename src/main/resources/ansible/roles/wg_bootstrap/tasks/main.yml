@@ -2,9 +2,3 @@
 # Get cloud metadata early in bootstrap process
 - import_tasks: metadata.yml
   when: wg_bootstrap_get_metadata | default(true)
-
-# Save collected metadata if requested
-- import_tasks: save_metadata.yml
-  when:
-    - wg_bootstrap_save_metadata | default(false)
-    - wg_host_metadata is defined

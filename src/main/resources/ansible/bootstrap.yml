@@ -7,7 +7,6 @@
   vars:
     # Enable metadata collection
     wg_bootstrap_get_metadata: true
-    wg_bootstrap_save_metadata: true
     wg_bootstrap_debug: "{{ wg_debug | default(false) }}"
     wg_bootstrap_metadata_dir: "{{ playbook_dir }}/../output/metadata"
 

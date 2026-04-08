@@ -10,7 +10,6 @@ wg_bootstrap_install_packages_redhat:
 
 # Metadata collection settings
 wg_bootstrap_get_metadata: true
-wg_bootstrap_save_metadata: false
 wg_bootstrap_generate_combined: true
 wg_bootstrap_debug: false
 wg_bootstrap_metadata_dir: "./metadata_output"
