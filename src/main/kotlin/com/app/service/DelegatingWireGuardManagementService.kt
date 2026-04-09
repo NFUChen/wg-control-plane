@@ -5,6 +5,7 @@ import com.app.model.WireGuardClient
 import com.app.model.WireGuardServer
 import com.app.repository.WireGuardClientRepository
 import com.app.repository.WireGuardServerRepository
+import com.app.service.validation.WireGuardValidationService
 import com.app.view.AddClientRequest
 import com.app.view.CreateServerRequest
 import com.app.view.ServerStatisticsResponse
@@ -28,6 +29,7 @@ import kotlin.jvm.optionals.getOrNull
 class DelegatingWireGuardManagementService(
     private val defaultWireGuardManagementService: DefaultWireGuardManagementService,
     private val ansibleWireGuardManagementService: AnsibleWireGuardManagementService,
+    private val validationService: WireGuardValidationService,
     private val serverRepository: WireGuardServerRepository,
     private val clientRepository: WireGuardClientRepository,
 ) : WireGuardManagementService {
@@ -81,15 +83,22 @@ class DelegatingWireGuardManagementService(
     }
 
     override fun createServer(request: CreateServerRequest): WireGuardServer {
-        return if (request.hostId != null) {
-            logger.debug("createServer: Ansible-managed (hostId=${request.hostId})", )
-            ansibleWireGuardManagementService.createServer(request)
+        // Validate and enrich request based on control plane mode
+        val validatedRequest = validationService.validateAndEnrich(request)
+
+        return if (validatedRequest.hostId != null) {
+            logger.debug("createServer: Ansible-managed (hostId=${validatedRequest.hostId})")
+            ansibleWireGuardManagementService.createServer(validatedRequest)
         } else {
-            defaultWireGuardManagementService.createServer(request)
+            logger.debug("createServer: Local deployment")
+            defaultWireGuardManagementService.createServer(validatedRequest)
         }
     }
 
     override fun updateServer(serverId: UUID, request: UpdateServerRequest): WireGuardServer? {
+        // Validate server update based on control plane mode
+        validationService.validateServerUpdate(serverId, request)
+
         val (impl, _) = implForServer(serverId)
         return impl.updateServer(serverId, request)
     }
@@ -100,8 +109,11 @@ class DelegatingWireGuardManagementService(
     }
 
     override fun addClientToServer(serverId: UUID, request: AddClientRequest): WireGuardClient {
+        // Validate and enrich client request based on control plane mode
+        val validatedRequest = validationService.validateAndEnrich(request)
+
         val (impl, _) = implForServer(serverId)
-        return impl.addClientToServer(serverId, request)
+        return impl.addClientToServer(serverId, validatedRequest)
     }
 
     override fun updateClient(serverId: UUID, clientId: UUID, request: UpdateClientRequest): WireGuardClient {

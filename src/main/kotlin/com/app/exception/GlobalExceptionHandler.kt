@@ -1,5 +1,7 @@
 package com.app.exception
 
+import com.app.service.validation.ControlPlaneValidationException
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.FieldError
@@ -13,6 +15,38 @@ import java.time.LocalDateTime
  */
 @ControllerAdvice
 class GlobalExceptionHandler {
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
+    }
+
+    /**
+     * Handle control plane validation errors
+     */
+    @ExceptionHandler(ControlPlaneValidationException::class)
+    fun handleControlPlaneValidationException(
+        ex: ControlPlaneValidationException
+    ): ResponseEntity<ErrorResponse> {
+        logger.warn("Control plane validation failed: {}", ex.message)
+
+        val details = mutableMapOf<String, String>()
+        if (ex.suggestions.isNotEmpty()) {
+            details["suggestions"] = ex.suggestions.joinToString("; ")
+        }
+        if (ex.warningMessage != null) {
+            details["warning"] = ex.warningMessage
+        }
+
+        val errorResponse = ErrorResponse(
+            status = HttpStatus.BAD_REQUEST.value(),
+            error = "Control Plane Validation Error",
+            message = ex.message ?: "Validation failed",
+            details = details.takeIf { it.isNotEmpty() },
+            timestamp = LocalDateTime.now()
+        )
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse)
+    }
 
     /**
      * Handle validation errors
