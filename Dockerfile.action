@@ -49,4 +49,8 @@ EXPOSE 8080
 RUN groupadd -r appuser && useradd -r -g appuser appuser && \
     chown -R appuser:appuser $APP_HOME
 
-CMD ["java", "-jar", "app.jar", "--spring.profiles.active=docker-dev"]
+# Entry point is the Spring Boot app;
+ENTRYPOINT ["java","-jar","/app/app.jar"]
+
+# CMD can be overridden at runtime; use it to specify config location (e.g. mounted volume) without changing the entry point.
+CMD ["--spring.config.location=file:/config/application.yaml"]

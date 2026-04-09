@@ -82,4 +82,9 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser && \
 # Process runs as root so wg-quick can manage interfaces; app files owned by appuser.
 # Containers still typically need NET_ADMIN (and often privileged or /dev/net/tun) for WireGuard.
 
-CMD ["java", "-jar", "app.jar"]
+# Entry point is the Spring Boot app;
+ENTRYPOINT ["java","-jar","/app/app.jar"]
+
+# CMD can be overridden at runtime; use it to specify config location (e.g. mounted volume) without changing the entry point.
+CMD ["--spring.config.location=file:/config/application.yaml"]
+
