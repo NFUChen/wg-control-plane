@@ -81,7 +81,7 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser && \
 
 
 # Copy Playbook to /opt/ansible/playbooks/ for Ansible CLI usage in the container; can be overridden by mounting a volume at runtime.
-COPY --from=builder /app/src/main/resources/ansible /etc/ansible
+COPY --from=builder /app/src/main/resources/ansible /opt/ansible
 
 # Process runs as root so wg-quick can manage interfaces; app files owned by appuser.
 # Containers still typically need NET_ADMIN (and often privileged or /dev/net/tun) for WireGuard.

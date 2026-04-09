@@ -50,6 +50,7 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser && \
     chown -R appuser:appuser $APP_HOME
 
 
+# Copy Ansible files - ensure src/ is included in build context for this to work
 COPY src/main/resources/ansible/ /opt/ansible/
 
 
