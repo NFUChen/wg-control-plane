@@ -7,4 +7,5 @@
   become: true
   roles:
     - role: wg_install
+    - role: wg_sysctl
     - role: wg_deploy
