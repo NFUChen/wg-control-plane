@@ -33,8 +33,8 @@ class DefaultAnsiblePlaybookExecutor(
     private val privateKeyRepository: PrivateKeyRepository,
     private val objectMapper: ObjectMapper,
     private val resourceLoader: ResourceLoader,
-    @Value("\${ansible.working-directory:#{null}}") private val ansibleWorkingDirectory: String?,
-    @Value("\${ansible.timeout-seconds:3600}") private val defaultTimeoutSeconds: Long = 3600,
+    @Value("\${ansible.working-directory}") private val ansibleWorkingDirectory: String? = null,
+    @Value("\${ansible.timeout-seconds}") private val defaultTimeoutSeconds: Long = 3600,
     @Value("\${ansible.executable:ansible-playbook}") private val ansibleExecutable: String = "ansible-playbook"
 ) : AnsiblePlaybookExecutor {
 
