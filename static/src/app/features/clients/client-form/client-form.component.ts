@@ -356,16 +356,25 @@ function optionalExtraAllowedCidrValidator(control: AbstractControl): Validation
                   <label for="clientDeployHostId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Remote host *
                   </label>
-                  <select
-                    id="clientDeployHostId"
-                    formControlName="clientDeployHostId"
-                    class="w-full max-w-xl px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select a host...</option>
-                    @for (h of ansibleHosts; track h.id) {
-                      <option [value]="h.id">{{ h.hostname }} — {{ h.ipAddress }}</option>
-                    }
-                  </select>
+                  @if (ansibleHosts.length > 0) {
+                    <select
+                      id="clientDeployHostId"
+                      formControlName="clientDeployHostId"
+                      class="w-full max-w-xl px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select a host...</option>
+                      @for (h of ansibleHosts; track h.id) {
+                        <option [value]="h.id">{{ h.hostname }} — {{ h.ipAddress }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <div class="w-full max-w-xl px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400">
+                      No available hosts (server host excluded)
+                    </div>
+                  }
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    💡 The server host is excluded to prevent network conflicts
+                  </p>
                 </div>
               }
             </div>
@@ -829,7 +838,10 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   private loadAnsibleHosts(): void {
     this.ansible.listHosts(false).subscribe({
       next: rows => {
-        this.ansibleHosts = rows.filter(h => h.enabled);
+        // Filter out enabled hosts AND exclude the host where the server is running
+        this.ansibleHosts = rows.filter(h =>
+          h.enabled && h.id !== this.server?.hostId
+        );
       },
       error: () => {
         this.ansibleHosts = [];
