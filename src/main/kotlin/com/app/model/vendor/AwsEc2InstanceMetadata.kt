@@ -1,7 +1,11 @@
 package com.app.model.vendor
 
+import com.app.model.AnsibleHost
+import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
 import org.hibernate.annotations.CreationTimestamp
+import org.hibernate.annotations.NotFound
+import org.hibernate.annotations.NotFoundAction
 import org.hibernate.annotations.UpdateTimestamp
 import java.time.LocalDateTime
 import java.util.*
@@ -47,6 +51,12 @@ data class AwsEc2InstanceMetadata(
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    var updatedAt: LocalDateTime = LocalDateTime.now()
+    var updatedAt: LocalDateTime = LocalDateTime.now(),
+
+    @JsonIgnore
+    @OneToOne(fetch = FetchType.EAGER, optional = true)
+    @NotFound(action = NotFoundAction.IGNORE)
+    @JoinColumn(name = "ansible_host_id", nullable = true)
+    val ansibleHost: AnsibleHost? = null
 ) {
 }
