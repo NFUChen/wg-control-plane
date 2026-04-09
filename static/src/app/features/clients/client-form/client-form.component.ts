@@ -22,7 +22,9 @@ import {
   UpdateClientRequest,
   ServerDetailResponse,
   LoadingState,
-  ClientDeploymentMode
+  ClientDeploymentMode,
+  ControlPlaneModeResponse,
+  ControlPlaneMode
 } from '../../../models/wireguard.interface';
 import { AnsibleHost } from '../../../models/ansible.interface';
 
@@ -578,6 +580,10 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   formSubmitError: string | null = null;
   submitting = false;
 
+  // Control plane mode properties
+  controlPlaneMode?: ControlPlaneModeResponse;
+  showLocalDeployment = true;
+
   get isEditMode(): boolean {
     return !!this.clientId;
   }
@@ -604,6 +610,9 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Load control plane mode first
+    this.loadControlPlaneMode();
+
     this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {
       this.serverId = params['serverId'];
       this.clientId = params['clientId'];
@@ -625,6 +634,48 @@ export class ClientFormComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
   }
+
+  loadControlPlaneMode(): void {
+    this.wireguardService.getControlPlaneMode()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (mode) => {
+          this.controlPlaneMode = mode;
+          this.showLocalDeployment = mode.allowsLocalOperations;
+          this.updateFormValidation();
+        },
+        error: (error) => {
+          console.error('Failed to load control plane mode:', error);
+          // Default to showing local deployment if API fails
+          this.showLocalDeployment = true;
+        }
+      });
+  }
+
+  updateFormValidation(): void {
+    if (!this.controlPlaneMode?.allowsLocalOperations) {
+      // In pure remote mode, require either hostId or agent mode
+      this.clientForm.get('deploymentMode')?.addValidators(this.requireRemoteDeploymentValidator);
+    } else {
+      // In hybrid mode, all deployment modes are allowed
+      this.clientForm.get('deploymentMode')?.removeValidators([this.requireRemoteDeploymentValidator]);
+    }
+    this.clientForm.get('deploymentMode')?.updateValueAndValidity();
+  }
+
+  private requireRemoteDeploymentValidator = (control: AbstractControl): ValidationErrors | null => {
+    const mode = control.value;
+    const hostId = this.clientForm?.get('hostId')?.value;
+    const useAgentMode = this.clientForm?.get('useAgentMode')?.value;
+
+    // In pure remote mode, require either hostId or agent mode
+    if (!this.controlPlaneMode?.allowsLocalOperations) {
+      if (!hostId && !useAgentMode) {
+        return { remoteDeploymentRequired: true };
+      }
+    }
+    return null;
+  };
 
   createForm(): void {
     this.clientForm = this.fb.group({

@@ -12,7 +12,9 @@ import {
   CreateServerRequest,
   UpdateServerRequest,
   ServerDetailResponse,
-  LoadingState
+  LoadingState,
+  ControlPlaneModeResponse,
+  ControlPlaneMode
 } from '../../../models/wireguard.interface';
 import { AnsibleHost } from '../../../models/ansible.interface';
 
@@ -62,24 +64,53 @@ import { AnsibleHost } from '../../../models/ansible.interface';
           @if (!isEditMode) {
             <div class="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
               <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Deployment</h3>
+
+              <!-- Control Plane Mode Info -->
+              @if (controlPlaneMode) {
+                <div class="flex items-center space-x-2 text-sm">
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                        [class]="controlPlaneMode.mode === 'PURE_REMOTE' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'">
+                    {{ controlPlaneMode.mode }}
+                  </span>
+                  <span class="text-gray-600 dark:text-gray-400">{{ controlPlaneMode.description }}</span>
+                </div>
+              }
+
               <p class="text-sm text-gray-600 dark:text-gray-400">
-                Choose whether this VPN runs on <strong class="font-medium text-gray-800 dark:text-gray-200">this machine</strong> (local
-                <code class="text-xs">wg-quick</code>) or on a registered <strong class="font-medium text-gray-800 dark:text-gray-200">Ansible host</strong>. This choice cannot be changed later.
+                @if (showLocalDeployment) {
+                  Choose whether this VPN runs on <strong class="font-medium text-gray-800 dark:text-gray-200">this machine</strong> (local
+                  <code class="text-xs">wg-quick</code>) or on a registered <strong class="font-medium text-gray-800 dark:text-gray-200">Ansible host</strong>. This choice cannot be changed later.
+                } @else {
+                  In pure control plane mode, VPN servers must be deployed on registered <strong class="font-medium text-gray-800 dark:text-gray-200">Ansible hosts</strong>. Local deployment is disabled.
+                }
               </p>
+
               <div>
                 <label for="deploymentTarget" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Target
+                  Target {{ !showLocalDeployment ? '*' : '' }}
                 </label>
                 <select
                   id="deploymentTarget"
                   formControlName="deploymentTarget"
                   class="w-full max-w-xl px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option [ngValue]="null">This control plane — local WireGuard</option>
+                  @if (showLocalDeployment) {
+                    <option [ngValue]="null">This control plane — local WireGuard</option>
+                  }
                   @for (h of ansibleHosts; track h.id) {
                     <option [ngValue]="h.id">{{ h.hostname }} — {{ h.ipAddress }}</option>
                   }
+                  @if (!showLocalDeployment && ansibleHosts.length === 0) {
+                    <option [ngValue]="null" disabled>No Ansible hosts available</option>
+                  }
                 </select>
+
+                @if (!showLocalDeployment && serverForm.get('deploymentTarget')?.invalid && serverForm.get('deploymentTarget')?.touched) {
+                  <div class="mt-1 text-sm text-red-600">
+                    Ansible host is required in pure control plane mode
+                  </div>
+                }
+
                 @if (ansibleHostsLoadError) {
                   <p class="mt-1 text-sm text-amber-700 dark:text-amber-400">{{ ansibleHostsLoadError }}</p>
                 }
@@ -341,6 +372,10 @@ export class ServerFormComponent implements OnInit, OnDestroy {
   /** Shown in edit mode (host binding is immutable). */
   editDeploymentSummary = '';
 
+  // Control plane mode properties
+  controlPlaneMode?: ControlPlaneModeResponse;
+  showLocalDeployment = true;
+
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -354,6 +389,9 @@ export class ServerFormComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Load control plane mode first
+    this.loadControlPlaneMode();
+
     this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {
       this.serverId = params['id'];
       this.isEditMode = !!this.serverId && this.route.snapshot.url.some(segment => segment.path === 'edit');
@@ -378,6 +416,34 @@ export class ServerFormComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  loadControlPlaneMode(): void {
+    this.wireguardService.getControlPlaneMode()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (mode) => {
+          this.controlPlaneMode = mode;
+          this.showLocalDeployment = mode.allowsLocalOperations;
+          this.updateFormValidation();
+        },
+        error: (error) => {
+          console.error('Failed to load control plane mode:', error);
+          // Default to showing local deployment if API fails
+          this.showLocalDeployment = true;
+        }
+      });
+  }
+
+  updateFormValidation(): void {
+    if (!this.controlPlaneMode?.allowsLocalOperations) {
+      // In pure remote mode, deploymentTarget is required
+      this.serverForm.get('deploymentTarget')?.addValidators([Validators.required]);
+    } else {
+      // In hybrid mode, deploymentTarget is optional
+      this.serverForm.get('deploymentTarget')?.removeValidators([Validators.required]);
+    }
+    this.serverForm.get('deploymentTarget')?.updateValueAndValidity();
   }
 
   createForm(): void {
