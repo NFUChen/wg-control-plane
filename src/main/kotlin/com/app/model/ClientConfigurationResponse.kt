@@ -30,8 +30,7 @@ data class ServerInfo(
     val id: UUID,
     val name: String,
     val endpoint: String,
-    val publicKey: String,
-    val dnsServers: List<String>,
+    val publicKey: String
 )
 
 /**

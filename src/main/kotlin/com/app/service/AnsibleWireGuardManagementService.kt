@@ -70,7 +70,6 @@ class AnsibleWireGuardManagementService(
             publicKey = publicKey,
             addresses = mutableListOf(IPAddress(request.networkAddress)),
             listenPort = request.listenPort,
-            dnsServers = request.dnsServers.map { IPAddress(it) }.toMutableList(),
             postUp = request.postUp?.trim()?.takeIf { it.isNotEmpty() },
             postDown = request.postDown?.trim()?.takeIf { it.isNotEmpty() },
             ansibleHost = ansibleHost

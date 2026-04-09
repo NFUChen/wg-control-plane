@@ -1,0 +1,51 @@
+#!/bin/bash
+set -euo pipefail
+
+# Get Azure metadata using Instance Metadata Service
+echo "Getting Azure metadata..." >&2
+
+# Get Azure instance metadata
+echo "Requesting Azure instance metadata..." >&2
+METADATA_RESULT=$(curl -s \
+  -H "Metadata: true" \
+  "http://169.254.169.254/metadata/instance?api-version=2021-02-01" \
+  --max-time 5 || echo "")
+
+if [[ -z "$METADATA_RESULT" ]]; then
+    echo "Failed to get Azure metadata" >&2
+    exit 1
+fi
+
+echo "Metadata received successfully" >&2
+
+# Parse JSON and extract required fields
+echo "Parsing Azure metadata..." >&2
+
+VM_ID=$(echo "$METADATA_RESULT" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data['compute']['vmId'])")
+PRIVATE_IP=$(echo "$METADATA_RESULT" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data['network']['interface'][0]['ipv4']['ipAddress'][0]['privateIpAddress'])")
+LOCATION=$(echo "$METADATA_RESULT" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data['compute']['location'])")
+RESOURCE_GROUP=$(echo "$METADATA_RESULT" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data['compute']['resourceGroupName'])")
+SUBSCRIPTION_ID=$(echo "$METADATA_RESULT" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data['compute']['subscriptionId'])")
+NETWORK_INTERFACE_ID=$(echo "$METADATA_RESULT" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data['network']['interface'][0]['resourceId'])")
+MAC_ADDRESS=$(echo "$METADATA_RESULT" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data['network']['interface'][0]['macAddress'])")
+
+echo "All metadata collected successfully" >&2
+
+# Create JSON payload for Kotlin backend (matching UpsertAzureInstanceMetadataRequest structure)
+ANSIBLE_JSON_PAYLOAD=$(cat << EOF
+{
+  "hostId": "{{ wg_host_id }}",
+  "vmId": "$VM_ID",
+  "privateIpAddress": "$PRIVATE_IP",
+  "location": "$LOCATION",
+  "resourceGroupName": "$RESOURCE_GROUP",
+  "subscriptionId": "$SUBSCRIPTION_ID",
+  "networkInterfaceId": "$NETWORK_INTERFACE_ID",
+  "macAddress": "$MAC_ADDRESS"
+}
+EOF
+)
+
+
+# Output JSON for Ansible to parse
+echo "$ANSIBLE_JSON_PAYLOAD"

@@ -32,8 +32,6 @@ data class UpdateServerRequest(
     @field:Max(65535, message = "Listen port must be at most 65535")
     val listenPort: Int? = null,
 
-    val dnsServers: List<String>? = null,
-
     @field:Size(max = 8192, message = "PostUp must be at most 8192 characters")
     val postUp: String? = null,
 
@@ -66,8 +64,6 @@ data class CreateServerRequest(
     @field:Min(1024, message = "Listen port must be at least 1024")
     @field:Max(65535, message = "Listen port must be at most 65535")
     val listenPort: Int = 51820,
-
-    val dnsServers: List<String> = listOf(GOOGLE_DNS),
 
     @field:Size(max = 8192, message = "PostUp must be at most 8192 characters")
     val postUp: String? = null,
@@ -158,7 +154,6 @@ data class ServerResponse(
     val networkAddress: IPAddress,
     val listenPort: Int,
     val endpoint: String,
-    val dnsServers: List<IPAddress>,
     val postUp: String?,
     val postDown: String?,
     val enabled: Boolean,
@@ -182,7 +177,6 @@ data class ServerResponse(
                 networkAddress = server.primaryAddress,
                 listenPort = server.listenPort,
                 endpoint = endpoint,
-                dnsServers = server.dnsServers.toList(),
                 postUp = server.postUp,
                 postDown = server.postDown,
                 enabled = server.enabled,
@@ -208,7 +202,6 @@ data class ServerDetailResponse(
     val networkAddress: IPAddress,
     val listenPort: Int,
     val endpoint: String,
-    val dnsServers: List<IPAddress>,
     val postUp: String?,
     val postDown: String?,
     val enabled: Boolean,
@@ -228,7 +221,6 @@ data class ServerDetailResponse(
                 networkAddress = server.primaryAddress,
                 listenPort = server.listenPort,
                 endpoint = endpoint,
-                dnsServers = server.dnsServers.toList(),
                 postUp = server.postUp,
                 postDown = server.postDown,
                 enabled = server.enabled,

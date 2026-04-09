@@ -27,3 +27,28 @@ data class UpsertInstanceMetadataResponse(
     val message: String
 ) {
 }
+
+/**
+ * Response for Azure instance metadata operations
+ */
+data class AzureInstanceMetadataResponse(
+    val id: UUID,
+    val vmId: String,
+    val privateIpAddress: String,
+    val location: String,
+    val resourceGroupName: String,
+    val subscriptionId: String,
+    val networkInterfaceId: String,
+    val macAddress: String,
+    val ansibleHostId: UUID? = null,
+    val createdAt: LocalDateTime,
+    val updatedAt: LocalDateTime
+)
+
+/**
+ * Response for Azure upsert operations indicating if a record was created or updated
+ */
+data class UpsertAzureInstanceMetadataResponse(
+    val metadata: AzureInstanceMetadataResponse,
+    val message: String
+)

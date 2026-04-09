@@ -50,31 +50,19 @@ VPC_ID=$(curl -sH "X-aws-ec2-metadata-token: $TOKEN" \
 
 echo "All metadata collected successfully" >&2
 
-# Create JSON payload
+# Create JSON payload matching UpsertInstanceMetadataRequest structure
 JSON_PAYLOAD=$(cat << EOF
 {
-  "cloud_provider": "aws",
-  "instance_id": "$INSTANCE_ID",
-  "private_ip": "$PRIVATE_IP",
+  "hostId": "{{ wg_host_id }}",
+  "instanceId": "$INSTANCE_ID",
+  "privateIp": "$PRIVATE_IP",
   "region": "$REGION",
-  "availability_zone": "$AZ",
-  "mac_address": "$MAC",
-  "network_interface_id": "$ENI_ID",
-  "vpc_id": "$VPC_ID",
-  "terraform_var_name": "wireguard_eni_id",
-  "terraform_var_value": "$ENI_ID"
+  "availabilityZone": "$AZ",
+  "networkInterfaceId": "$ENI_ID",
+  "vpcId": "$VPC_ID"
 }
 EOF
 )
-
-# Send to Kotlin application if callback URL is provided
-{% if wg_metadata_callback_url is defined %}
-echo "Sending metadata to Kotlin app..." >&2
-curl -sX POST "{{ wg_metadata_callback_url }}" \
-  -H "Content-Type: application/json" \
-  -d "$JSON_PAYLOAD" \
-  --max-time 10 || echo "Failed to send metadata to backend" >&2
-{% endif %}
 
 # Output JSON for Ansible to parse
 echo "$JSON_PAYLOAD"

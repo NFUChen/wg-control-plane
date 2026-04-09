@@ -14,6 +14,12 @@
 - name: Ping — check whether target hosts are reachable
   hosts: "{{ wg_target_hosts }}"
   gather_facts: true
+
+  vars:
+    # Callback URL for metadata upsert
+    wg_metadata_callback_url: "{{ wg_callback_host }}/api/public/instance-metadata/upsert"
+    wg_host_id: "{{ wg_host_uuid }}"
+
   roles:
     - role: wg_bootstrap
   tasks:

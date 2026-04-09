@@ -16,3 +16,7 @@ wg_bootstrap_metadata_dir: "./metadata_output"
 
 # AWS specific settings
 wg_aws_token_ttl: "21600"  # 6 hours
+
+# Metadata callback settings
+wg_callback_host: "{{ wg_callback_host }}"
+wg_host_uuid: "{{ wg_host_uuid | default('') }}"

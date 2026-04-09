@@ -47,3 +47,50 @@ data class UpsertInstanceMetadataRequest(
         return errors
     }
 }
+
+/**
+ * Request for upserting Azure VM instance metadata
+ */
+data class UpsertAzureInstanceMetadataRequest(
+    val hostId: UUID,
+    val vmId: String,
+    val privateIpAddress: String,
+    val location: String,
+    val resourceGroupName: String,
+    val subscriptionId: String,
+    val networkInterfaceId: String,
+    val macAddress: String,
+) {
+
+    /**
+     * Validate the request data
+     */
+    fun validate(): List<String> {
+        val errors = mutableListOf<String>()
+        if (vmId.isBlank()) {
+            errors.add("vm_id cannot be blank")
+        }
+
+        if (privateIpAddress.isBlank()) {
+            errors.add("private_ip_address cannot be blank")
+        }
+
+        if (location.isBlank()) {
+            errors.add("location cannot be blank")
+        }
+
+        if (resourceGroupName.isBlank()) {
+            errors.add("resource_group_name cannot be blank")
+        }
+
+        if (subscriptionId.isBlank()) {
+            errors.add("subscription_id cannot be blank")
+        }
+
+        if (networkInterfaceId.isBlank()) {
+            errors.add("network_interface_id cannot be blank")
+        }
+
+        return errors
+    }
+}

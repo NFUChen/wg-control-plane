@@ -1,6 +1,7 @@
 package com.app.service.ansible
 
 import com.app.model.AnsibleExecutionJob
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.util.*
 
@@ -13,6 +14,7 @@ class AnsibleHostConnectivityService(
     private val ansibleService: AnsibleService,
     private val ansibleInventoryGenerator: AnsibleInventoryGenerator,
     private val ansiblePlaybookExecutor: AnsiblePlaybookExecutor,
+    @Value("\${ansible.callback.host}") private val callbackHost: String
 ) {
 
     fun runPing(hostId: UUID): AnsibleExecutionJob {
@@ -22,7 +24,11 @@ class AnsibleHostConnectivityService(
         }
 
         val inventory = ansibleInventoryGenerator.inventoryForSinglePlaybookTarget(host, WG_INVENTORY_GROUP)
-        val extraVars = mapOf("wg_target_hosts" to WG_INVENTORY_GROUP)
+        val extraVars = mapOf(
+            "wg_target_hosts" to WG_INVENTORY_GROUP,
+            "wg_callback_host" to callbackHost,
+            "wg_host_id" to host.id.toString()
+        )
 
         return ansiblePlaybookExecutor.executePlaybook(
             inventoryContent = inventory,

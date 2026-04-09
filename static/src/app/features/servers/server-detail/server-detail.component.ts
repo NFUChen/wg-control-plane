@@ -101,7 +101,7 @@ import {
         </div>
 
         <div class="p-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Network Information -->
             <div>
               <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Network Configuration</h3>
@@ -144,22 +144,6 @@ import {
               </dl>
             </div>
 
-            <!-- DNS Configuration -->
-            <div>
-              <h3 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">DNS Servers</h3>
-              <div class="space-y-1">
-                @for (dns of server.dnsServers; track $index) {
-                  <div class="text-sm font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-gray-100">
-                    {{ getDnsAddress(dns) }}
-                  </div>
-                }
-                @if (server.dnsServers.length === 0) {
-                  <div class="text-sm text-gray-500 dark:text-gray-400 italic">
-                    No DNS servers configured
-                  </div>
-                }
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -846,9 +830,6 @@ export class ServerDetailComponent implements OnInit, OnDestroy {
       : server.networkAddress?.address || 'N/A';
   }
 
-  getDnsAddress(dns: any): string {
-    return typeof dns === 'string' ? dns : dns?.address || 'N/A';
-  }
 
   getClientsSubtitle(): string {
     if (!this.server) return '';
