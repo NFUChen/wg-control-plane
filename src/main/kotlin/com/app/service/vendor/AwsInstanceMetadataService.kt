@@ -4,9 +4,9 @@ import com.app.model.AnsibleHost
 import com.app.model.vendor.AwsEc2InstanceMetadata
 import com.app.repository.AnsibleHostRepository
 import com.app.repository.AwsEc2InstanceMetadataRepository
-import com.app.view.vendor.InstanceMetadataResponse
+import com.app.view.vendor.AwsInstanceMetadataResponse
 import com.app.view.vendor.UpsertInstanceMetadataRequest
-import com.app.view.vendor.UpsertInstanceMetadataResponse
+import com.app.view.vendor.UpsertAwsInstanceMetadataResponse
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -28,7 +28,7 @@ class AwsInstanceMetadataService(
      * Upsert instance metadata from Ansible playbook
      * Creates new record if instance ID doesn't exist, updates existing record otherwise
      */
-    fun upsertInstanceMetadata(request: UpsertInstanceMetadataRequest): UpsertInstanceMetadataResponse {
+    fun upsertInstanceMetadata(request: UpsertInstanceMetadataRequest): UpsertAwsInstanceMetadataResponse {
         // Validate request
         val validationErrors = request.validate()
         if (validationErrors.isNotEmpty()) {
@@ -51,7 +51,15 @@ class AwsInstanceMetadataService(
             createUpsertResponse(updated, "Instance metadata updated successfully")
         } else {
             // Create new metadata
-            val created = createNewMetadata(request, ansibleHost)
+            // if there exists a primary instance in the same VPC, new instance will be created as non-primary to avoid unique constraint violation
+            var hasPrimary = false
+            instanceRepository.countByVpcIdAndIsPrimaryTrue(request.vpcId).let { primaryCount ->
+                if (primaryCount > 0) {
+                    hasPrimary = true
+                    logger.warn("Primary instance already exists in VPC ${request.vpcId}. New instance will be created as non-primary.")
+                }
+            }
+            val created = createNewMetadata(request, ansibleHost, !hasPrimary)
             logger.info("Created new instance metadata for instance: ${request.instanceId}")
             createUpsertResponse(created, "Instance metadata created successfully")
         }
@@ -74,7 +82,7 @@ class AwsInstanceMetadataService(
     /**
      * Create new instance metadata from request
      */
-    private fun createNewMetadata(request: UpsertInstanceMetadataRequest, ansibleHost: AnsibleHost): AwsEc2InstanceMetadata {
+    private fun createNewMetadata(request: UpsertInstanceMetadataRequest, ansibleHost: AnsibleHost, isPrimary: Boolean): AwsEc2InstanceMetadata {
         val metadata = AwsEc2InstanceMetadata(
             instanceId = request.instanceId.trim(),
             privateIp = request.privateIp.trim(),
@@ -82,7 +90,8 @@ class AwsInstanceMetadataService(
             availabilityZone = request.availabilityZone.trim(),
             networkInterfaceId = request.networkInterfaceId.trim(),
             vpcId = request.vpcId.trim(),
-            ansibleHost = ansibleHost
+            ansibleHost = ansibleHost,
+            isPrimary = isPrimary
         )
 
         return instanceRepository.save(metadata)
@@ -120,9 +129,9 @@ class AwsInstanceMetadataService(
     /**
      * Create UpsertInstanceMetadataResponse from entity and message
      */
-    private fun createUpsertResponse(metadata: AwsEc2InstanceMetadata, message: String): UpsertInstanceMetadataResponse {
-        return UpsertInstanceMetadataResponse(
-            metadata = InstanceMetadataResponse(
+    private fun createUpsertResponse(metadata: AwsEc2InstanceMetadata, message: String): UpsertAwsInstanceMetadataResponse {
+        return UpsertAwsInstanceMetadataResponse(
+            metadata = AwsInstanceMetadataResponse(
                 id = metadata.id,
                 instanceId = metadata.instanceId,
                 privateIp = metadata.privateIp,

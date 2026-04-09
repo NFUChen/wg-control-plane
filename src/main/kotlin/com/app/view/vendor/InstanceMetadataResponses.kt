@@ -6,7 +6,7 @@ import java.util.*
 /**
  * Response for instance metadata operations
  */
-data class InstanceMetadataResponse(
+data class AwsInstanceMetadataResponse(
     val id: UUID,
     val instanceId: String,
     val privateIp: String,
@@ -22,8 +22,8 @@ data class InstanceMetadataResponse(
 /**
  * Response for upsert operations indicating if a record was created or updated
  */
-data class UpsertInstanceMetadataResponse(
-    val metadata: InstanceMetadataResponse,
+data class UpsertAwsInstanceMetadataResponse(
+    val metadata: AwsInstanceMetadataResponse,
     val message: String
 ) {
 }

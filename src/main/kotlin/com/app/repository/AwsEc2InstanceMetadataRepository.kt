@@ -38,6 +38,10 @@ interface AwsEc2InstanceMetadataRepository : JpaRepository<AwsEc2InstanceMetadat
      */
     fun findByAvailabilityZone(availabilityZone: String): List<AwsEc2InstanceMetadata>
 
+    fun countByVpcIdAndIsPrimaryTrue(vpcId: String): Long
+
+    fun findByVpcIdAndIsPrimaryTrue(vpcId: String): AwsEc2InstanceMetadata?
+
     /**
      * Find all instances in a specific VPC
      */

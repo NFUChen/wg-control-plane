@@ -20,6 +20,15 @@ import java.util.*
         UniqueConstraint(
             name = "uk_aws_ec2_instance_id",
             columnNames = ["instance_id"]
+        ),
+        UniqueConstraint(
+            name = "uk_aws_ec2_network_interface_id",
+            columnNames = ["network_interface_id"]
+        ),
+        // VPC ID and primary flag combination should be unique to prevent multiple primary instances in the same VPC
+        UniqueConstraint(
+            name = "uk_aws_ec2_vpc_primary",
+            columnNames = ["vpc_id", "is_primary"]
         )
     ]
 )
@@ -44,6 +53,9 @@ data class AwsEc2InstanceMetadata(
 
     @Column(name = "vpc_id", nullable = false)
     val vpcId: String,
+
+    @Column(name = "is_primary", nullable = false)
+    val isPrimary: Boolean,
 
     @CreationTimestamp
     @Column(name = "created_at")
