@@ -22,7 +22,9 @@ import {
   UpdateClientRequest,
   ServerDetailResponse,
   LoadingState,
-  ClientDeploymentMode
+  ClientDeploymentMode,
+  ControlPlaneModeResponse,
+  ControlPlaneMode
 } from '../../../models/wireguard.interface';
 import { AnsibleHost } from '../../../models/ansible.interface';
 
@@ -354,16 +356,25 @@ function optionalExtraAllowedCidrValidator(control: AbstractControl): Validation
                   <label for="clientDeployHostId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Remote host *
                   </label>
-                  <select
-                    id="clientDeployHostId"
-                    formControlName="clientDeployHostId"
-                    class="w-full max-w-xl px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select a host...</option>
-                    @for (h of ansibleHosts; track h.id) {
-                      <option [value]="h.id">{{ h.hostname }} — {{ h.ipAddress }}</option>
-                    }
-                  </select>
+                  @if (ansibleHosts.length > 0) {
+                    <select
+                      id="clientDeployHostId"
+                      formControlName="clientDeployHostId"
+                      class="w-full max-w-xl px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select a host...</option>
+                      @for (h of ansibleHosts; track h.id) {
+                        <option [value]="h.id">{{ h.hostname }} — {{ h.ipAddress }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <div class="w-full max-w-xl px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400">
+                      No available hosts (server host excluded)
+                    </div>
+                  }
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    💡 The server host is excluded to prevent network conflicts
+                  </p>
                 </div>
               }
             </div>
@@ -578,6 +589,10 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   formSubmitError: string | null = null;
   submitting = false;
 
+  // Control plane mode properties
+  controlPlaneMode?: ControlPlaneModeResponse;
+  showLocalDeployment = true;
+
   get isEditMode(): boolean {
     return !!this.clientId;
   }
@@ -604,6 +619,9 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Load control plane mode first
+    this.loadControlPlaneMode();
+
     this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {
       this.serverId = params['serverId'];
       this.clientId = params['clientId'];
@@ -625,6 +643,48 @@ export class ClientFormComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
   }
+
+  loadControlPlaneMode(): void {
+    this.wireguardService.getControlPlaneMode()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (mode) => {
+          this.controlPlaneMode = mode;
+          this.showLocalDeployment = mode.allowsLocalOperations;
+          this.updateFormValidation();
+        },
+        error: (error) => {
+          console.error('Failed to load control plane mode:', error);
+          // Default to showing local deployment if API fails
+          this.showLocalDeployment = true;
+        }
+      });
+  }
+
+  updateFormValidation(): void {
+    if (!this.controlPlaneMode?.allowsLocalOperations) {
+      // In pure remote mode, require either hostId or agent mode
+      this.clientForm.get('deploymentMode')?.addValidators(this.requireRemoteDeploymentValidator);
+    } else {
+      // In hybrid mode, all deployment modes are allowed
+      this.clientForm.get('deploymentMode')?.removeValidators([this.requireRemoteDeploymentValidator]);
+    }
+    this.clientForm.get('deploymentMode')?.updateValueAndValidity();
+  }
+
+  private requireRemoteDeploymentValidator = (control: AbstractControl): ValidationErrors | null => {
+    const mode = control.value;
+    const hostId = this.clientForm?.get('hostId')?.value;
+    const useAgentMode = this.clientForm?.get('useAgentMode')?.value;
+
+    // In pure remote mode, require either hostId or agent mode
+    if (!this.controlPlaneMode?.allowsLocalOperations) {
+      if (!hostId && !useAgentMode) {
+        return { remoteDeploymentRequired: true };
+      }
+    }
+    return null;
+  };
 
   createForm(): void {
     this.clientForm = this.fb.group({
@@ -778,7 +838,10 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   private loadAnsibleHosts(): void {
     this.ansible.listHosts(false).subscribe({
       next: rows => {
-        this.ansibleHosts = rows.filter(h => h.enabled);
+        // Filter out enabled hosts AND exclude the host where the server is running
+        this.ansibleHosts = rows.filter(h =>
+          h.enabled && h.id !== this.server?.hostId
+        );
       },
       error: () => {
         this.ansibleHosts = [];

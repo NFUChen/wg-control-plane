@@ -16,7 +16,9 @@ import {
   ClientInfo,
   LoadingState,
   ConfigurationPreview,
-  ServerConfigurationPreview
+  ServerConfigurationPreview,
+  ControlPlaneModeResponse,
+  ControlPlaneMode
 } from '../models/wireguard.interface';
 
 @Injectable({
@@ -27,6 +29,7 @@ export class WireguardService {
   private readonly clientBaseUrl = '/api/private/wireguard/clients';
   /** Agent / automation stats upload — requires X-API-Key (see application.yaml app.security.internal-api-key). */
   private readonly internalBaseUrl = '/api/internal/wireguard';
+  private readonly publicBaseUrl = '/api/public/control-plane';
 
   // Loading states for UI feedback
   private serversLoadingSubject = new BehaviorSubject<LoadingState>({ isLoading: false });
@@ -39,7 +42,14 @@ export class WireguardService {
   private serversCache = new BehaviorSubject<ServerResponse[]>([]);
   public servers$ = this.serversCache.asObservable();
 
-  constructor(private http: HttpClient) {}
+  // Control plane mode state
+  private controlPlaneModeCache = new BehaviorSubject<ControlPlaneModeResponse | null>(null);
+  public controlPlaneMode$ = this.controlPlaneModeCache.asObservable();
+
+  constructor(private http: HttpClient) {
+    // Load control plane mode on service initialization
+    this.loadControlPlaneMode().subscribe();
+  }
 
   // ==================== Server Operations ====================
 
@@ -427,6 +437,50 @@ export class WireguardService {
 
   private setClientsLoading(loading: boolean, error?: string): void {
     this.clientsLoadingSubject.next({ isLoading: loading, error });
+  }
+
+  // ==================== Control Plane Mode Operations ====================
+
+  /**
+   * Get current control plane mode
+   */
+  getControlPlaneMode(): Observable<ControlPlaneModeResponse> {
+    return this.http.get<ControlPlaneModeResponse>(`${this.publicBaseUrl}/mode`)
+      .pipe(
+        tap(mode => this.controlPlaneModeCache.next(mode)),
+        catchError(this.handleError)
+      );
+  }
+
+  /**
+   * Load control plane mode (used internally)
+   */
+  private loadControlPlaneMode(): Observable<ControlPlaneModeResponse> {
+    return this.getControlPlaneMode();
+  }
+
+  /**
+   * Check if local operations are allowed in current mode
+   */
+  areLocalOperationsAllowed(): boolean {
+    const currentMode = this.controlPlaneModeCache.getValue();
+    return currentMode?.allowsLocalOperations ?? true; // Default to true if mode not loaded
+  }
+
+  /**
+   * Check if current mode is pure remote
+   */
+  isPureRemoteMode(): boolean {
+    const currentMode = this.controlPlaneModeCache.getValue();
+    return currentMode?.mode === ControlPlaneMode.PURE_REMOTE;
+  }
+
+  /**
+   * Get current mode as enum
+   */
+  getCurrentMode(): ControlPlaneMode {
+    const currentMode = this.controlPlaneModeCache.getValue();
+    return (currentMode?.mode as ControlPlaneMode) ?? ControlPlaneMode.HYBRID;
   }
 
   private handleError(error: HttpErrorResponse): Observable<never> {

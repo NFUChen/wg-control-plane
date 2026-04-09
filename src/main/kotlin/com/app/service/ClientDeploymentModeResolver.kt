@@ -32,6 +32,22 @@ class ClientDeploymentModeResolver {
             )
         }
 
+        // Prevent client from being deployed to the same host as the server
+        // This covers both cases: both local (null) or both on same remote host (same UUID)
+        if (request.hostId == server.hostId) {
+            val hostDescription = if (server.hostId == null) {
+                "control plane host"
+            } else {
+                "remote host (${server.hostId})"
+            }
+
+            throw IllegalArgumentException(
+                "Client cannot be deployed to the same host as the WireGuard server ('${server.name}'). " +
+                "Both would run on the same $hostDescription, creating a network topology conflict. " +
+                "Please choose a different deployment option: use a different hostId, AGENT mode, or deploy to a different host."
+            )
+        }
+
         return when {
             // ANSIBLE mode: Client deployed to specific remote host via Ansible
             request.hostId != null -> {

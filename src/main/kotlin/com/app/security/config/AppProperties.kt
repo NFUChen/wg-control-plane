@@ -45,6 +45,25 @@ data class WireGuardProperties(
 }
 
 /**
+ * Control plane mode configuration
+ */
+enum class ControlPlaneMode {
+    /** Hybrid mode - supports both local and remote operations */
+    HYBRID,
+    /** Pure remote mode - only remote operations allowed */
+    PURE_REMOTE
+}
+
+/**
+ * Control plane operational mode properties
+ */
+@ConfigurationProperties(prefix = "app.control-plane")
+data class ControlPlaneProperties(
+    /** Control plane operational mode */
+    val mode: ControlPlaneMode = ControlPlaneMode.HYBRID
+)
+
+/**
  * Main application properties container
  * This is the single entry point for all configuration properties
  */
@@ -55,5 +74,6 @@ data class AppProperties(
      * Base URL for the application (since frontend and backend are deployed together)
      */
     val baseUrl: String,
-    val security: SecurityProperties
+    val security: SecurityProperties,
+    val controlPlane: ControlPlaneProperties = ControlPlaneProperties()
 )

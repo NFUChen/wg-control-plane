@@ -278,3 +278,15 @@ export interface ClientFilter {
   isOnline?: boolean;
   serverId?: string;
 }
+
+// Control Plane Mode interfaces
+export interface ControlPlaneModeResponse {
+  mode: string;
+  allowsLocalOperations: boolean;
+  description: string;
+}
+
+export enum ControlPlaneMode {
+  HYBRID = 'HYBRID',
+  PURE_REMOTE = 'PURE_REMOTE'
+}
