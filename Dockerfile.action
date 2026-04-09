@@ -49,6 +49,10 @@ EXPOSE 8080
 RUN groupadd -r appuser && useradd -r -g appuser appuser && \
     chown -R appuser:appuser $APP_HOME
 
+
+COPY src/main/resources/ansible/ /opt/ansible/
+
+
 # Entry point is the Spring Boot app;
 ENTRYPOINT ["java","-jar","/app/app.jar"]
 
