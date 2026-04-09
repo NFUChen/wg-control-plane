@@ -19,10 +19,24 @@ RUN apt-get update && \
         # sshpass for SSH password authentication
         sshpass \
         curl \
+        wget \
+        unzip \
     && pip3 install --no-cache-dir \
         ansible \
         ansible-core \
         paramiko \
+    # Install Terraform
+    && TERRAFORM_VERSION="1.14.8" \
+    && ARCH=$(dpkg --print-architecture) \
+    && wget -O terraform.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${ARCH}.zip" \
+    && unzip terraform.zip \
+    && mv terraform /usr/local/bin/ \
+    && rm terraform.zip \
+    # Install Terragrunt
+    && TERRAGRUNT_VERSION="v1.0.0" \
+    && wget -O /usr/local/bin/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/download/${TERRAGRUNT_VERSION}/terragrunt_linux_${ARCH}" \
+    && chmod +x /usr/local/bin/terragrunt \
+    # Cleanup
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf ~/.cache/pip
 
