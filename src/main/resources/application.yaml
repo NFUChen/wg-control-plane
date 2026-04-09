@@ -2,8 +2,8 @@ spring:
   datasource:
     driver-class-name: 'org.postgresql.Driver'
     url: 'jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:wg_control_plane}'
-    username: '${DB_USERNAME:wguser}'
-    password: '${DB_PASSWORD:wgpassword}'
+    username: 'wguser'
+    password: 'change-me'
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -71,6 +71,8 @@ app:
   base-url: '${APP_BASE_URL:http://localhost:8080}'
   security:
     internal-api-key: '${APP_INTERNAL_API_KEY:}'
+  control-plane:
+    mode: '${APP_CONTROL_PLANE_MODE:PURE_REMOTE}'
 
 email:
   from: '${EMAIL_FROM:noreply@example.com}'
@@ -86,3 +88,12 @@ web:
 wireguard:
   config:
     directory: '${WIREGUARD_CONFIG_DIR:/etc/wireguard}'
+
+ansible:
+  working-directory: '${ANSIBLE_WORKING_DIR:#{null}}'
+  timeout-seconds: '${ANSIBLE_TIMEOUT:3600}'
+  executable: '${ANSIBLE_EXECUTABLE:ansible-playbook}'
+  callback:
+    host: '${ANSIBLE_CALLBACK_HOST:${app.base-url}}'
+server:
+  port: 8000
