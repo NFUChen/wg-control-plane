@@ -2,6 +2,15 @@
 
 **WireGuard Control Plane** is a central place to run your WireGuard VPN: you define **servers** and **clients**, connect them to **machines you manage**, and let the system push configuration and updates for you. It is aimed at people who operate networks—security, platform, or IT teams—not at reading source code.
 
+> **⚠️ Active Development Warning**
+>
+> This project is under **active development**. Breaking changes may occur frequently as we iterate on features and improve the architecture. APIs, database schemas, and configuration formats may change without prior notice.
+>
+> - **Not recommended for production use** at this stage
+> - Backup your data regularly
+> - Review release notes and migration guides before upgrading
+> - Pin to specific versions if stability is critical
+
 ---
 
 ## What you use it for
