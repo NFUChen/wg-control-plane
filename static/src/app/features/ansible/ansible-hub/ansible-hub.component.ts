@@ -36,11 +36,12 @@ export class AnsibleHubComponent {
       title: 'Private key vault',
       description: 'Store SSH private keys used by Ansible hosts.'
     },
-    {
-      path: '/ansible/groups',
-      title: 'Inventory groups',
-      description: 'Define Ansible groups and group variables.'
-    },
+    // FEATURE: INVENTORY_GROUPS - Hidden for future release
+    // {
+    //   path: '/ansible/groups',
+    //   title: 'Inventory groups',
+    //   description: 'Define Ansible groups and group variables.'
+    // },
     {
       path: '/ansible/hosts',
       title: 'Hosts',

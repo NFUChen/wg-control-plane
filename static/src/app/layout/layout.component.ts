@@ -273,11 +273,12 @@ export class LayoutComponent {
       label: 'SSH keys',
       icon: 'M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v-2.25l6.864-6.864c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z'
     },
-    {
-      path: '/ansible/groups',
-      label: 'Groups',
-      icon: 'M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6 6 0 006 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 12a3 3 0 11-6 0 3 3 0 016 0z'
-    },
+    // FEATURE: INVENTORY_GROUPS - Hidden for future release
+    // {
+    //   path: '/ansible/groups',
+    //   label: 'Groups',
+    //   icon: 'M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6 6 0 006 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 12a3 3 0 11-6 0 3 3 0 016 0z'
+    // },
     {
       path: '/ansible/hosts',
       label: 'Hosts',
@@ -319,9 +320,10 @@ export class LayoutComponent {
     if (url.includes('/ansible/keys') && url.includes('/edit')) return 'Edit SSH key';
     if (url.includes('/ansible/keys/new')) return 'Add SSH key';
     if (url.includes('/ansible/keys')) return 'SSH keys';
-    if (url.includes('/ansible/groups') && url.includes('/edit')) return 'Edit group';
-    if (url.includes('/ansible/groups/new')) return 'New group';
-    if (url.includes('/ansible/groups')) return 'Inventory groups';
+    // FEATURE: INVENTORY_GROUPS - Hidden for future release
+    // if (url.includes('/ansible/groups') && url.includes('/edit')) return 'Edit group';
+    // if (url.includes('/ansible/groups/new')) return 'New group';
+    // if (url.includes('/ansible/groups')) return 'Inventory groups';
     if (url.includes('/ansible/hosts') && url.includes('/edit')) return 'Edit host';
     if (url.includes('/ansible/hosts/new')) return 'Add host';
     if (url.includes('/ansible/hosts')) return 'Ansible hosts';

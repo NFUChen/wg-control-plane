@@ -132,7 +132,8 @@ import {
                   }
                 </select>
               </div>
-              <div class="sm:col-span-2">
+              <!-- FEATURE: INVENTORY_GROUPS - Hidden for future release -->
+              <!-- <div class="sm:col-span-2">
                 <label class="block text-sm font-medium mb-1">Inventory group</label>
                 <select
                   formControlName="ansibleInventoryGroupId"
@@ -143,7 +144,7 @@ import {
                     <option [value]="g.id">{{ g.name }}</option>
                   }
                 </select>
-              </div>
+              </div> -->
               <div class="flex items-center gap-2 sm:col-span-2">
                 <input type="checkbox" formControlName="sudoRequired" id="sudo" />
                 <label for="sudo" class="text-sm">Sudo required</label>

@@ -92,24 +92,25 @@ export const routes: Routes = [
           import('./features/ansible/private-keys/private-key-form.component').then(c => c.PrivateKeyFormComponent),
         title: 'Edit SSH key'
       },
-      {
-        path: 'ansible/groups',
-        loadComponent: () =>
-          import('./features/ansible/groups/ansible-group-list.component').then(c => c.AnsibleGroupListComponent),
-        title: 'Inventory groups'
-      },
-      {
-        path: 'ansible/groups/new',
-        loadComponent: () =>
-          import('./features/ansible/groups/ansible-group-form.component').then(c => c.AnsibleGroupFormComponent),
-        title: 'New group'
-      },
-      {
-        path: 'ansible/groups/:id/edit',
-        loadComponent: () =>
-          import('./features/ansible/groups/ansible-group-form.component').then(c => c.AnsibleGroupFormComponent),
-        title: 'Edit group'
-      },
+      // FEATURE: INVENTORY_GROUPS - Hidden for future release
+      // {
+      //   path: 'ansible/groups',
+      //   loadComponent: () =>
+      //     import('./features/ansible/groups/ansible-group-list.component').then(c => c.AnsibleGroupListComponent),
+      //   title: 'Inventory groups'
+      // },
+      // {
+      //   path: 'ansible/groups/new',
+      //   loadComponent: () =>
+      //     import('./features/ansible/groups/ansible-group-form.component').then(c => c.AnsibleGroupFormComponent),
+      //   title: 'New group'
+      // },
+      // {
+      //   path: 'ansible/groups/:id/edit',
+      //   loadComponent: () =>
+      //     import('./features/ansible/groups/ansible-group-form.component').then(c => c.AnsibleGroupFormComponent),
+      //   title: 'Edit group'
+      // },
       {
         path: 'ansible/hosts',
         loadComponent: () =>

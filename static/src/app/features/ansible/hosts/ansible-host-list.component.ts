@@ -44,9 +44,10 @@ import { LoadingState, TableColumn } from '../../../models/wireguard.interface';
             <span *ngSwitchCase="'enabled'">
               <app-status-badge [variant]="badge(item.enabled)" [label]="item.enabled ? 'Enabled' : 'Disabled'" />
             </span>
-            <span *ngSwitchCase="'group'">
+            <!-- FEATURE: INVENTORY_GROUPS - Hidden for future release -->
+            <!-- <span *ngSwitchCase="'group'">
               {{ item.ansibleInventoryGroup?.name ?? '—' }}
-            </span>
+            </span> -->
             <span *ngSwitchCase="'reachability'" class="inline-flex items-center justify-center w-10">
               <ng-container [ngSwitch]="pingState(item.id)">
                 <svg
@@ -122,7 +123,8 @@ export class AnsibleHostListComponent implements OnInit, OnDestroy {
     { key: 'hostname', label: 'Hostname', sortable: true, type: 'text' },
     { key: 'ipAddress', label: 'IP', type: 'text' },
     { key: 'sshUsername', label: 'SSH user', type: 'text' },
-    { key: 'group', label: 'Group' },
+    // FEATURE: INVENTORY_GROUPS - Hidden for future release
+    // { key: 'group', label: 'Group' },
     { key: 'enabled', label: 'Status' },
     { key: 'reachability', label: 'Last ping' },
     { key: 'actions', label: 'Actions', type: 'action' }
