@@ -13,7 +13,6 @@
 [Interface]
 PrivateKey = ${privateKey}
 Address = ${peerIP}
-<#if dnsServers?has_content>DNS = ${dnsServers}</#if>
 
 [Peer]
 # Central server - routes traffic to all client networks

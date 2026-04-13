@@ -74,7 +74,6 @@ class DefaultWireGuardManagementService(
             publicKey = publicKey,
             addresses = mutableListOf(IPAddress(request.networkAddress)),
             listenPort = request.listenPort,
-            dnsServers = request.dnsServers.map { IPAddress(it) }.toMutableList(),
             postUp = request.postUp?.trim()?.takeIf { it.isNotEmpty() },
             postDown = request.postDown?.trim()?.takeIf { it.isNotEmpty() }
         )
@@ -568,7 +567,6 @@ class DefaultWireGuardManagementService(
             publicKey = original.publicKey,
             addresses = original.addresses.toMutableList(),
             listenPort = original.listenPort,
-            dnsServers = original.dnsServers.toMutableList(),
             postUp = original.postUp,
             postDown = original.postDown,
             enabled = original.enabled,
@@ -615,10 +613,6 @@ class DefaultWireGuardManagementService(
             server.addresses.add(IPAddress(it))
         }
         request.listenPort?.let { server.listenPort = it }
-        request.dnsServers?.let { dnsList ->
-            server.dnsServers.clear()
-            server.dnsServers.addAll(dnsList.map { IPAddress(it) })
-        }
         if (request.postUp != null) {
             server.postUp = request.postUp.trim().takeIf { it.isNotEmpty() }
         }
@@ -645,8 +639,6 @@ class DefaultWireGuardManagementService(
             current.addresses.clear()
             current.addresses.addAll(snapshot.addresses)
             current.listenPort = snapshot.listenPort
-            current.dnsServers.clear()
-            current.dnsServers.addAll(snapshot.dnsServers)
             current.postUp = snapshot.postUp
             current.postDown = snapshot.postDown
             current.enabled = snapshot.enabled

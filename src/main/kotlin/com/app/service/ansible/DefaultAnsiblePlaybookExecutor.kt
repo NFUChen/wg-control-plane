@@ -1,12 +1,13 @@
 package com.app.service.ansible
 
-import com.app.model.*
+import com.app.model.AnsibleExecutionJob
+import com.app.model.AnsibleExecutionStatus
+import com.app.model.PrivateKey
 import com.app.repository.AnsibleExecutionJobRepository
 import com.app.repository.PrivateKeyRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.core.io.ResourceLoader
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
@@ -32,9 +33,8 @@ class DefaultAnsiblePlaybookExecutor(
     private val executionJobRepository: AnsibleExecutionJobRepository,
     private val privateKeyRepository: PrivateKeyRepository,
     private val objectMapper: ObjectMapper,
-    private val resourceLoader: ResourceLoader,
-    @Value("\${ansible.working-directory:#{null}}") private val ansibleWorkingDirectory: String?,
-    @Value("\${ansible.timeout-seconds:3600}") private val defaultTimeoutSeconds: Long = 3600,
+    @Value("\${ansible.working-directory}") private val ansibleWorkingDirectory: String = "/opt/ansible",
+    @Value("\${ansible.timeout-seconds}") private val defaultTimeoutSeconds: Long = 3600,
     @Value("\${ansible.executable:ansible-playbook}") private val ansibleExecutable: String = "ansible-playbook"
 ) : AnsiblePlaybookExecutor {
 
@@ -42,7 +42,6 @@ class DefaultAnsiblePlaybookExecutor(
     private val runningProcesses = ConcurrentHashMap<UUID, Process>()
 
     companion object {
-        private const val DEFAULT_ANSIBLE_DIR = "ansible"
 
         /** ansible_ssh_private_key_file=... in INI inventory */
         private val ANSIBLE_SSH_KEY_FILE_PATTERN = Regex(
@@ -431,12 +430,7 @@ class DefaultAnsiblePlaybookExecutor(
     }
 
     private fun getAnsibleDirectory(): Path {
-        return if (ansibleWorkingDirectory != null) {
-            Paths.get(ansibleWorkingDirectory)
-        } else {
-            val resource = resourceLoader.getResource("classpath:$DEFAULT_ANSIBLE_DIR")
-            Paths.get(resource.uri)
-        }
+        return Paths.get(ansibleWorkingDirectory)
     }
 
     private fun getPlaybookPath(playbook: String): Path {

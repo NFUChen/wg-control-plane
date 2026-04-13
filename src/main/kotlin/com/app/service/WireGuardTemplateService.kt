@@ -19,7 +19,6 @@ class WireGuardTemplateService(
             "privateKey" to server.privateKey,
             "address" to server.addresses.joinToString(", ") { it.address },
             "listenPort" to server.listenPort,
-            "dnsServers" to server.dnsServers.joinToString(", ") { it.address },
             "postUp" to (server.postUp ?: ""),
             "postDown" to (server.postDown ?: ""),
             "clients" to server.clients.filter { it.enabled }.map { client ->
@@ -71,7 +70,6 @@ class WireGuardTemplateService(
         val dataModel = mutableMapOf<String, Any>(
             "privateKey" to client.privateKey,
             "peerIP" to client.peerIPs.joinToString(", ") { it.address },
-            "dnsServers" to server.dnsServers.joinToString(", ") { it.address },
             "serverPublicKey" to server.publicKey,
             "serverEndpoint" to serverEndpoint,
             "allowedIPs" to tunnelAllowedIPs.joinToString(", "),

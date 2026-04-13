@@ -50,7 +50,6 @@ class WireGuardClientController(
                 name = client.server.name,
                 endpoint = endpoint,
                 publicKey = client.server.publicKey,
-                dnsServers = client.server.dnsServers.map { it.IP }
             )
         )
 

@@ -303,6 +303,7 @@ function optionalExtraAllowedCidrValidator(control: AbstractControl): Validation
               </p>
 
               <div class="space-y-3">
+                @if (showLocalDeployment) {
                 <label class="flex items-start gap-3 cursor-pointer">
                   <input
                     type="radio"
@@ -317,6 +318,7 @@ function optionalExtraAllowedCidrValidator(control: AbstractControl): Validation
                     </div>
                   </div>
                 </label>
+                }
 
                 <label class="flex items-start gap-3 cursor-pointer">
                   <input
@@ -350,6 +352,12 @@ function optionalExtraAllowedCidrValidator(control: AbstractControl): Validation
                 </label>
                 }
               </div>
+
+              @if (!isEditMode && clientForm.get('deploymentMode')?.errors?.['remoteDeploymentRequired']) {
+                <p class="mt-2 text-sm text-red-600 dark:text-red-400">
+                  This control plane runs in remote-only mode: choose Agent, or Ansible with a remote host. Local deployment is not available here.
+                </p>
+              }
 
               @if (clientForm.get('deploymentMode')?.value === 'ansible' && server.hostId) {
                 <div class="mt-4 pl-7">
@@ -619,6 +627,16 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Re-validate deployment mode when Ansible target host changes (cross-field rule).
+    this.clientForm
+      .get('clientDeployHostId')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (!this.controlPlaneMode?.allowsLocalOperations && !this.isEditMode) {
+          this.clientForm.get('deploymentMode')?.updateValueAndValidity({ emitEvent: false });
+        }
+      });
+
     // Load control plane mode first
     this.loadControlPlaneMode();
 
@@ -651,6 +669,12 @@ export class ClientFormComponent implements OnInit, OnDestroy {
         next: (mode) => {
           this.controlPlaneMode = mode;
           this.showLocalDeployment = mode.allowsLocalOperations;
+          if (!mode.allowsLocalOperations && !this.isEditMode) {
+            const dm = this.clientForm.get('deploymentMode')?.value;
+            if (dm === 'local') {
+              this.clientForm.patchValue({ deploymentMode: 'agent' }, { emitEvent: true });
+            }
+          }
           this.updateFormValidation();
         },
         error: (error) => {
@@ -673,17 +697,18 @@ export class ClientFormComponent implements OnInit, OnDestroy {
   }
 
   private requireRemoteDeploymentValidator = (control: AbstractControl): ValidationErrors | null => {
-    const mode = control.value;
-    const hostId = this.clientForm?.get('hostId')?.value;
-    const useAgentMode = this.clientForm?.get('useAgentMode')?.value;
-
-    // In pure remote mode, require either hostId or agent mode
-    if (!this.controlPlaneMode?.allowsLocalOperations) {
-      if (!hostId && !useAgentMode) {
-        return { remoteDeploymentRequired: true };
-      }
+    if (this.controlPlaneMode?.allowsLocalOperations || this.isEditMode) {
+      return null;
     }
-    return null;
+    const mode = (control.value ?? '') as string;
+    if (mode === 'agent') {
+      return null;
+    }
+    if (mode === 'ansible') {
+      const deployHost = (this.clientForm?.get('clientDeployHostId')?.value ?? '').toString().trim();
+      return deployHost ? null : { remoteDeploymentRequired: true };
+    }
+    return { remoteDeploymentRequired: true };
   };
 
   createForm(): void {

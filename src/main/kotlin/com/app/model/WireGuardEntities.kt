@@ -10,9 +10,6 @@ import org.hibernate.annotations.NotFoundAction
 import org.hibernate.annotations.UpdateTimestamp
 import java.time.LocalDateTime
 import java.util.*
-import kotlin.jvm.Transient
-
-const val GOOGLE_DNS = "8.8.8.8"
 
 /**
  * WireGuard Server entity - represents a WireGuard server instance
@@ -42,10 +39,6 @@ class WireGuardServer(
 
     @Column(name = "listen_port", nullable = false)
     var listenPort: Int = 51820,
-
-    @Convert(converter = IPAddressListConverter::class)
-    @Column(name = "dns_servers", columnDefinition = "TEXT")
-    val dnsServers: MutableList<IPAddress> = mutableListOf(IPAddress(GOOGLE_DNS)),
 
     @Column(name = "post_up")
     var postUp: String? = null, // iptables rules for NAT, etc.

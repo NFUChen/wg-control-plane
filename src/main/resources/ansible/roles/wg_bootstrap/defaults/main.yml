@@ -1,4 +1,5 @@
 ---
+# Package installation settings
 wg_bootstrap_update_cache: true
 wg_bootstrap_install_packages_debian:
   - python3
@@ -6,3 +7,16 @@ wg_bootstrap_install_packages_debian:
 wg_bootstrap_install_packages_redhat:
   - python3
   - python3-libselinux
+
+# Metadata collection settings
+wg_bootstrap_get_metadata: true
+wg_bootstrap_generate_combined: true
+wg_bootstrap_debug: false
+wg_bootstrap_metadata_dir: "./metadata_output"
+
+# AWS specific settings
+wg_aws_token_ttl: "21600"  # 6 hours
+
+# Metadata callback settings
+wg_callback_host: "{{ wg_callback_host }}"
+wg_host_uuid: "{{ wg_host_uuid | default('') }}"

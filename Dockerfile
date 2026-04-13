@@ -49,10 +49,24 @@ RUN apt-get update && \
         # sshpass for SSH password authentication
         sshpass \
         curl \
+        wget \
+        unzip \
     && pip3 install --no-cache-dir \
         ansible \
         ansible-core \
         paramiko \
+    # Install Terraform
+    && TERRAFORM_VERSION="1.14.8" \
+    && ARCH=$(dpkg --print-architecture) \
+    && wget -O terraform.zip "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${ARCH}.zip" \
+    && unzip terraform.zip \
+    && mv terraform /usr/local/bin/ \
+    && rm terraform.zip \
+    # Install Terragrunt
+    && TERRAGRUNT_VERSION="v1.0.0" \
+    && wget -O /usr/local/bin/terragrunt "https://github.com/gruntwork-io/terragrunt/releases/download/${TERRAGRUNT_VERSION}/terragrunt_linux_${ARCH}" \
+    && chmod +x /usr/local/bin/terragrunt \
+    # Cleanup
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf ~/.cache/pip
 
@@ -65,7 +79,16 @@ EXPOSE 8080
 RUN groupadd -r appuser && useradd -r -g appuser appuser && \
     chown -R appuser:appuser $APP_HOME
 
+
+# Copy Playbook to /opt/ansible/playbooks/ for Ansible CLI usage in the container; can be overridden by mounting a volume at runtime.
+COPY --from=builder /app/src/main/resources/ansible /opt/ansible
+
 # Process runs as root so wg-quick can manage interfaces; app files owned by appuser.
 # Containers still typically need NET_ADMIN (and often privileged or /dev/net/tun) for WireGuard.
 
-CMD ["java", "-jar", "app.jar"]
+# Entry point is the Spring Boot app;
+ENTRYPOINT ["java","-jar","/app/app.jar"]
+
+# CMD can be overridden at runtime; use it to specify config location (e.g. mounted volume) without changing the entry point.
+CMD ["--spring.config.location=file:/config/application.yaml"]
+
