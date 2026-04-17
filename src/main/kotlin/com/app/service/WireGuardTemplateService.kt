@@ -54,11 +54,6 @@ class WireGuardTemplateService(
             tunnelAllowedIPs.add(it.address)
         }
 
-        // This client's allowed IPs
-        client.allowedIPs.forEach {
-            tunnelAllowedIPs.add(it.address)
-        }
-
         // Other peers' allowed IPs for mesh networking
         client.otherPeerAllowIPs.forEach {
             tunnelAllowedIPs.add(it.address)
@@ -123,20 +118,20 @@ class WireGuardTemplateService(
         val networkTopology = mutableListOf<String>()
         val otherClients = server.clients.filter { it.enabled && it.id != client.id }
 
-        // Server networks
+        // Server networks - always accessible through tunnel
         if (server.addresses.isNotEmpty()) {
             networkTopology.add("Server networks: ${server.addresses.joinToString(", ") { it.address }}")
         }
 
-        // This client's networks
+        // Networks this site is responsible for (advertised to other peers, not routed through tunnel)
         if (client.allowedIPs.isNotEmpty()) {
-            networkTopology.add("This client networks: ${client.allowedIPs.joinToString(", ") { it.address }}")
+            networkTopology.add("Local site networks (advertised): ${client.allowedIPs.joinToString(", ") { it.address }}")
         }
 
-        // Other clients' networks (mesh)
+        // Other sites' networks - accessible through tunnel via server
         otherClients.forEach { otherClient ->
             if (otherClient.allowedIPs.isNotEmpty()) {
-                networkTopology.add("${otherClient.name} networks: ${otherClient.allowedIPs.joinToString(", ") { it.address }}")
+                networkTopology.add("${otherClient.name} site: ${otherClient.allowedIPs.joinToString(", ") { it.address }}")
             }
         }
 
